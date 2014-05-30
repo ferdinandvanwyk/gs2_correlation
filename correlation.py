@@ -124,8 +124,8 @@ if analysis == 'perp':
   ny = (nky-1)*2
   nth = shape[3]
   corr_fn = np.empty([nt,nx,ny-1,nth],dtype=float)
-  for it in range(0,shape[0]):
-    for ith in range(0,corr_fn.shape[3]):
+  for it in range(0,nt):
+    for ith in range(0,nth):
       corr_fn[it,:,:,ith] = wk_thm(ntot_reg[it,:,:,ith,:])
 
       #Shift the zeros to the middle of the domain (only in x and y directions)
@@ -157,14 +157,32 @@ if analysis == 'perp':
 # flow, can fit a decaying exponential to either the central peak or the envelope
 # of peaks of different dy's
 elif analysis == 'time':
-# As given in Bendat & Piersol, need to pad time series with zeros to separate parts
-# of circular correlation function 
-  ntot_pad = np.empty([2*shape[0], shape[1], shape[2], shape[3], shape[4]])
+  # As given in Bendat & Piersol, need to pad time series with zeros to separate parts
+  # of circular correlation function 
+  shape = ntot_reg.shape
+  nt = shape[0]
+  nx = shape[1]
+  nky = shape[2]
+  ny = (nky-1)*2
+  nth = shape[3]
+  ntot_pad = np.empty([2*nt, nx, nky, nth, shape[4]])
   ntot_pad[:,:,:,:,:] = 0.0
   ntot_pad[0:shape[0],:,:,:,:] = ntot_reg
 
-# For each x value in the outboard midplane (theta=0) calculate the function C(dt,dy)
+  # For each x value in the outboard midplane (theta=0) calculate the function C(dt,dy)
+  corr_fn = np.empty([2*nt,nx,ny-1,nth],dtype=float)
+  for ix in range(0,nx):
+    for ith in range(0,nth):
+      #Do correlation analysis but only keep first half as per B&P
+      corr_fn[:,ix,:,ith] = wk_thm(ntot_pad[:,ix,:,ith,:])
 
+      #Shift the zeros to the middle of the domain (only in t and y directions)
+      corr_fn[:,ix,:,ith] = np.fft.fftshift(corr_fn[:,ix,:,ith], axes=[0,1])
+      #Normalize the correlation function
+      corr_fn[:,ix,:,ith] = corr_fn[:,ix,:,ith]/np.max(corr_fn[:,ix,:,ith])
+
+  plt.plot(corr_fn[:,10,30,10])
+  plt.show()
 
 
 
