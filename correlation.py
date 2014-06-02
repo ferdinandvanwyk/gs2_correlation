@@ -38,7 +38,7 @@ def real_to_complex(field):
   cplx_field.real = field[:,:,0]
   cplx_field.imag = field[:,:,1]
   # fix fft normalisation that is appropriate for numpy fft package
-  cplx_field = cplx_field*nx*ny/2
+  cplx_field = cplx_field*n1*n2/2
   return cplx_field
 
 # Function which applies WK theorem to a real 2D field field(x,y,ri) where y is assumed to be
@@ -84,6 +84,9 @@ def perp_fit(avg_corr, xpts, ypts):
 # Main Code #
 #############
 
+#Start timer
+t_start = time.clock()
+
 ncfile = netcdf.netcdf_file(in_file, 'r')
 density = ncfile.variables['ntot_t'][:,0,:,:,:,:] #index = (t, spec, ky, kx, theta, ri)
 th = ncfile.variables['theta'][:]
@@ -91,8 +94,6 @@ kx = ncfile.variables['kx'][:]
 ky = ncfile.variables['ky'][:]
 t = ncfile.variables['t'][:]
 
-#Start timer
-t_start = time.clock()
 #Ensure time is on a regular grid for uniformity
 tnew = np.linspace(min(t), max(t), len(t))
 shape = density.shape
@@ -104,7 +105,7 @@ for i in range(shape[1]):
         f = interp.interp1d(t, density[:, i, j, k, l])
         ntot_reg[:, j, i, k, l] = f(tnew) #perform a transpose here: ntot(t,kx,ky,theta,ri)
 
-#Start timer
+#End timer
 t_end = time.clock()
 print 'Interpolation Time = ', t_end-t_start, ' s'
 
@@ -135,7 +136,7 @@ if analysis == 'perp':
 
   xpts = np.linspace(-2*np.pi/kx[1], 2*np.pi/kx[1], nx)
   ypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], ny-1)
-  film.film_2d(xpts, ypts, corr_fn[:,:,:,10], 100, 'corr')
+  film.film_2d(xpts, ypts, corr_fn[:,:,:,10], 500, 'corr')
 
   # Calculate average correlation function over time at zero theta
   plt.clf()
@@ -167,25 +168,32 @@ elif analysis == 'time':
   nth = shape[3]
   ntot_pad = np.empty([2*nt, nx, nky, nth, shape[4]])
   ntot_pad[:,:,:,:,:] = 0.0
-  ntot_pad[0:shape[0],:,:,:,:] = ntot_reg
+  ntot_pad[0:nt,:,:,:,:] = ntot_reg
 
-  # For each x value in the outboard midplane (theta=0) calculate the function C(dt,dy)
-  corr_fn = np.empty([2*nt,nx,ny-1,nth],dtype=float)
-  for ix in range(0,nx):
-    for ith in range(0,nth):
-      #Do correlation analysis but only keep first half as per B&P
-      corr_fn[:,ix,:,ith] = wk_thm(ntot_pad[:,ix,:,ith,:])
+  f = np.empty([nt, nx, nky, nth], dtype=complex)
+  # First need to FFT in x so that x index represents radial locations
+  f.real = ntot_reg[:, :, :, :, 0]
+  f.imag = ntot_reg[:, :, :, :, 1]
+  ntot_x_real = np.fft.ifft(f,axis=1)
 
-      #Shift the zeros to the middle of the domain (only in t and y directions)
-      corr_fn[:,ix,:,ith] = np.fft.fftshift(corr_fn[:,ix,:,ith], axes=[0,1])
-      #Normalize the correlation function
-      corr_fn[:,ix,:,ith] = corr_fn[:,ix,:,ith]/np.max(corr_fn[:,ix,:,ith])
+#  # For each x value in the outboard midplane (theta=0) calculate the function C(dt,dy)
+#  corr_fn = np.empty([2*nt,nx,ny-1,nth],dtype=float)
+#  for ix in range(0,nx):
+#    for ith in range(10,11):
+#      #Do correlation analysis but only keep first half as per B&P
+#      corr_fn[:,ix,:,ith] = wk_thm(ntot_pad[:,ix,:,ith,:])
+#
+#      #Shift the zeros to the middle of the domain (only in t and y directions)
+#      corr_fn[:,ix,:,ith] = np.fft.fftshift(corr_fn[:,ix,:,ith], axes=[0,1])
+#      #Normalize the correlation function
+#      corr_fn[:,ix,:,ith] = corr_fn[:,ix,:,ith]/np.max(corr_fn[:,ix,:,ith])
 
-  plt.plot(corr_fn[:,10,30,10])
-  plt.show()
+  #End timer
+  t_end = time.clock()
+  print 'Total Time = ', t_end-t_start, ' s'
 
-
-
+#  plt.plot(corr_fn[:,30:50,30,10])
+#  plt.show()
 
 
 
