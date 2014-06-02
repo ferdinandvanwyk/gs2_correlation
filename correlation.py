@@ -8,6 +8,7 @@
 
 import os, sys
 import time
+import gc
 import threading
 import numpy as np
 import matplotlib.pyplot as plt
@@ -110,7 +111,7 @@ t_end = time.clock()
 print 'Interpolation Time = ', t_end-t_start, ' s'
 
 #Clear density from memory
-density = None
+density = None; gc.collect();
 
 #################
 # Perp Analysis #
@@ -136,7 +137,7 @@ if analysis == 'perp':
 
   xpts = np.linspace(-2*np.pi/kx[1], 2*np.pi/kx[1], nx)
   ypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], ny-1)
-  film.film_2d(xpts, ypts, corr_fn[:,:,:,10], 500, 'corr')
+  film.film_2d(xpts, ypts, corr_fn[:,:,:,10], 100, 'corr')
 
   # Calculate average correlation function over time at zero theta
   plt.clf()
@@ -166,34 +167,44 @@ elif analysis == 'time':
   nky = shape[2]
   ny = (nky-1)*2
   nth = shape[3]
+
+  # First need to FFT in x so that x index represents radial locations
+  f = np.empty([nt, nx, nky, nth], dtype=complex)
+  f.real = ntot_reg[:, :, :, :, 0]
+  f.imag = ntot_reg[:, :, :, :, 1]
+  f = np.fft.ifft(f,axis=1)
+  ntot_reg[:,:,:,:,0] = f.real #ntot_reg(t, x, ky, theta, ri)
+  ntot_reg[:,:,:,:,1] = f.imag
+
   ntot_pad = np.empty([2*nt, nx, nky, nth, shape[4]])
   ntot_pad[:,:,:,:,:] = 0.0
   ntot_pad[0:nt,:,:,:,:] = ntot_reg
 
-  f = np.empty([nt, nx, nky, nth], dtype=complex)
-  # First need to FFT in x so that x index represents radial locations
-  f.real = ntot_reg[:, :, :, :, 0]
-  f.imag = ntot_reg[:, :, :, :, 1]
-  ntot_x_real = np.fft.ifft(f,axis=1)
+  #Clear memory
+  ntot_reg = None; f = None; gc.collect();
+  
+  # For each x value in the outboard midplane (theta=0) calculate the function C(dt,dy)
+  corr_fn = np.empty([nt,nx,ny-1,nth],dtype=float)
+  for ix in range(0,nx):
+    for ith in range(10,11):
+      #Do correlation analysis but only keep first half as per B&P
+      corr_fn[:,ix,:,ith] = wk_thm(ntot_pad[:,ix,:,ith,:])[0:nt,:]
 
-#  # For each x value in the outboard midplane (theta=0) calculate the function C(dt,dy)
-#  corr_fn = np.empty([2*nt,nx,ny-1,nth],dtype=float)
-#  for ix in range(0,nx):
-#    for ith in range(10,11):
-#      #Do correlation analysis but only keep first half as per B&P
-#      corr_fn[:,ix,:,ith] = wk_thm(ntot_pad[:,ix,:,ith,:])
-#
-#      #Shift the zeros to the middle of the domain (only in t and y directions)
-#      corr_fn[:,ix,:,ith] = np.fft.fftshift(corr_fn[:,ix,:,ith], axes=[0,1])
-#      #Normalize the correlation function
-#      corr_fn[:,ix,:,ith] = corr_fn[:,ix,:,ith]/np.max(corr_fn[:,ix,:,ith])
+      #Shift the zeros to the middle of the domain (only in t and y directions)
+      corr_fn[:,ix,:,ith] = np.fft.fftshift(corr_fn[:,ix,:,ith], axes=[0,1])
+      #Normalize the correlation function
+      corr_fn[:,ix,:,ith] = corr_fn[:,ix,:,ith]/np.max(corr_fn[:,ix,:,ith])
+
+  #Duplicate positive dt in negative dt region (since symmetric)
+  pos_part = corr_fn[::-1,:,:,:]
+  corr_fn[0:nt/2,:,:,:] = pos_part[0:nt/2,:,:,:]
 
   #End timer
   t_end = time.clock()
   print 'Total Time = ', t_end-t_start, ' s'
 
-#  plt.plot(corr_fn[:,30:50,30,10])
-#  plt.show()
+  plt.contourf(np.transpose(corr_fn[:,30,:,10]))
+  plt.show()
 
 
 
