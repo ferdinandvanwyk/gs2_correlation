@@ -89,11 +89,11 @@ def perp_fit(avg_corr, xpts, ypts):
 t_start = time.clock()
 
 ncfile = netcdf.netcdf_file(in_file, 'r')
-density = ncfile.variables['ntot_t'][:,0,:,:,:,:] #index = (t, spec, ky, kx, theta, ri)
+density = ncfile.variables['ntot_t'][:800,0,:,:,:,:] #index = (t, spec, ky, kx, theta, ri)
 th = ncfile.variables['theta'][:]
 kx = ncfile.variables['kx'][:]
 ky = ncfile.variables['ky'][:]
-t = ncfile.variables['t'][:]
+t = ncfile.variables['t'][:800]
 
 #Ensure time is on a regular grid for uniformity
 tnew = np.linspace(min(t), max(t), len(t))
@@ -111,7 +111,7 @@ t_end = time.clock()
 print 'Interpolation Time = ', t_end-t_start, ' s'
 
 #Clear density from memory
-density = None; gc.collect();
+density = None; f = None; gc.collect();
 
 #################
 # Perp Analysis #
@@ -168,20 +168,27 @@ elif analysis == 'time':
   ny = (nky-1)*2
   nth = shape[3]
 
-  # First need to FFT in x so that x index represents radial locations
-  f = np.empty([nt, nx, nky, nth], dtype=complex)
-  f.real = ntot_reg[:, :, :, :, 0]
-  f.imag = ntot_reg[:, :, :, :, 1]
-  f = np.fft.ifft(f,axis=1)
-  ntot_reg[:,:,:,:,0] = f.real #ntot_reg(t, x, ky, theta, ri)
-  ntot_reg[:,:,:,:,1] = f.imag
-
+  # Pad the original data with an equal number of zeroes, following 
+  # the B&P method of separating out the circular correlation terms.
   ntot_pad = np.empty([2*nt, nx, nky, nth, shape[4]])
   ntot_pad[:,:,:,:,:] = 0.0
   ntot_pad[0:nt,:,:,:,:] = ntot_reg
 
   #Clear memory
-  ntot_reg = None; f = None; gc.collect();
+  ntot_reg = None; gc.collect();
+
+  # Need to IFFT in x so that x index represents radial locations
+  # Need to FFT in t so that WK thm can be used
+  f = np.empty([2*nt, nx, nky, nth], dtype=complex)
+  f.real = ntot_pad[:, :, :, :, 0]
+  f.imag = ntot_pad[:, :, :, :, 1]
+  f = np.fft.ifft(f,axis=1) #ifft(kx)
+  f = np.fft.fft(f,axis=0)  #fft(t)
+  ntot_pad[:,:,:,:,0] = f.real #ntot_reg(t, x, ky, theta, ri)
+  ntot_pad[:,:,:,:,1] = f.imag
+
+  #Clear memory
+  f = None; gc.collect();
   
   # For each x value in the outboard midplane (theta=0) calculate the function C(dt,dy)
   corr_fn = np.empty([nt,nx,ny-1,nth],dtype=float)
@@ -191,19 +198,24 @@ elif analysis == 'time':
       corr_fn[:,ix,:,ith] = wk_thm(ntot_pad[:,ix,:,ith,:])[0:nt,:]
 
       #Shift the zeros to the middle of the domain (only in t and y directions)
-      corr_fn[:,ix,:,ith] = np.fft.fftshift(corr_fn[:,ix,:,ith], axes=[0,1])
+      corr_fn[:,ix,:,ith] = np.fft.fftshift(corr_fn[:,ix,:,ith], axes=[1])
+
+      #Normalize correlation function to number of products as per B&P (11.96)
+      norm = nt/(nt-np.linspace(0,nt-1,nt))
+      for iy in range(0,ny-1):
+        corr_fn[:,ix,iy,ith] = norm*corr_fn[:,ix,iy,ith]
+
       #Normalize the correlation function
       corr_fn[:,ix,:,ith] = corr_fn[:,ix,:,ith]/np.max(corr_fn[:,ix,:,ith])
 
-  #Duplicate positive dt in negative dt region (since symmetric)
-  pos_part = corr_fn[::-1,:,:,:]
-  corr_fn[0:nt/2,:,:,:] = pos_part[0:nt/2,:,:,:]
+  #Clear memory
+  ntot_pad = None; gc.collect();
 
   #End timer
   t_end = time.clock()
   print 'Total Time = ', t_end-t_start, ' s'
 
-  plt.contourf(np.transpose(corr_fn[:,30,:,10]))
+  plt.plot(corr_fn[:,30,30:40,10])
   plt.show()
 
 
