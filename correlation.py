@@ -79,7 +79,7 @@ def perp_fit(avg_corr, xpts, ypts):
 
   #Write the fitting parameters to a file
   # Order is: [lx, ly, ky, Theta]
-  np.savetxt('correlation_analysis/fitting_parameters.csv', (popt, pcov.diagonal()), delimiter=',', fmt='%1.4e')
+  np.savetxt('correlation_analysis/perp_fit.csv', (popt, pcov.diagonal()), delimiter=',', fmt='%1.4e')
 
 #Fit the peaks of the correlation functions of different dy with decaying exponential
 def time_fit(corr_fn, t):
@@ -103,7 +103,7 @@ def time_fit(corr_fn, t):
       popt[ix], pcov = opt.curve_fit(fit.decaying_exp, (dt[:400]), corr_fn[:400,ix,0].ravel(), p0=init_guess)
 
   # Plot one function to illustrate procedure
-  xvalue = 78 
+  xvalue = 60 
   plt.clf()
   plt.plot(dt[:], corr_fn[:,xvalue,30:35])
   plt.hold(True)

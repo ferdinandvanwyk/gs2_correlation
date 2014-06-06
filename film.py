@@ -20,4 +20,4 @@ def film_2d(xpts, ypts, field, nt, field_name):
         files.append(fname)
 
   print 'Making movie animation.mp4'
-  os.system("ffmpeg -threads 2 -y -f image2 -r 40 -i 'correlation_analysis/film_frames/"+field_name+"_%04d.png' "+field_name+".mp4")
+  os.system("ffmpeg -threads 2 -y -f image2 -r 40 -i 'correlation_analysis/film_frames/"+field_name+"_%04d.png' correlation_analysis/"+field_name+".mp4")
