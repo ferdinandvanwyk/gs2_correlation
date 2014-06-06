@@ -8,3 +8,8 @@ def tilted_gauss((x,y), lx, ly, ky, Th):
   cos_term = np.cos(ky*Th*x + ky*y)
   fit_fn =  exp_term*cos_term
   return fit_fn.ravel() # fitting function only works on 1D data, reshape later to plot
+
+#Decaying exponential for time correlation
+def decaying_exp((t), tau_c):
+  exp_fn = np.exp(- abs(t) / tau_c)
+  return exp_fn.ravel() # fitting function only works on 1D data, reshape later to plot

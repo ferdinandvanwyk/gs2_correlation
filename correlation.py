@@ -7,16 +7,16 @@
 #     python correlation.py <time/perp analysis> <location of .nc file>
 
 import os, sys
+import operator #enumerate list
 import time
-import gc
-import threading
+import gc #garbage collector
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 import scipy.interpolate as interp
 from scipy.io import netcdf
-import fit
-import film
+import fit #local method
+import film #local method
 
 # Read command line argument specifying location of NetCDF file
 analysis =  str(sys.argv[1]) #specify analysis (time or perp)
@@ -55,7 +55,7 @@ def wk_thm(field):
   corr = np.fft.irfft2(c_field,axes=[0,1], s=[c_field.shape[0], 2*(c_field.shape[1]-1)-1]) #need to use irfft2 since the original signal is real in real space
   return corr
 
-#Finally want to fit the 2D correlation function with a tilted Gaussian and extract the fitting parameters
+#Fit the 2D correlation function with a tilted Gaussian and extract the fitting parameters
 def perp_fit(avg_corr, xpts, ypts):
   x,y = np.meshgrid(xpts, ypts)
   x = np.transpose(x); y = np.transpose(y)
@@ -75,11 +75,53 @@ def perp_fit(avg_corr, xpts, ypts):
   plt.contour(xpts, ypts, np.transpose(data_fitted.reshape(nx,ny-1)), 8, colors='w')
   plt.xlabel(r'$\Delta x (\rho_i)$')
   plt.ylabel(r'$\Delta y (\rho_i)$')
-  plt.savefig('fit.eps')
+  plt.savefig('correlation_analysis/fit.eps')
 
   #Write the fitting parameters to a file
   # Order is: [lx, ly, ky, Theta]
-  np.savetxt('fitting_parameters.csv', (popt, pcov.diagonal()), delimiter=',', fmt='%1.4e')
+  np.savetxt('correlation_analysis/fitting_parameters.csv', (popt, pcov.diagonal()), delimiter=',', fmt='%1.4e')
+
+#Fit the peaks of the correlation functions of different dy with decaying exponential
+def time_fit(corr_fn, t):
+  dt = t - t[0] #define delta t range
+  
+  shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
+  peaks = np.empty([nx, 5]); peaks[:,:] = 0.0;
+  max_index = np.empty([nx, 5], dtype=int);
+  popt = np.empty([nx], dtype=float)
+  for ix in range(0,nx):
+    for iy in range(30,35):
+      max_index[ix, iy-30], peaks[ix, iy-30] = max(enumerate(corr_fn[:,ix,iy]), key=operator.itemgetter(1))
+
+    #Perform fitting of decaying exponential to peaks
+    init_guess = (10.0)
+    popt[ix], pcov = opt.curve_fit(fit.decaying_exp, (dt[max_index[ix,:]]), peaks[ix,:].ravel(), p0=init_guess)
+  
+    #Need to take care of cases where there is no flow. Test if max_index for first two peaks are
+    #both at zero. If so just fit the central peak with a decaying exponential. 
+    if max_index[ix, 0] == max_index[ix, 1]:
+      popt[ix], pcov = opt.curve_fit(fit.decaying_exp, (dt[:400]), corr_fn[:400,ix,0].ravel(), p0=init_guess)
+
+  # Plot one function to illustrate procedure
+  xvalue = 78 
+  plt.clf()
+  plt.plot(dt[:], corr_fn[:,xvalue,30:35])
+  plt.hold(True)
+  plt.plot(dt[max_index[xvalue,:]], peaks[xvalue,:], 'bo')
+  plt.hold(True)
+  p1 = plt.plot(np.linspace(0,10), np.exp(- np.linspace(0,10) / popt[xvalue]), linewidth=3, color='r',)
+  plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c]$'])
+  plt.xlabel(r'$\Delta t (a/v_{thr})$')
+  plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
+  plt.savefig('correlation_analysis/time_fit.eps')
+
+  #Write correlation times to file
+  np.savetxt('correlation_analysis/time_fitting.csv', (popt,), delimiter=',', fmt='%1.4e')
+
+  #Plot correlation time as a function of radius
+  plt.clf()
+  plt.plot(popt)
+  plt.show()
 
 #############
 # Main Code #
@@ -96,14 +138,14 @@ ky = ncfile.variables['ky'][:]
 t = ncfile.variables['t'][:]
 
 #Ensure time is on a regular grid for uniformity
-tnew = np.linspace(min(t), max(t), len(t))
+t_reg = np.linspace(min(t), max(t), len(t))
 shape = density.shape
 ntot_reg = np.empty([shape[0], shape[2], shape[1], shape[3]])
 for i in range(shape[1]):
   for j in range(shape[2]):
     for k in range(shape[3]):
       f = interp.interp1d(t, density[:, i, j, k])
-      ntot_reg[:, j, i, k] = f(tnew) #perform a transpose here: ntot(t,kx,ky,theta,ri)
+      ntot_reg[:, j, i, k] = f(t_reg) #perform a transpose here: ntot(t,kx,ky,theta,ri)
 
 #End timer
 t_end = time.clock()
@@ -111,6 +153,9 @@ print 'Interpolation Time = ', t_end-t_start, ' s'
 
 #Clear density from memory
 density = None; f = None; gc.collect();
+
+#Make folder which will contain all the correlation analysis
+os.system("mkdir correlation_analysis")
 
 #################
 # Perp Analysis #
@@ -134,17 +179,17 @@ if analysis == 'perp':
 
   xpts = np.linspace(-2*np.pi/kx[1], 2*np.pi/kx[1], nx)
   ypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], ny-1)
-  film.film_2d(xpts, ypts, corr_fn[:,:,:,10], 100, 'corr')
+  film.film_2d(xpts, ypts, corr_fn[:,:,:], 100, 'corr')
 
   # Calculate average correlation function over time at zero theta
   plt.clf()
-  avg_corr = np.mean(corr_fn[:,:,:,10], axis=0)
+  avg_corr = np.mean(corr_fn[:,:,:], axis=0)
   #plt.contourf(xpts[49:79], ypts[21:40], np.transpose(avg_corr[49:79,21:40]), 10)
   plt.contourf(xpts, ypts, np.transpose(avg_corr), 10)
   plt.colorbar()
   plt.xlabel(r'$\Delta x (\rho_i)$')
   plt.ylabel(r'$\Delta y (\rho_i)$')
-  plt.savefig('averaged_correlation.eps')
+  plt.savefig('correlation_analysis/averaged_correlation.eps')
 
   perp_fit(avg_corr, xpts, ypts)
 
@@ -196,9 +241,9 @@ elif analysis == 'time':
     corr_fn[:,ix,:] = np.fft.fftshift(corr_fn[:,ix,:], axes=[1])
 
     #Normalize correlation function to number of products as per B&P (11.96)
-    #norm = nt/(nt-np.linspace(0,nt-1,nt))
-    #for iy in range(0,ny-1):
-    #  corr_fn[:,ix,iy] = norm*corr_fn[:,ix,iy]
+    norm = nt/(nt-np.linspace(0,nt-1,nt))
+    for iy in range(0,ny-1):
+      corr_fn[:,ix,iy] = norm*corr_fn[:,ix,iy]
 
     #Normalize the correlation function
     corr_fn[:,ix,:] = corr_fn[:,ix,:]/np.max(corr_fn[:,ix,:])
@@ -206,12 +251,14 @@ elif analysis == 'time':
   #Clear memory
   ntot_pad = None; gc.collect();
 
+  time_fit(corr_fn, t_reg)
+
   #End timer
   t_end = time.clock()
   print 'Total Time = ', t_end-t_start, ' s'
 
-  plt.contourf(corr_fn[:,30,:])
-  plt.show()
+  #plt.plot(corr_fn[:,30,20:30])
+  #plt.show()
 
 
 ##############
