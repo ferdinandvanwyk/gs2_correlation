@@ -75,11 +75,11 @@ def perp_fit(avg_corr, xpts, ypts):
   plt.contour(xpts, ypts, np.transpose(data_fitted.reshape(nx,ny-1)), 8, colors='w')
   plt.xlabel(r'$\Delta x (\rho_i)$')
   plt.ylabel(r'$\Delta y (\rho_i)$')
-  plt.savefig('correlation_analysis/fit.pdf')
+  plt.savefig('analysis/fit.pdf')
 
   #Write the fitting parameters to a file
   # Order is: [lx, ly, ky, Theta]
-  np.savetxt('correlation_analysis/perp_fit.csv', (popt, pcov.diagonal()), delimiter=',', fmt='%1.4e')
+  np.savetxt('analysis/perp_fit.csv', (popt, pcov.diagonal()), delimiter=',', fmt='%1.4e')
 
 #Fit the peaks of the correlation functions of different dy with decaying exponential
 def time_fit(corr_fn, t):
@@ -113,15 +113,15 @@ def time_fit(corr_fn, t):
   plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c]$'])
   plt.xlabel(r'$\Delta t (a/v_{thr})$')
   plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
-  plt.savefig('correlation_analysis/time_fit.pdf')
+  plt.savefig('analysis/time_fit.pdf')
 
   #Write correlation times to file
-  np.savetxt('correlation_analysis/time_fitting.csv', (popt,), delimiter=',', fmt='%1.4e')
+  np.savetxt('analysis/time_fitting.csv', (popt,), delimiter=',', fmt='%1.4e')
 
   #Plot correlation time as a function of radius
   plt.clf()
   plt.plot(popt)
-  plt.savefig('correlation_analysis/time_corr.pdf')
+  plt.savefig('analysis/time_corr.pdf')
 
 #############
 # Main Code #
@@ -155,7 +155,7 @@ print 'Interpolation Time = ', t_end-t_start, ' s'
 density = None; f = None; gc.collect();
 
 #Make folder which will contain all the correlation analysis
-os.system("mkdir correlation_analysis")
+os.system("mkdir analysis")
 
 #################
 # Perp Analysis #
@@ -189,7 +189,7 @@ if analysis == 'perp':
   plt.colorbar()
   plt.xlabel(r'$\Delta x (\rho_i)$')
   plt.ylabel(r'$\Delta y (\rho_i)$')
-  plt.savefig('correlation_analysis/averaged_correlation.pdf')
+  plt.savefig('analysis/averaged_correlation.pdf')
 
   perp_fit(avg_corr, xpts, ypts)
 
