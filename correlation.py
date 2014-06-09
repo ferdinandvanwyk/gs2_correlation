@@ -265,8 +265,20 @@ elif analysis == 'time':
 # BES Output #
 ##############
 elif analysis == 'bes':
-  print 'hello!'
+  shape = ntot_reg.shape
+  nt = shape[0]
+  nx = shape[1]
+  nky = shape[2]
+  ny = (nky-1)*2
 
+  real_space_density = np.empty([nt,nx,ny],dtype=float)
+  for it in range(len(t)):
+    real_space_density = np.fft.irfft2(ntot_reg[it,:,:,:], axes=[0,1])
+
+  #Export film
+  xpts = np.linspace(0, 2*np.pi/kx[1], nx)
+  ypts = np.linspace(0, 2*np.pi/ky[1], ny)
+  film.film_2d(xpts, ypts, real_space_density[:,:,:], len(t), 'density')
 
 
 
