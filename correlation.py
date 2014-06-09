@@ -100,7 +100,7 @@ def time_fit(corr_fn, t):
     #Need to take care of cases where there is no flow. Test if max_index for first two peaks are
     #both at zero. If so just fit the central peak with a decaying exponential. 
     if max_index[ix, 0] == max_index[ix, 1]:
-      popt[ix], pcov = opt.curve_fit(fit.decaying_exp, (dt[:400]), corr_fn[:400,ix,0].ravel(), p0=init_guess)
+      popt[ix] = 0
 
   # Plot one function to illustrate procedure
   xvalue = 60 
