@@ -30,9 +30,9 @@ def real_space_film_2d(xpts, ypts, field, nt, field_name):
   os.system("mkdir analysis/film_frames")
   for it in range(nt):
         ax.cla()
-        ax.contourf(xpts, ypts, np.transpose(field[it,:,:]), levels=np.linspace(-0.4,1,11))
-        plt.xlabel(r'$\x (m)$')
-        plt.ylabel(r'$\y (m)$')
+        ax.contourf(xpts, ypts, np.transpose(field[it,:,:]), levels=np.linspace(-20,20,11))
+        plt.xlabel(r'$x (m)$')
+        plt.ylabel(r'$y (m)$')
         fname = "analysis/film_frames/"+field_name+"_%04d.png"%it
         print 'Saving frame = ', fname
         fig.savefig(fname)

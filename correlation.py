@@ -273,12 +273,13 @@ elif analysis == 'bes':
 
   real_space_density = np.empty([nt,nx,ny],dtype=float)
   for it in range(nt):
-    real_space_density = np.fft.irfft2(ntot_reg[it,:,:,:], axes=[0,1])
+    real_space_density[it,:,:] = np.fft.irfft2(real_to_complex(ntot_reg[it,:,:,:]), axes=[0,1])
 
   #Export film
+  print 'Exporting film...'
   xpts = np.linspace(0, 2*np.pi/kx[1], nx)
   ypts = np.linspace(0, 2*np.pi/ky[1], ny)
-  film.real_space_film_2d(xpts, ypts, real_space_density[:,:,:], nt, 'density')
+  film.real_space_film_2d(xpts, ypts, real_space_density, nt, 'density')
 
 
 
