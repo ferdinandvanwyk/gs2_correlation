@@ -75,7 +75,7 @@ def perp_fit(avg_corr, xpts, ypts):
   plt.contour(xpts, ypts, np.transpose(data_fitted.reshape(nx,ny-1)), 8, colors='w')
   plt.xlabel(r'$\Delta x (\rho_i)$')
   plt.ylabel(r'$\Delta y (\rho_i)$')
-  plt.savefig('correlation_analysis/fit.eps')
+  plt.savefig('correlation_analysis/fit.pdf')
 
   #Write the fitting parameters to a file
   # Order is: [lx, ly, ky, Theta]
@@ -113,7 +113,7 @@ def time_fit(corr_fn, t):
   plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c]$'])
   plt.xlabel(r'$\Delta t (a/v_{thr})$')
   plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
-  plt.savefig('correlation_analysis/time_fit.eps')
+  plt.savefig('correlation_analysis/time_fit.pdf')
 
   #Write correlation times to file
   np.savetxt('correlation_analysis/time_fitting.csv', (popt,), delimiter=',', fmt='%1.4e')
@@ -121,7 +121,7 @@ def time_fit(corr_fn, t):
   #Plot correlation time as a function of radius
   plt.clf()
   plt.plot(popt)
-  plt.show()
+  plt.savefig('correlation_analysis/time_corr.pdf')
 
 #############
 # Main Code #
@@ -189,7 +189,7 @@ if analysis == 'perp':
   plt.colorbar()
   plt.xlabel(r'$\Delta x (\rho_i)$')
   plt.ylabel(r'$\Delta y (\rho_i)$')
-  plt.savefig('correlation_analysis/averaged_correlation.eps')
+  plt.savefig('correlation_analysis/averaged_correlation.pdf')
 
   perp_fit(avg_corr, xpts, ypts)
 
