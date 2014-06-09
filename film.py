@@ -21,3 +21,22 @@ def film_2d(xpts, ypts, field, nt, field_name):
 
   print 'Making movie animation.mp4'
   os.system("ffmpeg -threads 2 -y -f image2 -r 40 -i 'analysis/film_frames/"+field_name+"_%04d.png' analysis/"+field_name+".mp4")
+
+#Make film of a 2D function
+def real_space_film_2d(xpts, ypts, field, nt, field_name):
+  files = []
+  fig = plt.figure(figsize=(5,5))
+  ax = fig.add_subplot(111)
+  os.system("mkdir analysis/film_frames")
+  for it in range(nt):
+        ax.cla()
+        ax.contourf(xpts, ypts, np.transpose(field[it,:,:]), levels=np.linspace(-0.4,1,11))
+        plt.xlabel(r'$\x (m)$')
+        plt.ylabel(r'$\y (m)$')
+        fname = "analysis/film_frames/"+field_name+"_%04d.png"%it
+        print 'Saving frame = ', fname
+        fig.savefig(fname)
+        files.append(fname)
+
+  print 'Making movie animation.mp4'
+  os.system("ffmpeg -threads 2 -y -f image2 -r 40 -i 'analysis/film_frames/"+field_name+"_%04d.png' analysis/"+field_name+".mp4")
