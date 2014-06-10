@@ -12,3 +12,8 @@ tau_new = np.array(tau_new)
 
 print 'Average = ', np.mean(tau_new)
 print 'Standard Deviation = ', np.std(tau_new)
+
+plt.plot(tau)
+plt.hold(True)
+plt.plot(tau_new)
+plt.show()
