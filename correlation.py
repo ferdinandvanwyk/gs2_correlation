@@ -103,7 +103,7 @@ def time_fit(corr_fn, t):
       popt[ix] = 0
 
   # Plot one function to illustrate procedure
-  xvalue = 60 
+  xvalue = 30 
   plt.clf()
   plt.plot(dt[:], corr_fn[:,xvalue,30:35])
   plt.hold(True)
@@ -256,10 +256,6 @@ elif analysis == 'time':
   #End timer
   t_end = time.clock()
   print 'Total Time = ', t_end-t_start, ' s'
-
-  #plt.plot(corr_fn[:,30,20:30])
-  #plt.show()
-
 
 ##############
 # BES Output #
