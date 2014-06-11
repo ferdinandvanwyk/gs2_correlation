@@ -289,6 +289,12 @@ elif analysis == 'bes':
   nky = shape[2]
   ny = (nky-1)*2
 
+  #Zero out density fluctuations which are larger than the BES
+  for iky in range(nky):
+    for ikx in range(nx):
+      if abs(kx[ikx]) < 0.25 and ky[iky] < 0.5: #Roughly the size of BES (160x80mm)
+        ntot_reg[:,ikx,iky] = 0.0
+
   real_space_density = np.empty([nt,nx,ny],dtype=float)
   for it in range(nt):
     real_space_density[it,:,:] = np.fft.irfft2(real_to_complex(ntot_reg[it,:,:,:]), axes=[0,1])
