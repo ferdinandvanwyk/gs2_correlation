@@ -24,6 +24,12 @@ if analysis != 'perp' and analysis != 'time' and analysis != 'bes':
   raise Exception('Please specify analysis: time or perp.')
 in_file =  str(sys.argv[2])
 
+#Normalization parameters
+amin = 0.58044 # m
+vth = 1.4587e+05 # m/s
+rhoref = 6.0791e-03 # m
+pitch_angle = 0.6001 # in radians
+
 #########################
 # Function Declarations #
 #########################
@@ -56,30 +62,20 @@ def wk_thm(field):
   return corr
 
 #Fit the 2D correlation function with a tilted Gaussian and extract the fitting parameters
-def perp_fit(avg_corr, xpts, ypts):
+def perp_fit(corr_fn, xpts, ypts):
+  shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
   x,y = np.meshgrid(xpts, ypts)
   x = np.transpose(x); y = np.transpose(y)
 
-  # lx, ly, ky, Th
-  init_guess = (10.0, 10.0, 0.01, -0.3)
+  #Average corr fn over time
+  avg_corr = np.empty([nx, ny], dtype=float)
+  avg_corr = np.mean(corr_fn, axis=0)
+
+  # lx, ly, kx, ky
+  init_guess = (10.0, 10.0, 0.01, 0.01)
   popt, pcov = opt.curve_fit(fit.tilted_gauss, (x, y), avg_corr.ravel(), p0=init_guess)
 
-  data_fitted = fit.tilted_gauss((x, y), *popt)
-
-  plt.clf()
-  #plt.contourf(xpts[49:79], ypts[21:40], np.transpose(avg_corr[49:79,21:40]))
-  plt.contourf(xpts, ypts, np.transpose(avg_corr))
-  plt.colorbar()
-  plt.hold(True)
-  #plt.contour(xpts[49:79], ypts[21:40], np.transpose(data_fitted.reshape(nx,ny-1)[49:79,21:40]), 8, colors='w')
-  plt.contour(xpts, ypts, np.transpose(data_fitted.reshape(nx,ny-1)), 8, colors='w')
-  plt.xlabel(r'$\Delta x (\rho_i)$')
-  plt.ylabel(r'$\Delta y (\rho_i)$')
-  plt.savefig('analysis/fit.pdf')
-
-  #Write the fitting parameters to a file
-  # Order is: [lx, ly, ky, Theta]
-  np.savetxt('analysis/perp_fit.csv', (popt, pcov.diagonal()), delimiter=',', fmt='%1.4e')
+  return popt
 
 #Fit the peaks of the correlation functions of different dy with decaying exponential
 def time_fit(corr_fn, t):
@@ -181,7 +177,18 @@ if analysis == 'perp':
   ypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], ny-1)
   film.film_2d(xpts, ypts, corr_fn[:,:,:], 100, 'corr')
 
-  # Calculate average correlation function over time at zero theta
+  #Fit correlation function and get fitting parameters for time slices of a given size
+  avg_fit_par = np.empty([nt/100-1, 4], dtype=float)
+  time_window = 200
+  for it in range(nt/time_window - 1): 
+    avg_fit_par[it, :] = perp_fit(corr_fn[it*time_window:(it+1)*time_window, :, :], xpts, ypts)
+  avg_fit_par = np.array(avg_fit_par)
+  #Write the fitting parameters to a file
+  #Order is: [lx, ly, kx, ky]
+  np.savetxt('analysis/perp_fit.csv', (np.mean(avg_fit_par, axis=0), np.std(avg_fit_par, axis=0)), delimiter=',', fmt='%1.3f')
+
+
+  # Calculate average correlation function over time
   plt.clf()
   avg_corr = np.mean(corr_fn[:,:,:], axis=0)
   #plt.contourf(xpts[49:79], ypts[21:40], np.transpose(avg_corr[49:79,21:40]), 10)
@@ -191,7 +198,22 @@ if analysis == 'perp':
   plt.ylabel(r'$\Delta y (\rho_i)$')
   plt.savefig('analysis/averaged_correlation.pdf')
 
-  perp_fit(avg_corr, xpts, ypts)
+  # Plot avg corr function and fit with average fit parameters on same graph
+  x,y = np.meshgrid(xpts, ypts)
+  x = np.transpose(x); y = np.transpose(y)
+  data_fitted = fit.tilted_gauss((x, y), *np.mean(avg_fit_par, axis=0))
+  plt.clf()
+  plt.contourf(xpts, ypts, np.transpose(avg_corr), 8)
+  plt.colorbar()
+  plt.hold(True)
+  plt.contour(xpts, ypts, np.transpose(data_fitted.reshape(nx,ny-1)), 8, colors='w')
+  plt.xlabel(r'$\Delta x (\rho_i)$')
+  plt.ylabel(r'$\Delta y (\rho_i)$')
+  plt.savefig('analysis/perp_fit.pdf')
+
+  #End timer
+  t_end = time.clock()
+  print 'Total Time = ', t_end-t_start, ' s'
 
 #################
 # Time Analysis #
@@ -273,8 +295,8 @@ elif analysis == 'bes':
 
   #Export film
   print 'Exporting film...'
-  xpts = np.linspace(0, 2*np.pi/kx[1], nx)
-  ypts = np.linspace(0, 2*np.pi/ky[1], ny)
+  xpts = np.linspace(0, 2*np.pi/kx[1], nx)*rhoref # change to meters
+  ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
   film.real_space_film_2d(xpts, ypts, real_space_density, nt, 'density')
 
 
