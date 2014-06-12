@@ -142,6 +142,16 @@ def time_corr_vs_radius(ntot_reg, t):
   #Clear memory
   ntot_pad = None; gc.collect();
 
+  # Plot one function to illustrate procedure
+  xvalue = 30 
+  plt.clf()
+  plt.plot(dt[:], corr_fn[:,xvalue,30:35])
+  plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c]$'])
+  plt.xlabel(r'$\Delta t (a/v_{thr})$')
+  plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
+  plt.savefig('analysis/time_fit.pdf')
+
+
   #Fit correlation function and get fitting parameters for time slices of a given size
   return time_fit(corr_fn, t)
 
@@ -168,6 +178,13 @@ for i in range(shape[1]):
     for k in range(shape[3]):
       f = interp.interp1d(t, density[:, i, j, k])
       ntot_reg[:, j, i, k] = f(t_reg) #perform a transpose here: ntot(t,kx,ky,theta,ri)
+
+#Zero out density fluctuations which are larger than the BES
+shape = ntot_reg.shape
+for iky in range(shape[2]):
+  for ikx in range(shape[1]):
+    if abs(kx[ikx]) < 0.25 and ky[iky] < 0.5: #Roughly the size of BES (160x80mm)
+      ntot_reg[:,ikx,iky] = 0.0
 
 #End timer
 t_end = time.clock()
@@ -278,19 +295,6 @@ elif analysis == 'time':
   plt.plot(tau[0, :])
   plt.show()
 
-#  # Plot one function to illustrate procedure
-#  xvalue = 30 
-#  plt.clf()
-#  plt.plot(dt[:], corr_fn[:,xvalue,30:35])
-#  plt.hold(True)
-#  plt.plot(dt[max_index[xvalue,:]], peaks[xvalue,:], 'bo')
-#  plt.hold(True)
-#  p1 = plt.plot(np.linspace(0,10), np.exp(- np.linspace(0,10) / popt[xvalue]), linewidth=3, color='r',)
-#  plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c]$'])
-#  plt.xlabel(r'$\Delta t (a/v_{thr})$')
-#  plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
-#  plt.savefig('analysis/time_fit.pdf')
-#
 #  #Write correlation times to file
 #  np.savetxt('analysis/time_fitting.csv', (popt,), delimiter=',', fmt='%1.4e')
 #
@@ -312,12 +316,6 @@ elif analysis == 'bes':
   nx = shape[1]
   nky = shape[2]
   ny = (nky-1)*2
-
-  #Zero out density fluctuations which are larger than the BES
-  for iky in range(nky):
-    for ikx in range(nx):
-      if abs(kx[ikx]) < 0.25 and ky[iky] < 0.5: #Roughly the size of BES (160x80mm)
-        ntot_reg[:,ikx,iky] = 0.0
 
   real_space_density = np.empty([nt,nx,ny],dtype=float)
   for it in range(nt):
