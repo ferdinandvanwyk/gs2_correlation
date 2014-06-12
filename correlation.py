@@ -85,8 +85,8 @@ def time_fit(corr_fn, t):
   peaks = np.empty([nx, 5]); peaks[:,:] = 0.0;
   max_index = np.empty([nx, 5], dtype=int);
   popt = np.empty([nx], dtype=float)
-  for ix in range(0,nx):
-    for iy in range(30,35):
+  for ix in range(0,nx): # loop over all radial points
+    for iy in range(30,35): # only do first 5 functions since rest may be noise
       max_index[ix, iy-30], peaks[ix, iy-30] = max(enumerate(corr_fn[:,ix,iy]), key=operator.itemgetter(1))
 
     #Perform fitting of decaying exponential to peaks
@@ -98,26 +98,52 @@ def time_fit(corr_fn, t):
     if max_index[ix, 0] == max_index[ix, 1]:
       popt[ix] = 0
 
-  # Plot one function to illustrate procedure
-  xvalue = 30 
-  plt.clf()
-  plt.plot(dt[:], corr_fn[:,xvalue,30:35])
-  plt.hold(True)
-  plt.plot(dt[max_index[xvalue,:]], peaks[xvalue,:], 'bo')
-  plt.hold(True)
-  p1 = plt.plot(np.linspace(0,10), np.exp(- np.linspace(0,10) / popt[xvalue]), linewidth=3, color='r',)
-  plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c]$'])
-  plt.xlabel(r'$\Delta t (a/v_{thr})$')
-  plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
-  plt.savefig('analysis/time_fit.pdf')
+  return popt
 
-  #Write correlation times to file
-  np.savetxt('analysis/time_fitting.csv', (popt,), delimiter=',', fmt='%1.4e')
+# Define general function which takes in density n = n(t, x, ky, ri) and gives correlation time
+# as a function of raduis for that time window
+def time_corr_vs_radius(ntot_reg, t):
+  shape = ntot_reg.shape; nt = shape[0]; nx = shape[1]; nky = shape[2]; ny = (nky-1)*2
 
-  #Plot correlation time as a function of radius
-  plt.clf()
-  plt.plot(popt)
-  plt.savefig('analysis/time_corr.pdf')
+  # Pad the original data with an equal number of zeroes, following 
+  # the B&P method of separating out the circular correlation terms.
+  ntot_pad = np.empty([2*nt, nx, nky, shape[3]])
+  ntot_pad[:,:,:,:] = 0.0
+  ntot_pad[0:nt,:,:,:] = ntot_reg
+
+  # Need to FFT in t so that WK thm can be used
+  f = np.empty([2*nt, nx, nky], dtype=complex)
+  f.real = ntot_pad[:, :, :, 0]
+  f.imag = ntot_pad[:, :, :, 1]
+  f = np.fft.fft(f,axis=0)  #fft(t)
+  ntot_pad[:,:,:,0] = f.real #ntot_reg(t, x, ky, ri)
+  ntot_pad[:,:,:,1] = f.imag
+
+  #Clear memory
+  ntot_reg = None, gc.collect();
+
+  # For each x value in the outboard midplane (theta=0) calculate the function C(dt,dy)
+  corr_fn = np.empty([nt,nx,ny-1],dtype=float)
+  for ix in range(0,nx):
+    #Do correlation analysis but only keep first half as per B&P
+    corr_fn[:,ix,:] = wk_thm(ntot_pad[:,ix,:,:])[0:nt,:]
+
+    #Shift the zeros to the middle of the domain (only in t and y directions)
+    corr_fn[:,ix,:] = np.fft.fftshift(corr_fn[:,ix,:], axes=[1])
+
+    #Normalize correlation function to number of products as per B&P (11.96)
+    norm = nt/(nt-np.linspace(0,nt-1,nt))
+    for iy in range(0,ny-1):
+      corr_fn[:,ix,iy] = norm*corr_fn[:,ix,iy]
+
+    #Normalize the correlation function
+    corr_fn[:,ix,:] = corr_fn[:,ix,:]/np.max(corr_fn[:,ix,:])
+
+  #Clear memory
+  ntot_pad = None; gc.collect();
+
+  #Fit correlation function and get fitting parameters for time slices of a given size
+  return time_fit(corr_fn, t)
 
 #############
 # Main Code #
@@ -178,8 +204,8 @@ if analysis == 'perp':
   film.film_2d(xpts, ypts, corr_fn[:,:,:], 100, 'corr')
 
   #Fit correlation function and get fitting parameters for time slices of a given size
-  avg_fit_par = np.empty([nt/100-1, 4], dtype=float)
   time_window = 200
+  avg_fit_par = np.empty([nt/time_window-1, 4], dtype=float)
   for it in range(nt/time_window - 1): 
     avg_fit_par[it, :] = perp_fit(corr_fn[it*time_window:(it+1)*time_window, :, :], xpts, ypts)
   avg_fit_par = np.array(avg_fit_par)
@@ -231,50 +257,48 @@ elif analysis == 'time':
   nky = shape[2]
   ny = (nky-1)*2
 
-  # Pad the original data with an equal number of zeroes, following 
-  # the B&P method of separating out the circular correlation terms.
-  ntot_pad = np.empty([2*nt, nx, nky, shape[3]])
-  ntot_pad[:,:,:,:] = 0.0
-  ntot_pad[0:nt,:,:,:] = ntot_reg
-
-  #Clear memory
-  ntot_reg = None; gc.collect();
-
   # Need to IFFT in x so that x index represents radial locations
-  # Need to FFT in t so that WK thm can be used
-  f = np.empty([2*nt, nx, nky], dtype=complex)
-  f.real = ntot_pad[:, :, :, 0]
-  f.imag = ntot_pad[:, :, :, 1]
+  f = np.empty([nt, nx, nky], dtype=complex)
+  f.real = ntot_reg[:, :, :, 0]
+  f.imag = ntot_reg[:, :, :, 1]
   f = np.fft.ifft(f,axis=1) #ifft(kx)
-  f = np.fft.fft(f,axis=0)  #fft(t)
-  ntot_pad[:,:,:,0] = f.real #ntot_reg(t, x, ky, ri)
-  ntot_pad[:,:,:,1] = f.imag
+  ntot_reg[:,:,:,0] = f.real #ntot_reg(t, x, ky, ri)
+  ntot_reg[:,:,:,1] = f.imag
 
   #Clear memory
   f = None; gc.collect();
   
-  # For each x value in the outboard midplane (theta=0) calculate the function C(dt,dy)
-  corr_fn = np.empty([nt,nx,ny-1],dtype=float)
-  for ix in range(0,nx):
-    #Do correlation analysis but only keep first half as per B&P
-    corr_fn[:,ix,:] = wk_thm(ntot_pad[:,ix,:,:])[0:nt,:]
+  ntot_reg =  ntot_reg[:,:,::-1,:]
+  time_window = 500
+  tau = np.empty([nt/time_window-1, nx], dtype=float)
+  for it in range(nt/time_window - 1): 
+    tau[it, :] = time_corr_vs_radius(ntot_reg[it*time_window:(it+1)*time_window, :, :, :], t_reg[it*time_window:(it+1)*time_window])
 
-    #Shift the zeros to the middle of the domain (only in t and y directions)
-    corr_fn[:,ix,:] = np.fft.fftshift(corr_fn[:,ix,:], axes=[1])
+  tau = np.array(tau)
+  plt.plot(tau[0, :])
+  plt.show()
 
-    #Normalize correlation function to number of products as per B&P (11.96)
-    norm = nt/(nt-np.linspace(0,nt-1,nt))
-    for iy in range(0,ny-1):
-      corr_fn[:,ix,iy] = norm*corr_fn[:,ix,iy]
-
-    #Normalize the correlation function
-    corr_fn[:,ix,:] = corr_fn[:,ix,:]/np.max(corr_fn[:,ix,:])
-
-  #Clear memory
-  ntot_pad = None; gc.collect();
-
-  time_fit(corr_fn, t_reg)
-
+#  # Plot one function to illustrate procedure
+#  xvalue = 30 
+#  plt.clf()
+#  plt.plot(dt[:], corr_fn[:,xvalue,30:35])
+#  plt.hold(True)
+#  plt.plot(dt[max_index[xvalue,:]], peaks[xvalue,:], 'bo')
+#  plt.hold(True)
+#  p1 = plt.plot(np.linspace(0,10), np.exp(- np.linspace(0,10) / popt[xvalue]), linewidth=3, color='r',)
+#  plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c]$'])
+#  plt.xlabel(r'$\Delta t (a/v_{thr})$')
+#  plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
+#  plt.savefig('analysis/time_fit.pdf')
+#
+#  #Write correlation times to file
+#  np.savetxt('analysis/time_fitting.csv', (popt,), delimiter=',', fmt='%1.4e')
+#
+#  #Plot correlation time as a function of radius
+#  plt.clf()
+#  plt.plot(popt)
+#  plt.savefig('analysis/time_corr.pdf')
+#
   #End timer
   t_end = time.clock()
   print 'Total Time = ', t_end-t_start, ' s'
