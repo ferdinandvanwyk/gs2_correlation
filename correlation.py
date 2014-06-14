@@ -116,7 +116,7 @@ def time_corr_vs_radius(ntot_reg, t):
   f.real = ntot_pad[:, :, :, 0]
   f.imag = ntot_pad[:, :, :, 1]
   f = np.fft.fft(f,axis=0)  #fft(t)
-  ntot_pad[:,:,:,0] = f.real #ntot_reg(t, x, ky, ri)
+  ntot_pad[:,:,:,0] = f.real #ntot_reg(w, x, ky, ri)
   ntot_pad[:,:,:,1] = f.imag
 
   #Clear memory
