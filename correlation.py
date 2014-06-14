@@ -285,15 +285,6 @@ elif analysis == 'time':
   #Clear memory
   f = None; gc.collect();
   
-  ntot_reg =  ntot_reg[:,:,::-1,:]
-  time_window = 500
-  tau = np.empty([nt/time_window-1, nx], dtype=float)
-  for it in range(nt/time_window - 1): 
-    tau[it, :] = time_corr_vs_radius(ntot_reg[it*time_window:(it+1)*time_window, :, :, :], t_reg[it*time_window:(it+1)*time_window])
-
-  tau = np.array(tau)
-  plt.plot(tau[0, :])
-  plt.show()
 
 #  #Write correlation times to file
 #  np.savetxt('analysis/time_fitting.csv', (popt,), delimiter=',', fmt='%1.4e')
