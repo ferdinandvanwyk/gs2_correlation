@@ -35,7 +35,16 @@ pitch_angle = 0.6001 # in radians
 #########################
 
 # Function which converts from GS2 field to complex field which can be passed to fft routines
-def real_to_complex(field):
+def real_to_complex_1d(field):
+  n1 = field.shape[0]
+  cplx_field = np.empty([n1],dtype=complex)
+  cplx_field.real = field[:,0]
+  cplx_field.imag = field[:,1]
+  # fix fft normalisation that is appropriate for numpy fft package
+  cplx_field = cplx_field*n1
+  return cplx_field
+
+def real_to_complex_2d(field):
   # convert fgs2 to numpy 2D real Fourier transform fr(x,y,theta)
   # nx,ny are number of points within a period
   # => periodic points are nx+1, ny+1 apart
@@ -48,12 +57,15 @@ def real_to_complex(field):
   cplx_field = cplx_field*n1*n2/2
   return cplx_field
 
+def wk_thm_1d(field_1, field_2):
+  field = np.conjugate(field_1)*field_2
+  corr = np.fft.ifft(field)
+  return corr.real
+
 # Function which applies WK theorem to a real 2D field field(x,y,ri) where y is assumed to be
 # half complex and 'ri' indicates the real/imaginary axis (0 real, 1 imag). 
 # The output is the correlation function C(dx, dy).
-def wk_thm(field):
-# create complex field out of 
-  c_field = real_to_complex(field)
+def wk_thm_2d(c_field):
   #The Wiener-Khinchin thm states that the autocorrelation function is the FFT of the power spectrum.
   #The power spectrum is defined as abs(A)**2 where A is a COMPLEX array. In this case f.
   c_field = np.abs(c_field**2)
@@ -61,6 +73,7 @@ def wk_thm(field):
   corr = np.fft.irfft2(c_field,axes=[0,1], s=[c_field.shape[0], 2*(c_field.shape[1]-1)-1]) #need to use irfft2 since the original signal is real in real space
   return corr
 
+#
 #Fit the 2D correlation function with a tilted Gaussian and extract the fitting parameters
 def perp_fit(corr_fn, xpts, ypts):
   shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
@@ -126,7 +139,7 @@ def time_corr_vs_radius(ntot_reg, t):
   corr_fn = np.empty([nt,nx,ny-1],dtype=float)
   for ix in range(0,nx):
     #Do correlation analysis but only keep first half as per B&P
-    corr_fn[:,ix,:] = wk_thm(ntot_pad[:,ix,:,:])[0:nt,:]
+    corr_fn[:,ix,:] = wk_thm_2d(ntot_pad[:,ix,:,:])[0:nt,:]
 
     #Shift the zeros to the middle of the domain (only in t and y directions)
     corr_fn[:,ix,:] = np.fft.fftshift(corr_fn[:,ix,:], axes=[1])
@@ -209,7 +222,7 @@ if analysis == 'perp':
   ny = (nky-1)*2
   corr_fn = np.empty([nt,nx,ny-1],dtype=float)
   for it in range(0,nt):
-    corr_fn[it,:,:] = wk_thm(ntot_reg[it,:,:,:])
+    corr_fn[it,:,:] = wk_thm_2d(ntot_reg[it,:,:,:])
 
     #Shift the zeros to the middle of the domain (only in x and y directions)
     corr_fn[it,:,:] = np.fft.fftshift(corr_fn[it,:,:], axes=[0,1])
@@ -275,16 +288,51 @@ elif analysis == 'time':
   ny = (nky-1)*2
 
   # Need to IFFT in x so that x index represents radial locations
-  f = np.empty([nt, nx, nky], dtype=complex)
-  f.real = ntot_reg[:, :, :, 0]
-  f.imag = ntot_reg[:, :, :, 1]
-  f = np.fft.ifft(f,axis=1) #ifft(kx)
-  ntot_reg[:,:,:,0] = f.real #ntot_reg(t, x, ky, ri)
-  ntot_reg[:,:,:,1] = f.imag
+  ntot_real_space = np.empty([nt,nx,ny],dtype=complex)
+  for it in range(nt):
+    ntot_real_space[it,:,:] = np.fft.irfft2(real_to_complex_2d(ntot_reg[it,:,:,:]), axes=[0,1])
+  ntot_real_space = np.fft.fft(ntot_real_space, axis=0) # (w, x, y) and complex
 
   #Clear memory
-  f = None; gc.collect();
+  ntot_reg = None; gc.collect();
   
+  ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
+  dypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
+  corr_fn = np.empty([nt, nx, ny], dtype=float); corr_fn[:,:,:] = 0.0
+  count = np.empty([ny], dtype=int); count[:] = 0;
+  for ix in range(nx):
+    for iy1 in range(ny):
+      for iy2 in range(iy1,ny):
+        #separation in y
+        dy = abs(ypts[iy1] - ypts[iy2])
+        # calculate index based on y separation (assume ny bins)
+        # y index: -dy_max, ..., 0, ..., dy_max
+        y_index = int((dy - min(dypts))/(dypts[1] - dypts[0]))
+
+        #Use WK theorem to calculate corr fn in time
+        corr_fn[:, ix, y_index] += wk_thm_1d(ntot_real_space[:, ix, iy1], ntot_real_space[:, ix, iy2]) 
+        # increment a count variable which will be used to normalize y bins 
+        count[y_index] += 1 
+
+        #Repeat analysis for negative separation
+        dy = -dy
+        y_index = int((dy - min(dypts))/(dypts[1] - dypts[0]))
+        corr_fn[:, ix, y_index] += wk_thm_1d(ntot_real_space[:, ix, iy2], ntot_real_space[:, ix, iy1])
+        count[y_index] += 1 
+
+    #Normalize by count
+    for iy in range(ny):
+      if count[iy] > 0:
+        corr_fn[:, ix, iy] = corr_fn[:, ix, iy] / count[iy]
+
+    #Normalize correlation function by the max
+    corr_fn[:,ix,:] = corr_fn[:,ix,:] / np.max(corr_fn[:,ix,:])
+    #shift time zeros to centre
+    corr_fn[:,ix,:] = np.fft.fftshift(corr_fn[:,ix,:], axes=[0])
+  
+  plt.contourf(np.transpose(corr_fn[:,20,:]))
+  plt.colorbar()
+  plt.show()
 
 #  #Write correlation times to file
 #  np.savetxt('analysis/time_fitting.csv', (popt,), delimiter=',', fmt='%1.4e')
