@@ -9,7 +9,12 @@ def tilted_gauss((x,y), lx, ly, kx, ky):
   fit_fn =  exp_term*cos_term
   return fit_fn.ravel() # fitting function only works on 1D data, reshape later to plot
 
-#Decaying exponential for time correlation
+#Decaying exponential for time correlation with positive flow
 def decaying_exp((t), tau_c):
   exp_fn = np.exp(- abs(t) / tau_c)
+  return exp_fn.ravel() # fitting function only works on 1D data, reshape later to plot
+
+#Growing exponential for time correlation with negative flow
+def growing_exp((t), tau_c):
+  exp_fn = np.exp(t / tau_c)
   return exp_fn.ravel() # fitting function only works on 1D data, reshape later to plot

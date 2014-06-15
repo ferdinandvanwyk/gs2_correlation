@@ -92,9 +92,11 @@ def perp_fit(corr_fn, xpts, ypts):
 
 #Fit the peaks of the correlation functions of different dy with decaying exponential
 def time_fit(corr_fn, t):
-  dt = t - t[0] #define delta t range
-  
   shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
+
+  #define delta t range
+  dt = np.linspace(-max(t), max(t), nt)
+  
   peaks = np.empty([nx, 5]); peaks[:,:] = 0.0;
   max_index = np.empty([nx, 5], dtype=int);
   popt = np.empty([nx], dtype=float)
@@ -104,14 +106,39 @@ def time_fit(corr_fn, t):
 
     #Perform fitting of decaying exponential to peaks
     init_guess = (10.0)
-    popt[ix], pcov = opt.curve_fit(fit.decaying_exp, (dt[max_index[ix,:]]), peaks[ix,:].ravel(), p0=init_guess)
+    if max_index[ix, 1] > max_index[ix, 0]:
+      popt[ix], pcov = opt.curve_fit(fit.decaying_exp, (dt[max_index[ix,:]]), peaks[ix,:].ravel(), p0=init_guess)
+    else:
+      #print dt[max_index[ix,::-1]], peaks[ix,::-1]
+      popt[ix], pcov = opt.curve_fit(fit.growing_exp, (dt[max_index[ix,::-1]]), peaks[ix,::-1].ravel(), p0=init_guess)
   
     #Need to take care of cases where there is no flow. Test if max_index for first two peaks are
     #both at zero. If so just fit the central peak with a decaying exponential. 
     if max_index[ix, 0] == max_index[ix, 1]:
       popt[ix] = 0
 
-  return popt
+    #Need to check monotonicity of max indices. If abs(max_index) is not monotonically increasing, this usually means
+    #that there is no flow and that the above method cannot be used to calculate the correlation time. Just ignore
+    #these cases by setting correlation time  to zero here.
+    if (strictly_increasing(max_index[ix,:]) == False and strictly_increasing(max_index[ix,::-1]) == False):
+      popt[ix] = 0
+      #popt[ix], pcov = opt.curve_fit(fit.decaying_exp, (dt[max_index[ix,:]]), peaks[ix,:].ravel(), p0=init_guess)
+
+
+  xvalue = 12
+  plt.plot(dt, corr_fn[:,xvalue,30:35], 'k')
+  plt.hold(True)
+  plt.plot(dt[max_index[xvalue,:]], peaks[xvalue,:], 'ro')
+  plt.hold(True)
+  p1 = plt.plot(dt[nt/2:nt/2+150], np.exp(-dt[nt/2:nt/2+150] / popt[xvalue]), 'b', lw=2)
+  plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c]$'])
+  plt.savefig('analysis/time_fit.pdf')
+
+  return popt*1e6*amin/vth
+
+#Function which checks monotonicity. Returns True or False.
+def strictly_increasing(L):
+      return all(x<y for x, y in zip(L, L[1:]))
 
 # Define general function which takes in density n = n(t, x, ky, ri) and gives correlation time
 # as a function of raduis for that time window
@@ -279,8 +306,6 @@ if analysis == 'perp':
 # flow, can fit a decaying exponential to either the central peak or the envelope
 # of peaks of different dy's
 elif analysis == 'time':
-  # As given in Bendat & Piersol, need to pad time series with zeros to separate parts
-  # of circular correlation function 
   shape = ntot_reg.shape
   nt = shape[0]
   nx = shape[1]
@@ -329,19 +354,20 @@ elif analysis == 'time':
     corr_fn[:,ix,:] = corr_fn[:,ix,:] / np.max(corr_fn[:,ix,:])
     #shift time zeros to centre
     corr_fn[:,ix,:] = np.fft.fftshift(corr_fn[:,ix,:], axes=[0])
-  
-  plt.contourf(np.transpose(corr_fn[:,20,:]))
-  plt.colorbar()
-  plt.show()
 
-#  #Write correlation times to file
-#  np.savetxt('analysis/time_fitting.csv', (popt,), delimiter=',', fmt='%1.4e')
-#
-#  #Plot correlation time as a function of radius
-#  plt.clf()
-#  plt.plot(popt)
-#  plt.savefig('analysis/time_corr.pdf')
-#
+  #Fit exponential decay to peaks of correlation function in dt for a few dy's
+  tau = time_fit(corr_fn, t_reg) #tau in seconds
+  #mask terms which are zero to not skew standard deviations
+  tau_mask = np.ma.masked_equal(tau, 0)
+
+  #Write correlation times to file
+  np.savetxt('analysis/time_fit.csv', (np.mean(tau_mask), np.std(tau_mask)), delimiter=',', fmt='%1.4e')
+
+  #Plot correlation time as a function of radius
+  plt.clf()
+  plt.plot(tau)
+  plt.savefig('analysis/time_corr.pdf')
+
   #End timer
   t_end = time.clock()
   print 'Total Time = ', t_end-t_start, ' s'
