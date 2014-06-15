@@ -126,74 +126,23 @@ def time_fit(corr_fn, t):
 
 
   xvalue = 12
+  plt.clf()
   plt.plot(dt, corr_fn[:,xvalue,30:35], 'k')
   plt.hold(True)
   plt.plot(dt[max_index[xvalue,:]], peaks[xvalue,:], 'ro')
   plt.hold(True)
   p1 = plt.plot(dt[nt/2:nt/2+150], np.exp(-dt[nt/2:nt/2+150] / popt[xvalue]), 'b', lw=2)
+  plt.xlabel(r'$\Delta t (a/v_{thr})$')
+  plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
   plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c]$'])
   plt.savefig('analysis/time_fit.pdf')
 
+  #return correlation time in seconds
   return popt*1e6*amin/vth
 
 #Function which checks monotonicity. Returns True or False.
 def strictly_increasing(L):
       return all(x<y for x, y in zip(L, L[1:]))
-
-# Define general function which takes in density n = n(t, x, ky, ri) and gives correlation time
-# as a function of raduis for that time window
-def time_corr_vs_radius(ntot_reg, t):
-  shape = ntot_reg.shape; nt = shape[0]; nx = shape[1]; nky = shape[2]; ny = (nky-1)*2
-
-  # Pad the original data with an equal number of zeroes, following 
-  # the B&P method of separating out the circular correlation terms.
-  ntot_pad = np.empty([2*nt, nx, nky, shape[3]])
-  ntot_pad[:,:,:,:] = 0.0
-  ntot_pad[0:nt,:,:,:] = ntot_reg
-
-  # Need to FFT in t so that WK thm can be used
-  f = np.empty([2*nt, nx, nky], dtype=complex)
-  f.real = ntot_pad[:, :, :, 0]
-  f.imag = ntot_pad[:, :, :, 1]
-  f = np.fft.fft(f,axis=0)  #fft(t)
-  ntot_pad[:,:,:,0] = f.real #ntot_reg(w, x, ky, ri)
-  ntot_pad[:,:,:,1] = f.imag
-
-  #Clear memory
-  ntot_reg = None, gc.collect();
-
-  # For each x value in the outboard midplane (theta=0) calculate the function C(dt,dy)
-  corr_fn = np.empty([nt,nx,ny-1],dtype=float)
-  for ix in range(0,nx):
-    #Do correlation analysis but only keep first half as per B&P
-    corr_fn[:,ix,:] = wk_thm_2d(ntot_pad[:,ix,:,:])[0:nt,:]
-
-    #Shift the zeros to the middle of the domain (only in t and y directions)
-    corr_fn[:,ix,:] = np.fft.fftshift(corr_fn[:,ix,:], axes=[1])
-
-    #Normalize correlation function to number of products as per B&P (11.96)
-    norm = nt/(nt-np.linspace(0,nt-1,nt))
-    for iy in range(0,ny-1):
-      corr_fn[:,ix,iy] = norm*corr_fn[:,ix,iy]
-
-    #Normalize the correlation function
-    corr_fn[:,ix,:] = corr_fn[:,ix,:]/np.max(corr_fn[:,ix,:])
-
-  #Clear memory
-  ntot_pad = None; gc.collect();
-
-  # Plot one function to illustrate procedure
-  xvalue = 30 
-  plt.clf()
-  plt.plot(dt[:], corr_fn[:,xvalue,30:35])
-  plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c]$'])
-  plt.xlabel(r'$\Delta t (a/v_{thr})$')
-  plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
-  plt.savefig('analysis/time_fit.pdf')
-
-
-  #Fit correlation function and get fitting parameters for time slices of a given size
-  return time_fit(corr_fn, t)
 
 #############
 # Main Code #
