@@ -207,7 +207,7 @@ if analysis == 'perp':
 
   xpts = np.linspace(-2*np.pi/kx[1], 2*np.pi/kx[1], nx)
   ypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], ny-1)
-  film.film_2d(xpts, ypts, corr_fn[:,:,:], 100, 'corr')
+  #film.film_2d(xpts, ypts, corr_fn[:,:,:], 100, 'corr')
 
   #Fit correlation function and get fitting parameters for time slices of a given size
   #time_window = 200
@@ -218,7 +218,7 @@ if analysis == 'perp':
   avg_fit_par = np.array(avg_fit_par)
   #Write the fitting parameters to a file
   #Order is: [lx, ly, kx, ky]
-  np.savetxt('analysis/perp_fit.csv', (np.mean(avg_fit_par, axis=0), np.std(avg_fit_par, axis=0)), delimiter=',', fmt='%1.3f')
+  np.savetxt('analysis/perp_fit.csv', (avg_fit_par), delimiter=',', fmt='%1.3f')
 
 
   # Calculate average correlation function over time
@@ -236,9 +236,9 @@ if analysis == 'perp':
   x = np.transpose(x); y = np.transpose(y)
   xpts = xpts*rhoref # change to meters
   ypts = ypts*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
-  data_fitted = fit.tilted_gauss((x, y), *np.mean(avg_fit_par, axis=0))
+  data_fitted = fit.tilted_gauss((x, y), *avg_fit_par)
   plt.clf()
-  plt.contourf(xpts, ypts, np.transpose(avg_corr), 8)
+  plt.contourf(xpts, ypts, np.transpose(avg_corr), 8, levels=np.linspace(-0.4, 1, 8))
   plt.colorbar()
   plt.hold(True)
   plt.contour(xpts, ypts, np.transpose(data_fitted.reshape(nx,ny-1)), 8, colors='w')
