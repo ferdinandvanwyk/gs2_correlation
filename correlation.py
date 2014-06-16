@@ -333,7 +333,7 @@ elif analysis == 'bes':
 
   real_space_density = np.empty([nt,nx,ny],dtype=float)
   for it in range(nt):
-    real_space_density[it,:,:] = np.fft.irfft2(real_to_complex(ntot_reg[it,:,:,:]), axes=[0,1])
+    real_space_density[it,:,:] = np.fft.irfft2(real_to_complex_2d(ntot_reg[it,:,:,:]), axes=[0,1])
 
   #Export film
   print 'Exporting film...'
