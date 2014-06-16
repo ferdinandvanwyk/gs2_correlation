@@ -210,10 +210,11 @@ if analysis == 'perp':
   film.film_2d(xpts, ypts, corr_fn[:,:,:], 100, 'corr')
 
   #Fit correlation function and get fitting parameters for time slices of a given size
-  time_window = 200
-  avg_fit_par = np.empty([nt/time_window-1, 4], dtype=float)
-  for it in range(nt/time_window - 1): 
-    avg_fit_par[it, :] = perp_fit(corr_fn[it*time_window:(it+1)*time_window, :, :], xpts, ypts)
+  #time_window = 200
+  #avg_fit_par = np.empty([nt/time_window-1, 4], dtype=float)
+  #for it in range(nt/time_window - 1): 
+  #  avg_fit_par[it, :] = perp_fit(corr_fn[it*time_window:(it+1)*time_window, :, :], xpts, ypts)
+  avg_fit_par = perp_fit(corr_fn[:, :, :], xpts, ypts)
   avg_fit_par = np.array(avg_fit_par)
   #Write the fitting parameters to a file
   #Order is: [lx, ly, kx, ky]
@@ -233,14 +234,16 @@ if analysis == 'perp':
   # Plot avg corr function and fit with average fit parameters on same graph
   x,y = np.meshgrid(xpts, ypts)
   x = np.transpose(x); y = np.transpose(y)
+  xpts = xpts*rhoref # change to meters
+  ypts = ypts*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
   data_fitted = fit.tilted_gauss((x, y), *np.mean(avg_fit_par, axis=0))
   plt.clf()
   plt.contourf(xpts, ypts, np.transpose(avg_corr), 8)
   plt.colorbar()
   plt.hold(True)
   plt.contour(xpts, ypts, np.transpose(data_fitted.reshape(nx,ny-1)), 8, colors='w')
-  plt.xlabel(r'$\Delta x (\rho_i)$')
-  plt.ylabel(r'$\Delta y (\rho_i)$')
+  plt.xlabel(r'$\Delta x (m)$')
+  plt.ylabel(r'$\Delta y (m)$')
   plt.savefig('analysis/perp_fit.pdf')
 
   #End timer
