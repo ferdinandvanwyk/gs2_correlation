@@ -14,13 +14,13 @@ def film_2d(xpts, ypts, field, nt, field_name):
         ax.contourf(xpts, ypts, np.transpose(field[it,:,:]), levels=np.linspace(-0.4,1,11))
         plt.xlabel(r'$\Delta x (\rho_i)$')
         plt.ylabel(r'$\Delta y (\rho_i)$')
-        fname = "analysis/film_frames/"+field_name+"_%04d.png"%it
+        fname = "analysis/film_frames/"+field_name+"_%04d.jpg"%it
         print 'Saving frame = ', fname
         fig.savefig(fname)
         files.append(fname)
 
   print 'Making movie animation.mp4'
-  os.system("ffmpeg -threads 2 -y -f image2 -r 40 -i 'analysis/film_frames/"+field_name+"_%04d.png' analysis/"+field_name+".mp4")
+  os.system("ffmpeg -threads 2 -y -f image2 -r 40 -i 'analysis/film_frames/"+field_name+"_%04d.jpg' analysis/"+field_name+".mp4")
 
 #Make film of a 2D function
 def real_space_film_2d(xpts, ypts, field, nt, field_name):
@@ -33,10 +33,10 @@ def real_space_film_2d(xpts, ypts, field, nt, field_name):
         ax.contourf(xpts, ypts, np.transpose(field[it,:,:]), levels=np.linspace(-20,20,11))
         plt.xlabel(r'$x (m)$')
         plt.ylabel(r'$y (m)$')
-        fname = "analysis/film_frames/"+field_name+"_%04d.png"%it
+        fname = "analysis/film_frames/"+field_name+"_%04d.jpg"%it
         print 'Saving frame = ', fname
         fig.savefig(fname)
         files.append(fname)
 
   print 'Making movie animation.mp4'
-  os.system("ffmpeg -threads 2 -y -f image2 -r 40 -i 'analysis/film_frames/"+field_name+"_%04d.png' analysis/"+field_name+".mp4")
+  os.system("ffmpeg -threads 2 -y -f image2 -r 40 -i 'analysis/film_frames/"+field_name+"_%04d.jpg' analysis/"+field_name+".mp4")
