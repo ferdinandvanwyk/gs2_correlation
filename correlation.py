@@ -198,7 +198,7 @@ if analysis == 'perp':
   ny = (nky-1)*2
   corr_fn = np.empty([nt,nx,ny-1],dtype=float)
   for it in range(0,nt):
-    corr_fn[it,:,:] = wk_thm_2d(ntot_reg[it,:,:,:])
+    corr_fn[it,:,:] = wk_thm_2d(real_to_complex_2d(ntot_reg[it,:,:,:]))
 
     #Shift the zeros to the middle of the domain (only in x and y directions)
     corr_fn[it,:,:] = np.fft.fftshift(corr_fn[it,:,:], axes=[0,1])
