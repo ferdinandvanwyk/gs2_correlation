@@ -324,6 +324,7 @@ elif analysis == 'time':
   for it in range(nt/time_window - 1): 
     tau_v_r[it, :] = tau_vs_radius(ntot_real_space[it*time_window:(it+1)*time_window,:,:])
 
+  plt.clf()
   plt.contourf(tau_v_r)
   plt.show()
   
