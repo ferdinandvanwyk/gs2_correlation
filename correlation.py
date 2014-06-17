@@ -144,6 +144,50 @@ def time_fit(corr_fn, t):
 def strictly_increasing(L):
       return all(x<y for x, y in zip(L, L[1:]))
 
+#Function which takes in density fluctuations and outputs the correlation time as a 
+#function of the minor radius
+def tau_vs_radius(ntot):
+  shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
+  ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
+  dypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
+  corr_fn = np.empty([nt, nx, ny], dtype=float); corr_fn[:,:,:] = 0.0
+  count = np.empty([ny], dtype=int); count[:] = 0;
+  for ix in range(nx):
+    for iy1 in range(ny):
+      for iy2 in range(iy1,ny):
+        #separation in y
+        dy = abs(ypts[iy1] - ypts[iy2])
+        # calculate index based on y separation (assume ny bins)
+        # y index: -dy_max, ..., 0, ..., dy_max
+        y_index = int((dy - min(dypts))/(dypts[1] - dypts[0]))
+
+        #Use WK theorem to calculate corr fn in time
+        corr_fn[:, ix, y_index] += wk_thm_1d(ntot[:, ix, iy1], ntot[:, ix, iy2]) 
+        # increment a count variable which will be used to normalize y bins 
+        count[y_index] += 1 
+
+        #Repeat analysis for negative separation
+        dy = -dy
+        y_index = int((dy - min(dypts))/(dypts[1] - dypts[0]))
+        corr_fn[:, ix, y_index] += wk_thm_1d(ntot[:, ix, iy2], ntot[:, ix, iy1])
+        count[y_index] += 1 
+
+    #Normalize by count
+    for iy in range(ny):
+      if count[iy] > 0:
+        corr_fn[:, ix, iy] = corr_fn[:, ix, iy] / count[iy]
+
+    #Normalize correlation function by the max
+    corr_fn[:,ix,:] = corr_fn[:,ix,:] / np.max(corr_fn[:,ix,:])
+    #shift time zeros to centre
+    corr_fn[:,ix,:] = np.fft.fftshift(corr_fn[:,ix,:], axes=[0])
+
+  #Fit exponential decay to peaks of correlation function in dt for a few dy's
+  tau = time_fit(corr_fn, t_reg) #tau in seconds
+
+  return tau
+
+
 #############
 # Main Code #
 #############
@@ -273,45 +317,15 @@ elif analysis == 'time':
   #Clear memory
   ntot_reg = None; gc.collect();
   
-  ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
-  dypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
-  corr_fn = np.empty([nt, nx, ny], dtype=float); corr_fn[:,:,:] = 0.0
-  count = np.empty([ny], dtype=int); count[:] = 0;
-  for ix in range(nx):
-    for iy1 in range(ny):
-      for iy2 in range(iy1,ny):
-        #separation in y
-        dy = abs(ypts[iy1] - ypts[iy2])
-        # calculate index based on y separation (assume ny bins)
-        # y index: -dy_max, ..., 0, ..., dy_max
-        y_index = int((dy - min(dypts))/(dypts[1] - dypts[0]))
-
-        #Use WK theorem to calculate corr fn in time
-        corr_fn[:, ix, y_index] += wk_thm_1d(ntot_real_space[:, ix, iy1], ntot_real_space[:, ix, iy2]) 
-        # increment a count variable which will be used to normalize y bins 
-        count[y_index] += 1 
-
-        #Repeat analysis for negative separation
-        dy = -dy
-        y_index = int((dy - min(dypts))/(dypts[1] - dypts[0]))
-        corr_fn[:, ix, y_index] += wk_thm_1d(ntot_real_space[:, ix, iy2], ntot_real_space[:, ix, iy1])
-        count[y_index] += 1 
-
-    #Normalize by count
-    for iy in range(ny):
-      if count[iy] > 0:
-        corr_fn[:, ix, iy] = corr_fn[:, ix, iy] / count[iy]
-
-    #Normalize correlation function by the max
-    corr_fn[:,ix,:] = corr_fn[:,ix,:] / np.max(corr_fn[:,ix,:])
-    #shift time zeros to centre
-    corr_fn[:,ix,:] = np.fft.fftshift(corr_fn[:,ix,:], axes=[0])
-
-  #Fit exponential decay to peaks of correlation function in dt for a few dy's
-  tau = time_fit(corr_fn, t_reg) #tau in seconds
   #mask terms which are zero to not skew standard deviations
-  tau_mask = np.ma.masked_equal(tau, 0)
+  #tau_mask = np.ma.masked_equal(tau, 0)
+  time_window = 100
+  tau_v_r = np.empty([nt/time_window-1, nx], dtype=float)
+  for it in range(nt/time_window - 1): 
+    tau_v_r[it, :] = tau_vs_radius(ntot_real_space[it*time_window:(it+1)*time_window,:,:])
 
+  plt.contourf(tau_v_r)
+  plt.show()
   #Write correlation times to file
   np.savetxt('analysis/time_fit.csv', (np.mean(tau_mask), np.std(tau_mask)), delimiter=',', fmt='%1.4e')
 
