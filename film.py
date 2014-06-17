@@ -23,12 +23,12 @@ def film_2d(xpts, ypts, field, nt, field_name):
   os.system("ffmpeg -threads 2 -y -f image2 -r 40 -i 'analysis/film_frames/"+field_name+"_%04d.jpg' analysis/"+field_name+".mp4")
 
 #Make film of a 2D function
-def real_space_film_2d(xpts, ypts, field, nt, field_name):
+def real_space_film_2d(xpts, ypts, field, field_name):
   files = []
   fig = plt.figure(figsize=(5,5))
   ax = fig.add_subplot(111)
   os.system("mkdir analysis/film_frames")
-  for it in range(nt):
+  for it in range(field.shape[0]):
         ax.cla()
         ax.contourf(xpts, ypts, np.transpose(field[it,:,:]), levels=np.linspace(-20,20,11))
         plt.xlabel(r'$x (m)$')

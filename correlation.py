@@ -121,11 +121,11 @@ def time_fit(corr_fn, t):
     #that there is no flow and that the above method cannot be used to calculate the correlation time. Just ignore
     #these cases by setting correlation time  to zero here.
     if (strictly_increasing(max_index[ix,:]) == False and strictly_increasing(max_index[ix,::-1]) == False):
-      popt[ix] = 0
-      #popt[ix], pcov = opt.curve_fit(fit.decaying_exp, (dt[max_index[ix,:]]), peaks[ix,:].ravel(), p0=init_guess)
+      #popt[ix] = 0
+      popt[ix], pcov = opt.curve_fit(fit.decaying_exp, (dt[nt/2:nt/2+100]), corr_fn[nt/2:nt/2+100,ix,30].ravel(), p0=init_guess)
 
 
-  xvalue = 12
+  xvalue = 30
   plt.clf()
   plt.plot(dt, corr_fn[:,xvalue,30:35], 'k')
   plt.hold(True)
@@ -324,10 +324,8 @@ elif analysis == 'time':
   for it in range(nt/time_window - 1): 
     tau_v_r[it, :] = tau_vs_radius(ntot_real_space[it*time_window:(it+1)*time_window,:,:])
 
-  plt.clf()
-  plt.contourf(tau_v_r)
-  plt.show()
-  
+  np.savetxt('analysis/time_fit.csv', (tau_v_r), delimiter=',', fmt='%1.3f')
+
   #Write correlation times to file
   #np.savetxt('analysis/time_fit.csv', (np.mean(tau_mask), np.std(tau_mask)), delimiter=',', fmt='%1.4e')
 
@@ -358,7 +356,7 @@ elif analysis == 'bes':
   print 'Exporting film...'
   xpts = np.linspace(0, 2*np.pi/kx[1], nx)*rhoref # change to meters
   ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
-  film.real_space_film_2d(xpts, ypts, real_space_density, nt, 'density')
+  film.real_space_film_2d(xpts, ypts, real_space_density[:,:,:], 'density')
 
 
 
