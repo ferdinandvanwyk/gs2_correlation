@@ -326,13 +326,14 @@ elif analysis == 'time':
 
   plt.contourf(tau_v_r)
   plt.show()
+  
   #Write correlation times to file
-  np.savetxt('analysis/time_fit.csv', (np.mean(tau_mask), np.std(tau_mask)), delimiter=',', fmt='%1.4e')
+  #np.savetxt('analysis/time_fit.csv', (np.mean(tau_mask), np.std(tau_mask)), delimiter=',', fmt='%1.4e')
 
   #Plot correlation time as a function of radius
-  plt.clf()
-  plt.plot(tau)
-  plt.savefig('analysis/time_corr.pdf')
+  #plt.clf()
+  #plt.plot(tau)
+  #plt.savefig('analysis/time_corr.pdf')
 
   #End timer
   t_end = time.clock()
