@@ -147,7 +147,7 @@ def strictly_increasing(L):
 #Function which takes in density fluctuations and outputs the correlation time as a 
 #function of the minor radius
 def tau_vs_radius(ntot):
-  shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
+  shape = ntot.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
   ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
   dypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
   corr_fn = np.empty([nt, nx, ny], dtype=float); corr_fn[:,:,:] = 0.0
