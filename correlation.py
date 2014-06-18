@@ -152,6 +152,9 @@ def tau_vs_radius(ntot):
   dypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
   corr_fn = np.empty([nt, nx, ny], dtype=float); corr_fn[:,:,:] = 0.0
   count = np.empty([ny], dtype=int); count[:] = 0;
+
+  ntot = np.fft.fft(ntot, axis=0) # (w, x, y) and complex
+
   for ix in range(nx):
     for iy1 in range(ny):
       for iy2 in range(iy1,ny):
@@ -312,7 +315,6 @@ elif analysis == 'time':
   ntot_real_space = np.empty([nt,nx,ny],dtype=complex)
   for it in range(nt):
     ntot_real_space[it,:,:] = np.fft.irfft2(real_to_complex_2d(ntot_reg[it,:,:,:]), axes=[0,1])
-  ntot_real_space = np.fft.fft(ntot_real_space, axis=0) # (w, x, y) and complex
 
   #Clear memory
   ntot_reg = None; gc.collect();
