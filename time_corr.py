@@ -9,5 +9,7 @@ tau = np.array(tau)
 #print 'Standard Deviation = ', np.std(tau_new)
 
 plt.contourf(np.log(tau))
+plt.xlabel('Minor Radius')
+plt.ylabel("Time window")
 plt.colorbar()
 plt.show()
