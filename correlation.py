@@ -5,6 +5,7 @@
 # Use as follows:
 #
 #     python correlation.py <time/perp analysis> <location of .nc file>
+#test
 
 import os, sys
 import operator #enumerate list
