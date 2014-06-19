@@ -13,6 +13,7 @@ import time
 import gc #garbage collector
 import numpy as np
 import matplotlib.pyplot as plt
+plt.rcParams.update({'figure.autolayout': True})
 import scipy.optimize as opt
 import scipy.interpolate as interp
 from scipy.io import netcdf
@@ -286,13 +287,28 @@ if analysis == 'perp':
   ypts = ypts*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
   data_fitted = fit.tilted_gauss((x, y), *avg_fit_par)
   plt.clf()
-  plt.contourf(xpts, ypts, np.transpose(avg_corr), 8, levels=np.linspace(-0.4, 1, 8))
-  plt.colorbar()
-  plt.hold(True)
-  plt.contour(xpts, ypts, np.transpose(data_fitted.reshape(nx,ny-1)), 8, colors='w')
-  plt.xlabel(r'$\Delta x (m)$')
-  plt.ylabel(r'$\Delta y (m)$')
-  plt.savefig('analysis/perp_fit.pdf')
+  plt.contourf(xpts[44:84], ypts[20:40], np.transpose(avg_corr[44:84,20:40]), 11, levels=np.linspace(-1, 1, 11))
+  cbar = plt.colorbar(ticks=np.linspace(-1, 1, 11))
+  cbar.ax.tick_params(labelsize=25)
+  #plt.hold(True)
+  #plt.contour(xpts, ypts, np.transpose(data_fitted.reshape(nx,ny-1)), 8, colors='w')
+  plt.title('$C(\Delta x, \Delta y)$', fontsize=25)
+  plt.xlabel(r'$\Delta x (m)$', fontsize=25)
+  plt.ylabel(r'$\Delta y (m)$', fontsize=25)
+  plt.xticks(fontsize=25)
+  plt.yticks(fontsize=25)
+  plt.savefig('analysis/sim_perp.pdf')
+
+  plt.clf()
+  plt.contourf(xpts[44:84], ypts[20:40], np.transpose(data_fitted.reshape(nx,ny-1)[44:84,20:40]), 11, levels=np.linspace(-1, 1, 11))
+  plt.title('$C_{fit}(\Delta x, \Delta y)$', fontsize=25)
+  cbar = plt.colorbar(ticks=np.linspace(-1, 1, 11))
+  cbar.ax.tick_params(labelsize=25)
+  plt.xlabel(r'$\Delta x (m)$', fontsize=25)
+  plt.ylabel(r'$\Delta y (m)$', fontsize=25)
+  plt.xticks(fontsize=25)
+  plt.yticks(fontsize=25)
+  plt.savefig('analysis/fit_perp.pdf')
 
   #End timer
   t_end = time.clock()
@@ -322,7 +338,7 @@ elif analysis == 'time':
   
   #mask terms which are zero to not skew standard deviations
   #tau_mask = np.ma.masked_equal(tau, 0)
-  time_window = 100
+  time_window = 200
   tau_v_r = np.empty([nt/time_window-1, nx], dtype=float)
   for it in range(nt/time_window - 1): 
     tau_v_r[it, :] = tau_vs_radius(ntot_real_space[it*time_window:(it+1)*time_window,:,:])
