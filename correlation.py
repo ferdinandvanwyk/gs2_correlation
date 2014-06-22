@@ -189,8 +189,8 @@ def tau_vs_radius(ntot, t):
     corr_fn[:,ix,:] = np.fft.fftshift(corr_fn[:,ix,:], axes=[0])
 
   #Anthony plots
-  ofile = open('analysis/corr_fn.pkl', 'wb')
-  pkl.dump([np.linspace(-t_reg[750]+t_reg[0], t_reg[750]-t_reg[0], 750)*1e6*amin/vth,corr_fn], ofile)
+  #ofile = open('analysis/corr_fn.pkl', 'wb')
+  #pkl.dump([np.linspace(-t_reg[750]+t_reg[0], t_reg[750]-t_reg[0], 750)*1e6*amin/vth,corr_fn], ofile)
 
   #Fit exponential decay to peaks of correlation function in dt for a few dy's
   tau = time_fit(corr_fn, t) #tau in seconds
@@ -343,7 +343,7 @@ elif analysis == 'time':
   
   #mask terms which are zero to not skew standard deviations
   #tau_mask = np.ma.masked_equal(tau, 0)
-  time_window = 750
+  time_window = 100
   tau_v_r = np.empty([nt/time_window-1, nx], dtype=float)
   for it in range(nt/time_window - 1): 
     tau_v_r[it, :] = tau_vs_radius(ntot_real_space[it*time_window:(it+1)*time_window,:,:], t[it*time_window:(it+1)*time_window])
