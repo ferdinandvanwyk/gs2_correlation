@@ -1,9 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle as pkl
 
 tau = np.genfromtxt('analysis/time_fit.csv', delimiter=',')
+dt, corr_fn = pkl.load(open('analysis/corr_fn.pkl', 'rb'))
 print tau.shape
+print corr_fn.shape
 tau = np.array(tau)
+corr_fn = np.array(corr_fn)
 
 #print 'Average = ', np.mean(tau_new)
 #print 'Standard Deviation = ', np.std(tau_new)
@@ -12,5 +16,12 @@ plt.plot(np.transpose(tau))
 plt.yscale('log')
 plt.xlabel('Minor Radius')
 plt.ylabel("Time window")
-#plt.colorbar()
+##plt.colorbar()
+plt.show()
+
+plt.plot(dt,corr_fn[:,18,30:35])
+plt.hold(True)
+plt.plot(dt[375:575], np.exp(-dt[375:575]/tau[18]))
+plt.show()
+plt.plot(dt[275:475], corr_fn[275:475,64,30:35])
 plt.show()

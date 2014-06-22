@@ -19,6 +19,7 @@ import scipy.interpolate as interp
 from scipy.io import netcdf
 import fit #local method
 import film #local method
+import cPickle as pkl
 
 # Read command line argument specifying location of NetCDF file
 analysis =  str(sys.argv[1]) #specify analysis (time or perp)
@@ -97,7 +98,7 @@ def time_fit(corr_fn, t):
   shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
 
   #define delta t range
-  dt = np.linspace(-max(t), max(t), nt)
+  dt = np.linspace(-max(t)+t[0], max(t)-t[0], nt)
   
   peaks = np.empty([nx, 5]); peaks[:,:] = 0.0;
   max_index = np.empty([nx, 5], dtype=int);
@@ -127,14 +128,14 @@ def time_fit(corr_fn, t):
       popt[ix], pcov = opt.curve_fit(fit.decaying_exp, (dt[nt/2:nt/2+100]), corr_fn[nt/2:nt/2+100,ix,30].ravel(), p0=init_guess)
 
 
-  xvalue = 30
+  xvalue = 18
   plt.clf()
-  plt.plot(dt, corr_fn[:,xvalue,30:35], 'k')
+  plt.plot(dt*1e6*amin/vth, corr_fn[:,xvalue,30:35], 'k')
   plt.hold(True)
-  plt.plot(dt[max_index[xvalue,:]], peaks[xvalue,:], 'ro')
+  plt.plot(dt[max_index[xvalue,:]]*1e6*amin/vth, peaks[xvalue,:], 'ro')
   plt.hold(True)
-  p1 = plt.plot(dt[nt/2:nt/2+150], np.exp(-dt[nt/2:nt/2+150] / popt[xvalue]), 'b', lw=2)
-  plt.xlabel(r'$\Delta t (a/v_{thr})$')
+  p1 = plt.plot(dt[nt/2:nt/2+150]*1e6*amin/vth, np.exp(-dt[nt/2:nt/2+150] / popt[xvalue]), 'b', lw=2)
+  plt.xlabel(r'$\Delta t (\mu s)})$')
   plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
   plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c]$'])
   plt.savefig('analysis/time_fit.pdf')
@@ -148,7 +149,7 @@ def strictly_increasing(L):
 
 #Function which takes in density fluctuations and outputs the correlation time as a 
 #function of the minor radius
-def tau_vs_radius(ntot):
+def tau_vs_radius(ntot, t):
   shape = ntot.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
   ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
   dypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
@@ -187,8 +188,12 @@ def tau_vs_radius(ntot):
     #shift time zeros to centre
     corr_fn[:,ix,:] = np.fft.fftshift(corr_fn[:,ix,:], axes=[0])
 
+  #Anthony plots
+  ofile = open('analysis/corr_fn.pkl', 'wb')
+  pkl.dump([np.linspace(-t_reg[750]+t_reg[0], t_reg[750]-t_reg[0], 750)*1e6*amin/vth,corr_fn], ofile)
+
   #Fit exponential decay to peaks of correlation function in dt for a few dy's
-  tau = time_fit(corr_fn, t_reg) #tau in seconds
+  tau = time_fit(corr_fn, t) #tau in seconds
 
   return tau
 
@@ -338,10 +343,10 @@ elif analysis == 'time':
   
   #mask terms which are zero to not skew standard deviations
   #tau_mask = np.ma.masked_equal(tau, 0)
-  time_window = 200
+  time_window = 750
   tau_v_r = np.empty([nt/time_window-1, nx], dtype=float)
   for it in range(nt/time_window - 1): 
-    tau_v_r[it, :] = tau_vs_radius(ntot_real_space[it*time_window:(it+1)*time_window,:,:])
+    tau_v_r[it, :] = tau_vs_radius(ntot_real_space[it*time_window:(it+1)*time_window,:,:], t[it*time_window:(it+1)*time_window])
 
   np.savetxt('analysis/time_fit.csv', (tau_v_r), delimiter=',', fmt='%1.3f')
 
@@ -350,7 +355,9 @@ elif analysis == 'time':
 
   #Plot correlation time as a function of radius
   #plt.clf()
-  #plt.plot(tau)
+  #plt.plot(tau_v_r[0,:])
+  #plt.yscale('log')
+  #plt.show()
   #plt.savefig('analysis/time_corr.pdf')
 
   #End timer
