@@ -90,6 +90,12 @@ def perp_fit(corr_fn, xpts, ypts, guess):
   # lx, ly, kx, ky
   popt, pcov = opt.curve_fit(fit.tilted_gauss, (x, y), avg_corr.ravel(), p0=guess)
 
+  #plt.contourf(xpts, ypts, np.transpose(avg_corr))
+  #plt.hold(True)
+  #data_fitted = fit.tilted_gauss((x, y), *popt)
+  #plt.contour(xpts, ypts, np.transpose(data_fitted.reshape(nx,ny)), 8, colors='w')
+  #plt.show()
+
   return popt
 
 #Fit the peaks of the correlation functions of different dy with decaying exponential
@@ -269,7 +275,7 @@ if analysis == 'perp':
   #film.film_2d(xpts, ypts, corr_fn[:,:,:], 100, 'corr')
 
   #Fit correlation function and get fitting parameters for time slices of a given size
-  time_window = 50
+  time_window = 200
   avg_fit_par = np.empty([nt/time_window-1, 4], dtype=float)
   avg_fit_par[-1,:] = [10,10,1,0.1]
   for it in range(nt/time_window - 1): 
