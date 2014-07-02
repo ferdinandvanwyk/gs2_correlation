@@ -18,3 +18,8 @@ def decaying_exp((t), tau_c):
 def growing_exp((t), tau_c):
   exp_fn = np.exp(t / tau_c)
   return exp_fn.ravel() # fitting function only works on 1D data, reshape later to plot
+
+#Growing exponential for time correlation with negative flow
+def osc_exp((t), tau_c, omega):
+  fit_fn = np.exp(- (t / tau_c)**2) * np.cos(omega * t)
+  return fit_fn.ravel() # fitting function only works on 1D data, reshape later to plot

@@ -5,7 +5,6 @@
 # Use as follows:
 #
 #     python correlation.py <time/perp analysis> <location of .nc file>
-#test
 
 import os, sys
 import operator #enumerate list
@@ -20,10 +19,11 @@ from scipy.io import netcdf
 import fit #local method
 import film #local method
 import cPickle as pkl
+from mpl_toolkits.mplot3d import Axes3D
 
 # Read command line argument specifying location of NetCDF file
 analysis =  str(sys.argv[1]) #specify analysis (time or perp)
-if analysis != 'perp' and analysis != 'time' and analysis != 'bes':
+if analysis != 'perp' and analysis != 'time' and analysis != 'bes' and analysis!='test':
   raise Exception('Please specify analysis: time or perp.')
 in_file =  str(sys.argv[2])
 
@@ -44,7 +44,7 @@ def real_to_complex_1d(field):
   cplx_field.real = field[:,0]
   cplx_field.imag = field[:,1]
   # fix fft normalisation that is appropriate for numpy fft package
-  cplx_field = cplx_field*n1
+  cplx_field = cplx_field
   return cplx_field
 
 def real_to_complex_2d(field):
@@ -57,12 +57,12 @@ def real_to_complex_2d(field):
   cplx_field.real = field[:,:,0]
   cplx_field.imag = field[:,:,1]
   # fix fft normalisation that is appropriate for numpy fft package
-  cplx_field = cplx_field*n1*n2/2
+  cplx_field = cplx_field
   return cplx_field
 
 def wk_thm_1d(field_1, field_2):
   field = np.conjugate(field_1)*field_2
-  corr = np.fft.ifft(field)
+  corr = np.fft.ifft(field)*field.shape[0]
   return corr.real
 
 # Function which applies WK theorem to a real 2D field field(x,y,ri) where y is assumed to be
@@ -74,11 +74,11 @@ def wk_thm_2d(c_field):
   c_field = np.abs(c_field**2)
   #option 's' below truncates by ny by 1 such that an odd number of y pts are output => need to have corr fn at (0,0)
   corr = np.fft.irfft2(c_field,axes=[0,1], s=[c_field.shape[0], 2*(c_field.shape[1]-1)-1]) #need to use irfft2 since the original signal is real in real space
-  return corr
+  return corr*c_field.shape[0]*c_field.shape[1]/2
 
 #
 #Fit the 2D correlation function with a tilted Gaussian and extract the fitting parameters
-def perp_fit(corr_fn, xpts, ypts):
+def perp_fit(corr_fn, xpts, ypts, guess):
   shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
   x,y = np.meshgrid(xpts, ypts)
   x = np.transpose(x); y = np.transpose(y)
@@ -88,8 +88,7 @@ def perp_fit(corr_fn, xpts, ypts):
   avg_corr = np.mean(corr_fn, axis=0)
 
   # lx, ly, kx, ky
-  init_guess = (10.0, 10.0, 0.01, 0.01)
-  popt, pcov = opt.curve_fit(fit.tilted_gauss, (x, y), avg_corr.ravel(), p0=init_guess)
+  popt, pcov = opt.curve_fit(fit.tilted_gauss, (x, y), avg_corr.ravel(), p0=guess)
 
   return popt
 
@@ -124,28 +123,34 @@ def time_fit(corr_fn, t):
     #that there is no flow and that the above method cannot be used to calculate the correlation time. Just ignore
     #these cases by setting correlation time  to zero here.
     if (strictly_increasing(max_index[ix,:]) == False and strictly_increasing(max_index[ix,::-1]) == False):
-      #popt[ix] = 0
-      popt[ix], pcov = opt.curve_fit(fit.decaying_exp, (dt[nt/2:nt/2+100]), corr_fn[nt/2:nt/2+100,ix,30].ravel(), p0=init_guess)
-
+      corr_fn[:,ix,30] = corr_fn[:,ix,30]/max(corr_fn[:,ix,30])
+      init_guess = (1.0, 1.0)
+      tau_and_omega, pcov = opt.curve_fit(fit.osc_exp, (dt[nt/2-100:nt/2+100]), (corr_fn[nt/2-100:nt/2+100,ix,30]).ravel(), p0=init_guess)
+      popt[ix] = tau_and_omega[0]
+      print 'test: ', ix, tau_and_omega
 
   xvalue = 18
+  print popt[xvalue]
   plt.clf()
-  plt.plot(dt*1e6*amin/vth, corr_fn[:,xvalue,30:35], 'k')
+  plt.plot(dt*1e6*amin/vth, corr_fn[:,xvalue,30:35])
   plt.hold(True)
   plt.plot(dt[max_index[xvalue,:]]*1e6*amin/vth, peaks[xvalue,:], 'ro')
   plt.hold(True)
-  p1 = plt.plot(dt[nt/2:nt/2+150]*1e6*amin/vth, np.exp(-dt[nt/2:nt/2+150] / popt[xvalue]), 'b', lw=2)
-  plt.xlabel(r'$\Delta t (\mu s)})$')
-  plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
+  #p1 = plt.plot(dt*1e6*amin/vth, np.exp(-(dt / popt[xvalue])**2)*np.cos(tau_and_omega[1]*dt), 'b', lw=2)
+  p1 = plt.plot(dt[nt/2:nt/2+100]*1e6*amin/vth, np.exp(-dt[nt/2:nt/2+100] / popt[xvalue]), 'b', lw=2)
+  plt.xlabel(r'$\Delta t (\mu s)})$', fontsize=25)
+  plt.ylabel(r'$C_{\Delta y}(\Delta t)$', fontsize=25)
   plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c]$'])
+  plt.xticks(fontsize=25)
+  plt.yticks(fontsize=25)
   plt.savefig('analysis/time_fit.pdf')
 
   #return correlation time in seconds
-  return popt*1e6*amin/vth
+  return abs(popt)*1e6*amin/vth
 
 #Function which checks monotonicity. Returns True or False.
 def strictly_increasing(L):
-      return all(x<y for x, y in zip(L, L[1:]))
+      return all(x<=y for x, y in zip(L, L[1:]))
 
 #Function which takes in density fluctuations and outputs the correlation time as a 
 #function of the minor radius
@@ -264,11 +269,12 @@ if analysis == 'perp':
   #film.film_2d(xpts, ypts, corr_fn[:,:,:], 100, 'corr')
 
   #Fit correlation function and get fitting parameters for time slices of a given size
-  #time_window = 200
-  #avg_fit_par = np.empty([nt/time_window-1, 4], dtype=float)
-  #for it in range(nt/time_window - 1): 
-  #  avg_fit_par[it, :] = perp_fit(corr_fn[it*time_window:(it+1)*time_window, :, :], xpts, ypts)
-  avg_fit_par = perp_fit(corr_fn[:, :, :], xpts, ypts)
+  time_window = 50
+  avg_fit_par = np.empty([nt/time_window-1, 4], dtype=float)
+  avg_fit_par[-1,:] = [10,10,1,0.1]
+  for it in range(nt/time_window - 1): 
+    avg_fit_par[it, :] = perp_fit(corr_fn[it*time_window:(it+1)*time_window, nx/2-20:nx/2+20, (ny-1)/2-20:(ny-1)/2+20], xpts[nx/2-20:nx/2+20], ypts[(ny-1)/2-20:(ny-1)/2+20], avg_fit_par[it-1,:])
+  #avg_fit_par = perp_fit(corr_fn[:, :, :], xpts, ypts)
   avg_fit_par = np.array(avg_fit_par)
   #Write the fitting parameters to a file
   #Order is: [lx, ly, kx, ky]
@@ -290,7 +296,7 @@ if analysis == 'perp':
   x = np.transpose(x); y = np.transpose(y)
   xpts = xpts*rhoref # change to meters
   ypts = ypts*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
-  data_fitted = fit.tilted_gauss((x, y), *avg_fit_par)
+  data_fitted = fit.tilted_gauss((x, y), *np.mean(avg_fit_par, axis=0))
   plt.clf()
   plt.contourf(xpts[44:84], ypts[20:40], np.transpose(avg_corr[44:84,20:40]), 11, levels=np.linspace(-1, 1, 11))
   cbar = plt.colorbar(ticks=np.linspace(-1, 1, 11))
@@ -343,22 +349,17 @@ elif analysis == 'time':
   
   #mask terms which are zero to not skew standard deviations
   #tau_mask = np.ma.masked_equal(tau, 0)
-  time_window = 100
+  time_window = 200
   tau_v_r = np.empty([nt/time_window-1, nx], dtype=float)
   for it in range(nt/time_window - 1): 
     tau_v_r[it, :] = tau_vs_radius(ntot_real_space[it*time_window:(it+1)*time_window,:,:], t[it*time_window:(it+1)*time_window])
 
   np.savetxt('analysis/time_fit.csv', (tau_v_r), delimiter=',', fmt='%1.3f')
 
-  #Write correlation times to file
-  #np.savetxt('analysis/time_fit.csv', (np.mean(tau_mask), np.std(tau_mask)), delimiter=',', fmt='%1.4e')
-
   #Plot correlation time as a function of radius
-  #plt.clf()
-  #plt.plot(tau_v_r[0,:])
-  #plt.yscale('log')
-  #plt.show()
-  #plt.savefig('analysis/time_corr.pdf')
+  plt.clf()
+  plt.plot(np.mean(tau_v_r, axis=0))
+  plt.savefig('analysis/time_corr.pdf')
 
   #End timer
   t_end = time.clock()
@@ -383,12 +384,4 @@ elif analysis == 'bes':
   xpts = np.linspace(0, 2*np.pi/kx[1], nx)*rhoref # change to meters
   ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
   film.real_space_film_2d(xpts, ypts, real_space_density[:,:,:], 'density')
-
-
-
-
-
-
-
-
 
