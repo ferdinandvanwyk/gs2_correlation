@@ -224,6 +224,7 @@ ky = ncfile.variables['ky'][:]
 t = ncfile.variables['t'][:]
 
 #Ensure time is on a regular grid for uniformity
+print 'Starting interpolation...'
 t_reg = np.linspace(min(t), max(t), len(t))
 shape = density.shape
 ntot_reg = np.empty([shape[0], shape[2], shape[1], shape[3]])
@@ -232,6 +233,7 @@ for i in range(shape[1]):
     for k in range(shape[3]):
       f = interp.interp1d(t, density[:, i, j, k])
       ntot_reg[:, j, i, k] = f(t_reg) #perform a transpose here: ntot(t,kx,ky,theta,ri)
+print 'Finished interpolation...'
 
 #Zero out density fluctuations which are larger than the BES
 shape = ntot_reg.shape
