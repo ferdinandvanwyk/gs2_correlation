@@ -236,11 +236,11 @@ for i in range(shape[1]):
 print 'Finished interpolation...'
 
 #Zero out density fluctuations which are larger than the BES
-shape = ntot_reg.shape
-for iky in range(shape[2]):
-  for ikx in range(shape[1]):
-    if abs(kx[ikx]) < 0.25 and ky[iky] < 0.5: #Roughly the size of BES (160x80mm)
-      ntot_reg[:,ikx,iky] = 0.0
+#shape = ntot_reg.shape
+#for iky in range(shape[2]):
+#  for ikx in range(shape[1]):
+#    if abs(kx[ikx]) < 0.25 and ky[iky] < 0.5: #Roughly the size of BES (160x80mm)
+#      ntot_reg[:,ikx,iky] = 0.0
 
 #End timer
 t_end = time.clock()
