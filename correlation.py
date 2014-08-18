@@ -44,7 +44,7 @@ def real_to_complex_1d(field):
   cplx_field.real = field[:,0]
   cplx_field.imag = field[:,1]
   # fix fft normalisation that is appropriate for numpy fft package
-  cplx_field = cplx_field
+  cplx_field = cplx_field*n1
   return cplx_field
 
 def real_to_complex_2d(field):
@@ -57,7 +57,7 @@ def real_to_complex_2d(field):
   cplx_field.real = field[:,:,0]
   cplx_field.imag = field[:,:,1]
   # fix fft normalisation that is appropriate for numpy fft package
-  cplx_field = cplx_field
+  cplx_field = cplx_field*n1*n2/2
   return cplx_field
 
 def wk_thm_1d(field_1, field_2):
