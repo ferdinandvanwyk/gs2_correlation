@@ -165,44 +165,14 @@ def tau_vs_radius(ntot, t):
   shape = ntot.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
   ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
   dypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
-  corr_fn = np.empty([nt, nx, ny], dtype=float); corr_fn[:,:,:] = 0.0
-  count = np.empty([ny], dtype=int); count[:] = 0;
-
-  ntot = np.fft.fft(ntot, axis=0) # (w, x, y) and complex
+  corr_fn = np.empty([2*(nt-1), nx, 2*(ny-1)], dtype=float); corr_fn[:,:,:] = 0.0
 
   for ix in range(nx):
-    for iy1 in range(ny):
-      for iy2 in range(iy1,ny):
-        #separation in y
-        dy = abs(ypts[iy1] - ypts[iy2])
-        # calculate index based on y separation (assume ny bins)
-        # y index: -dy_max, ..., 0, ..., dy_max
-        y_index = int((dy - min(dypts))/(dypts[1] - dypts[0]))
-
-        #Use WK theorem to calculate corr fn in time
-        corr_fn[:, ix, y_index] += wk_thm_1d(ntot[:, ix, iy1], ntot[:, ix, iy2]) 
-        # increment a count variable which will be used to normalize y bins 
-        count[y_index] += 1 
-
-        #Repeat analysis for negative separation
-        dy = -dy
-        y_index = int((dy - min(dypts))/(dypts[1] - dypts[0]))
-        corr_fn[:, ix, y_index] += wk_thm_1d(ntot[:, ix, iy2], ntot[:, ix, iy1])
-        count[y_index] += 1 
-
-    #Normalize by count
-    for iy in range(ny):
-      if count[iy] > 0:
-        corr_fn[:, ix, iy] = corr_fn[:, ix, iy] / count[iy]
+    print 'ix = ', ix, ' of ', nx
+    corr_fn[:,ix,:] = sig.correlate(ntot[:,ix,:], ntot[:,ix,:])
 
     #Normalize correlation function by the max
     corr_fn[:,ix,:] = corr_fn[:,ix,:] / np.max(corr_fn[:,ix,:])
-    #shift time zeros to centre
-    corr_fn[:,ix,:] = np.fft.fftshift(corr_fn[:,ix,:], axes=[0])
-
-  #Anthony plots
-  #ofile = open('analysis/corr_fn.pkl', 'wb')
-  #pkl.dump([np.linspace(-t_reg[750]+t_reg[0], t_reg[750]-t_reg[0], 750)*1e6*amin/vth,corr_fn], ofile)
 
   #Fit exponential decay to peaks of correlation function in dt for a few dy's
   tau = time_fit(corr_fn, t) #tau in seconds
