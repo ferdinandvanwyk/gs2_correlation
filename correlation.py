@@ -218,28 +218,39 @@ def tau_vs_radius(ntot, t):
 t_start = time.clock()
 
 ncfile = netcdf.netcdf_file(in_file, 'r')
-density = ncfile.variables['ntot_t'][:,0,:,:,10,:] #index = (t, spec, ky, kx, theta, ri)
+density = ncfile.variables['ntot_t'][:400,0,:,:,10,:] #index = (t, spec, ky, kx, theta, ri)
 th = ncfile.variables['theta'][10]
 kx = ncfile.variables['kx'][:]
 ky = ncfile.variables['ky'][:]
-t = ncfile.variables['t'][:]
+t = ncfile.variables['t'][:400]
 
 #Ensure time is on a regular grid for uniformity
-t_reg = np.linspace(min(t), max(t), len(t))
-shape = density.shape
-ntot_reg = np.empty([shape[0], shape[2], shape[1], shape[3]])
-for i in range(shape[1]):
-  for j in range(shape[2]):
-    for k in range(shape[3]):
-      f = interp.interp1d(t, density[:, i, j, k])
-      ntot_reg[:, j, i, k] = f(t_reg) #perform a transpose here: ntot(t,kx,ky,theta,ri)
+plt.plot(t)
+plt.show()
+interp = raw_input('Do you want to interpolate the input (y/n)?')
+if interp == 'y':
+  t_reg = np.linspace(min(t), max(t), len(t))
+  shape = density.shape
+  ntot_reg = np.empty([shape[0], shape[2], shape[1], shape[3]])
+  for i in range(shape[1]):
+    for j in range(shape[2]):
+      for k in range(shape[3]):
+        f = interp.interp1d(t, density[:, i, j, k])
+        ntot_reg[:, j, i, k] = f(t_reg) #perform a transpose here: ntot(t,kx,ky,theta,ri)
+elif interp == 'n':
+  t_reg = np.array(t)
+  shape = density.shape
+  ntot_reg = np.swapaxes(density, 1, 2) #ensure ntot_reg[t, kx, ky, ri]
+
 
 #Zero out density fluctuations which are larger than the BES
-shape = ntot_reg.shape
-for iky in range(shape[2]):
-  for ikx in range(shape[1]):
-    if abs(kx[ikx]) < 0.25 and ky[iky] < 0.5: #Roughly the size of BES (160x80mm)
-      ntot_reg[:,ikx,iky] = 0.0
+zero = raw_input('Do you want to zero out modes that are larger than the BES?')
+if zero == 'y':
+  shape = ntot_reg.shape
+  for iky in range(shape[2]):
+    for ikx in range(shape[1]):
+      if abs(kx[ikx]) < 0.25 and ky[iky] < 0.5: #Roughly the size of BES (160x80mm)
+        ntot_reg[:,ikx,iky] = 0.0
 
 #End timer
 t_end = time.clock()
