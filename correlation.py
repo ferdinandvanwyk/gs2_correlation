@@ -4,7 +4,7 @@
 # contains the variable ntot(t, spec, ky, kx, theta, ri).
 # Use as follows:
 #
-#     python correlation.py <time/perp analysis> <location of .nc file>
+#     python correlation.py <time/perp analysis/bes> <location of .nc file>
 
 import os, sys
 import operator #enumerate list
@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 plt.rcParams.update({'figure.autolayout': True})
 import scipy.optimize as opt
 import scipy.interpolate as interp
+import scipy.signal as sig
 from scipy.io import netcdf
 import fit #local method
 import film #local method
@@ -62,8 +63,8 @@ def real_to_complex_2d(field):
 
 def wk_thm_1d(field_1, field_2):
   field = np.conjugate(field_1)*field_2
-  corr = np.fft.ifft(field)*field.shape[0]
-  return corr.real
+  corr = np.fft.ifft(field)
+  return corr.real*field.shape[0]
 
 # Function which applies WK theorem to a real 2D field field(x,y,ri) where y is assumed to be
 # half complex and 'ri' indicates the real/imaginary axis (0 real, 1 imag). 
@@ -383,7 +384,7 @@ elif analysis == 'bes':
 
   real_space_density = np.empty([nt,nx,ny],dtype=float)
   for it in range(nt):
-    real_space_density[it,:,:] = np.fft.irfft2(real_to_complex_2d(ntot_reg[it,:,:,:]), axes=[0,1])
+    real_space_density[it,:,:] = np.fft.irfft2(real_to_complex_2d(ntot_reg[it,:,:,:])*nx*ny/2, axes=[0,1])
 
   #Export film
   print 'Exporting film...'
