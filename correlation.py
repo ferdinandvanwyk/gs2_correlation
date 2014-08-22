@@ -21,6 +21,7 @@ import fit #local method
 import film #local method
 import cPickle as pkl
 from mpl_toolkits.mplot3d import Axes3D
+from netCDF4 import Dataset
 
 # Read command line argument specifying location of NetCDF file
 analysis =  str(sys.argv[1]) #specify analysis (time or perp)
@@ -189,11 +190,11 @@ def tau_vs_radius(ntot, t):
 t_start = time.clock()
 
 ncfile = netcdf.netcdf_file(in_file, 'r')
-density = ncfile.variables['ntot_t'][:400,0,:,:,10,:] #index = (t, spec, ky, kx, theta, ri)
+density = ncfile.variables['ntot_t'][:,0,:,:,10,:] #index = (t, spec, ky, kx, theta, ri)
 th = ncfile.variables['theta'][10]
 kx = ncfile.variables['kx'][:]
 ky = ncfile.variables['ky'][:]
-t = ncfile.variables['t'][2:400]
+t = ncfile.variables['t'][:]
 
 #Ensure time is on a regular grid for uniformity
 plt.plot(t)
@@ -368,14 +369,28 @@ elif analysis == 'bes':
   for it in range(nt):
     real_space_density[it,:,:] = np.fft.irfft2(real_to_complex_2d(ntot_reg[it,:,:,:])*nx*ny/2, axes=[0,1])
 
+  xpts = np.linspace(0, 2*np.pi/kx[1], nx)*rhoref # change to meters
+  ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
+  tpts = np.array(t*amin/vth)
+  print tpts[0], tpts.shape, nt
+
   #Write out density fluctuations in real space to be analyzed
-  ofile = open('analysis/x_y_t_density.pkl', 'w')
-  pkl.dump([xpts, ypts, (t - t[0])*amin/vth, real_space_density], ofile)
+  nc_file = Dataset('analysis/0_density.nc', 'w', format='NETCDF4')
+  nc_file.createDimension('x',nx)
+  nc_file.createDimension('y',ny)
+  nc_file.createDimension('t',nt)
+  nc_x = nc_file.createVariable('x','d',('x',))
+  nc_y = nc_file.createVariable('y','d',('y',))
+  nc_t = nc_file.createVariable('t','d',('t',))
+  nc_ntot = nc_file.createVariable('n','d',('x', 'y', 't',))
+  nc_x[:] = xpts[:]
+  nc_y[:] = ypts[:]
+  nc_t[:] = tpts[:] - tpts[0]
+  nc_ntot[:] = real_space_density
+  nc_file.close()
 
   #Export film
   print 'Exporting film...'
-  xpts = np.linspace(0, 2*np.pi/kx[1], nx)*rhoref # change to meters
-  ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
   film.real_space_film_2d(xpts, ypts, real_space_density[:,:,:], 'density')
 
 plt.close()
