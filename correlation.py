@@ -372,7 +372,6 @@ elif analysis == 'bes':
   xpts = np.linspace(0, 2*np.pi/kx[1], nx)*rhoref # change to meters
   ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
   tpts = np.array(t*amin/vth)
-  print tpts[0], tpts.shape, nt
 
   #Write out density fluctuations in real space to be analyzed
   nc_file = Dataset('analysis/0_density.nc', 'w', format='NETCDF4')
