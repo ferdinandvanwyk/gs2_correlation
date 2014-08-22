@@ -374,7 +374,7 @@ elif analysis == 'bes':
   tpts = np.array(t*amin/vth)
 
   #Write out density fluctuations in real space to be analyzed
-  nc_file = Dataset('analysis/0_density.nc', 'w', format='NETCDF4')
+  nc_file = Dataset('analysis/density.nc', 'w', format='NETCDF4')
   nc_file.createDimension('x',nx)
   nc_file.createDimension('y',ny)
   nc_file.createDimension('t',nt)
