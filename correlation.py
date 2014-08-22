@@ -109,9 +109,10 @@ def time_fit(corr_fn, t):
   peaks = np.empty([nx, 5]); peaks[:,:] = 0.0;
   max_index = np.empty([nx, 5], dtype=int);
   popt = np.empty([nx], dtype=float)
+  mid_idx = 61
   for ix in range(0,nx): # loop over all radial points
-    for iy in range(30,35): # only do first 5 functions since rest may be noise
-      max_index[ix, iy-30], peaks[ix, iy-30] = max(enumerate(corr_fn[:,ix,iy]), key=operator.itemgetter(1))
+    for iy in range(mid_idx,mid_idx+5): # only do first 5 functions since rest may be noise
+      max_index[ix, iy-mid_idx], peaks[ix, iy-mid_idx] = max(enumerate(corr_fn[:,ix,iy]), key=operator.itemgetter(1))
 
     #Perform fitting of decaying exponential to peaks
     init_guess = (10.0)
@@ -130,16 +131,16 @@ def time_fit(corr_fn, t):
     #that there is no flow and that the above method cannot be used to calculate the correlation time. Just ignore
     #these cases by setting correlation time  to zero here.
     if (strictly_increasing(max_index[ix,:]) == False and strictly_increasing(max_index[ix,::-1]) == False):
-      corr_fn[:,ix,30] = corr_fn[:,ix,30]/max(corr_fn[:,ix,30])
+      corr_fn[:,ix,mid_idx] = corr_fn[:,ix,mid_idx]/max(corr_fn[:,ix,mid_idx])
       init_guess = (1.0, 1.0)
-      tau_and_omega, pcov = opt.curve_fit(fit.osc_exp, (dt[nt/2-100:nt/2+100]), (corr_fn[nt/2-100:nt/2+100,ix,30]).ravel(), p0=init_guess)
+      tau_and_omega, pcov = opt.curve_fit(fit.osc_exp, (dt[nt/2-100:nt/2+100]), (corr_fn[nt/2-100:nt/2+100,ix,mid_idx]).ravel(), p0=init_guess)
       popt[ix] = tau_and_omega[0]
       print 'test: ', ix, tau_and_omega
 
-  xvalue = 18
+  xvalue = 42
   print popt[xvalue]
   plt.clf()
-  plt.plot(dt*1e6*amin/vth, corr_fn[:,xvalue,30:35])
+  plt.plot(dt*1e6*amin/vth, corr_fn[:,xvalue,mid_idx:mid_idx+5])
   plt.hold(True)
   plt.plot(dt[max_index[xvalue,:]]*1e6*amin/vth, peaks[xvalue,:], 'ro')
   plt.hold(True)
@@ -165,7 +166,7 @@ def tau_vs_radius(ntot, t):
   shape = ntot.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
   ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
   dypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
-  corr_fn = np.empty([2*(nt-1), nx, 2*(ny-1)], dtype=float); corr_fn[:,:,:] = 0.0
+  corr_fn = np.empty([2*nt-1, nx, 2*ny-1], dtype=float); corr_fn[:,:,:] = 0.0
 
   for ix in range(nx):
     print 'ix = ', ix, ' of ', nx
@@ -192,7 +193,7 @@ density = ncfile.variables['ntot_t'][:400,0,:,:,10,:] #index = (t, spec, ky, kx,
 th = ncfile.variables['theta'][10]
 kx = ncfile.variables['kx'][:]
 ky = ncfile.variables['ky'][:]
-t = ncfile.variables['t'][:400]
+t = ncfile.variables['t'][2:400]
 
 #Ensure time is on a regular grid for uniformity
 plt.plot(t)
@@ -367,9 +368,14 @@ elif analysis == 'bes':
   for it in range(nt):
     real_space_density[it,:,:] = np.fft.irfft2(real_to_complex_2d(ntot_reg[it,:,:,:])*nx*ny/2, axes=[0,1])
 
+  #Write out density fluctuations in real space to be analyzed
+  ofile = open('analysis/x_y_t_density.pkl', 'w')
+  pkl.dump([xpts, ypts, (t - t[0])*amin/vth, real_space_density], ofile)
+
   #Export film
   print 'Exporting film...'
   xpts = np.linspace(0, 2*np.pi/kx[1], nx)*rhoref # change to meters
   ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
   film.real_space_film_2d(xpts, ypts, real_space_density[:,:,:], 'density')
 
+plt.close()
