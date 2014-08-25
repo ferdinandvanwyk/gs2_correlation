@@ -23,17 +23,23 @@ import cPickle as pkl
 from mpl_toolkits.mplot3d import Axes3D
 from netCDF4 import Dataset
 
+#Open a diagnostic output file.
+diag_file = open("analysis/diag.out", "w")
+
 # Read command line argument specifying location of NetCDF file
 analysis =  str(sys.argv[1]) #specify analysis (time or perp)
-if analysis != 'perp' and analysis != 'time' and analysis != 'bes' and analysis!='test':
+if analysis != 'perp' and analysis != 'time' and analysis != 'bes':
   raise Exception('Please specify analysis: time or perp.')
 in_file =  str(sys.argv[2])
+diag_file.write("User specified the following analysis: " + str(analysis) + "\n")
+diag_file.write("User specified the following GS2 output file: " + str(in_file) + "\n")
 
 #Normalization parameters
 amin = 0.58044 # m
 vth = 1.4587e+05 # m/s
 rhoref = 6.0791e-03 # m
 pitch_angle = 0.6001 # in radians
+diag_file.write("The following normalization parameters were used: [amin, vth, rhoref, pitch_angle] = " + str([amin, vth, rhoref, pitch_angle]) + "\n")
 
 #########################
 # Function Declarations #
@@ -111,51 +117,35 @@ def time_fit(corr_fn, t):
   max_index = np.empty([nx, 5], dtype=int);
   popt = np.empty([nx], dtype=float)
   mid_idx = 61
+  os.system("mkdir analysis/corr_fns")
   for ix in range(0,nx): # loop over all radial points
     for iy in range(mid_idx,mid_idx+5): # only do first 5 functions since rest may be noise
       max_index[ix, iy-mid_idx], peaks[ix, iy-mid_idx] = max(enumerate(corr_fn[:,ix,iy]), key=operator.itemgetter(1))
 
-    #Perform fitting of decaying exponential to peaks
-    init_guess = (10.0)
-    if max_index[ix, 1] > max_index[ix, 0]:
-      popt[ix], pcov = opt.curve_fit(fit.decaying_exp, (dt[max_index[ix,:]]), peaks[ix,:].ravel(), p0=init_guess)
+    if (strictly_increasing(max_index[ix,:]) == True or strictly_increasing(max_index[ix,::-1]) == True):
+      #Perform fitting of decaying exponential to peaks
+      init_guess = (10.0)
+      if max_index[ix, 4] > max_index[ix, 0]:
+        popt[ix], pcov = opt.curve_fit(fit.decaying_exp, (dt[max_index[ix,:]]), peaks[ix,:].ravel(), p0=init_guess)
+        fit.plot_fit(ix, dt, corr_fn[:,ix,:], max_index[ix,:], peaks[ix,:], mid_idx, popt[ix], 'decaying_exp', amin, vth)
+        diag_file.write("Index " + str(ix) + " was fitted with decaying exponential. tau = " + str(popt[ix]) + "\n")
+      else:
+        popt[ix], pcov = opt.curve_fit(fit.growing_exp, (dt[max_index[ix,::-1]]), peaks[ix,::-1].ravel(), p0=init_guess)
+        fit.plot_fit(ix, dt, corr_fn[:,ix,:], max_index[ix, :], peaks[ix,:], mid_idx, popt[ix], 'growing_exp', amin, vth)
+        diag_file.write("Index " + str(ix) + " was fitted with growing exponential. tau = " + str(popt[ix]) + "\n")
     else:
-      #print dt[max_index[ix,::-1]], peaks[ix,::-1]
-      popt[ix], pcov = opt.curve_fit(fit.growing_exp, (dt[max_index[ix,::-1]]), peaks[ix,::-1].ravel(), p0=init_guess)
+      #If abs(max_index) is not monotonically increasing, this usually means
+      #that there is no flow and that the above method cannot be used to calculate the correlation time. Try
+      #fitting a decaying oscillating exponential to the central peak.
+        corr_fn[:,ix,mid_idx] = corr_fn[:,ix,mid_idx]/max(corr_fn[:,ix,mid_idx])
+        init_guess = (10.0, 1.0)
+        tau_and_omega, pcov = opt.curve_fit(fit.osc_exp, (dt[nt/2-100:nt/2+100]), (corr_fn[nt/2-100:nt/2+100,ix,mid_idx]).ravel(), p0=init_guess)
+        popt[ix] = tau_and_omega[0]
+        fit.plot_fit(ix, dt, corr_fn[:,ix,:], max_index[ix,:], peaks[ix,:], mid_idx, tau_and_omega, 'osc_exp', amin, vth)
+        diag_file.write("Index " + str(ix) + " was fitted with an oscillating Gaussian to the central peak. [tau, omega] = " + str(tau_and_omega) + "\n")
   
-    #Need to take care of cases where there is no flow. Test if max_index for first two peaks are
-    #both at zero. If so just fit the central peak with a decaying exponential. 
-    if max_index[ix, 0] == max_index[ix, 1]:
-      popt[ix] = 0
-
-    #Need to check monotonicity of max indices. If abs(max_index) is not monotonically increasing, this usually means
-    #that there is no flow and that the above method cannot be used to calculate the correlation time. Just ignore
-    #these cases by setting correlation time  to zero here.
-    if (strictly_increasing(max_index[ix,:]) == False and strictly_increasing(max_index[ix,::-1]) == False):
-      corr_fn[:,ix,mid_idx] = corr_fn[:,ix,mid_idx]/max(corr_fn[:,ix,mid_idx])
-      init_guess = (1.0, 1.0)
-      tau_and_omega, pcov = opt.curve_fit(fit.osc_exp, (dt[nt/2-100:nt/2+100]), (corr_fn[nt/2-100:nt/2+100,ix,mid_idx]).ravel(), p0=init_guess)
-      popt[ix] = tau_and_omega[0]
-      print 'test: ', ix, tau_and_omega
-
-  xvalue = 42
-  print popt[xvalue]
-  plt.clf()
-  plt.plot(dt*1e6*amin/vth, corr_fn[:,xvalue,mid_idx:mid_idx+5])
-  plt.hold(True)
-  plt.plot(dt[max_index[xvalue,:]]*1e6*amin/vth, peaks[xvalue,:], 'ro')
-  plt.hold(True)
-  #p1 = plt.plot(dt*1e6*amin/vth, np.exp(-(dt / popt[xvalue])**2)*np.cos(tau_and_omega[1]*dt), 'b', lw=2)
-  p1 = plt.plot(dt[nt/2:nt/2+100]*1e6*amin/vth, np.exp(-dt[nt/2:nt/2+100] / popt[xvalue]), 'b', lw=2)
-  plt.xlabel(r'$\Delta t (\mu s)})$', fontsize=25)
-  plt.ylabel(r'$C_{\Delta y}(\Delta t)$', fontsize=25)
-  plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c]$'])
-  plt.xticks(fontsize=25)
-  plt.yticks(fontsize=25)
-  plt.savefig('analysis/time_fit.pdf')
-
   #return correlation time in seconds
-  return abs(popt)*1e6*amin/vth
+  return abs(popt)*1e6*amin/vth 
 
 #Function which checks monotonicity. Returns True or False.
 def strictly_increasing(L):
@@ -190,17 +180,18 @@ def tau_vs_radius(ntot, t):
 t_start = time.clock()
 
 ncfile = netcdf.netcdf_file(in_file, 'r')
-density = ncfile.variables['ntot_t'][:,0,:,:,10,:] #index = (t, spec, ky, kx, theta, ri)
+density = ncfile.variables['ntot_t'][:500,0,:,:,10,:] #index = (t, spec, ky, kx, theta, ri)
 th = ncfile.variables['theta'][10]
 kx = ncfile.variables['kx'][:]
 ky = ncfile.variables['ky'][:]
-t = ncfile.variables['t'][:]
+t = ncfile.variables['t'][:500]
 
 #Ensure time is on a regular grid for uniformity
 plt.plot(t)
 plt.show()
-interp = raw_input('Do you want to interpolate the input (y/n)?')
-if interp == 'y':
+interp_inp = raw_input('Do you want to interpolate the input (y/n)?')
+if interp_inp == 'y':
+  diag_file.write("User chose to interpolate time onto a regular grid.\n")
   t_reg = np.linspace(min(t), max(t), len(t))
   shape = density.shape
   ntot_reg = np.empty([shape[0], shape[2], shape[1], shape[3]])
@@ -209,7 +200,8 @@ if interp == 'y':
       for k in range(shape[3]):
         f = interp.interp1d(t, density[:, i, j, k])
         ntot_reg[:, j, i, k] = f(t_reg) #perform a transpose here: ntot(t,kx,ky,theta,ri)
-elif interp == 'n':
+elif interp_inp == 'n':
+  diag_file.write("User chose not to interpolate time onto a regular grid.\n")
   t_reg = np.array(t)
   shape = density.shape
   ntot_reg = np.swapaxes(density, 1, 2) #ensure ntot_reg[t, kx, ky, ri]
@@ -218,6 +210,7 @@ elif interp == 'n':
 #Zero out density fluctuations which are larger than the BES
 zero = raw_input('Do you want to zero out modes that are larger than the BES?')
 if zero == 'y':
+  diag_file.write("User chose to zero out k-modes larger than the approx size of the BES.\n")
   shape = ntot_reg.shape
   for iky in range(shape[2]):
     for ikx in range(shape[1]):
@@ -239,6 +232,7 @@ os.system("mkdir analysis")
 #################
 
 if analysis == 'perp':
+  diag_file.write("Started 'perp' analysis.\n")
   # Perform inverse FFT to real space ntot[kx, ky, th]
   shape = ntot_reg.shape
   nt = shape[0]
@@ -323,6 +317,7 @@ if analysis == 'perp':
 # flow, can fit a decaying exponential to either the central peak or the envelope
 # of peaks of different dy's
 elif analysis == 'time':
+  diag_file.write("Started 'time' analysis.\n")
   shape = ntot_reg.shape
   nt = shape[0]
   nx = shape[1]
@@ -359,6 +354,7 @@ elif analysis == 'time':
 # BES Output #
 ##############
 elif analysis == 'bes':
+  diag_file.write("Started 'bes' film making and density fluctuations write out to NetCDF.\n")
   shape = ntot_reg.shape
   nt = shape[0]
   nx = shape[1]
@@ -374,22 +370,24 @@ elif analysis == 'bes':
   tpts = np.array(t*amin/vth)
 
   #Write out density fluctuations in real space to be analyzed
-  nc_file = Dataset('analysis/density.nc', 'w', format='NETCDF4')
+  nc_file = netcdf.netcdf_file('analysis/density.nc', 'w')
   nc_file.createDimension('x',nx)
   nc_file.createDimension('y',ny)
   nc_file.createDimension('t',nt)
   nc_x = nc_file.createVariable('x','d',('x',))
   nc_y = nc_file.createVariable('y','d',('y',))
   nc_t = nc_file.createVariable('t','d',('t',))
-  nc_ntot = nc_file.createVariable('n','d',('x', 'y', 't',))
+  nc_ntot = nc_file.createVariable('n','d',('t', 'x', 'y',))
   nc_x[:] = xpts[:]
   nc_y[:] = ypts[:]
   nc_t[:] = tpts[:] - tpts[0]
-  nc_ntot[:] = real_space_density
+  nc_ntot[:,:,:] = real_space_density[:,:,:]
   nc_file.close()
 
   #Export film
   print 'Exporting film...'
   film.real_space_film_2d(xpts, ypts, real_space_density[:,:,:], 'density')
 
+diag_file.write(str(analysis) + "analysis finished succesfully.\n")
 plt.close()
+diag_file.close()
