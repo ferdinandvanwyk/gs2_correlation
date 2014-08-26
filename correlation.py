@@ -23,6 +23,9 @@ import cPickle as pkl
 from mpl_toolkits.mplot3d import Axes3D
 from netCDF4 import Dataset
 
+#Make folder which will contain all the correlation analysis
+os.system("mkdir analysis")
+
 #Open a diagnostic output file.
 diag_file = open("analysis/diag.out", "w")
 
@@ -223,9 +226,6 @@ print 'Interpolation Time = ', t_end-t_start, ' s'
 
 #Clear density from memory
 density = None; f = None; gc.collect();
-
-#Make folder which will contain all the correlation analysis
-os.system("mkdir analysis")
 
 #################
 # Perp Analysis #
