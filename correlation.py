@@ -149,7 +149,7 @@ def time_fit(corr_fn, t):
 
 #Function which checks monotonicity. Returns True or False.
 def strictly_increasing(L):
-      return all(x<=y for x, y in zip(L, L[1:]))
+      return all(x<y for x, y in zip(L, L[1:]))
 
 #Function which takes in density fluctuations and outputs the correlation time as a 
 #function of the minor radius
@@ -180,11 +180,11 @@ def tau_vs_radius(ntot, t):
 t_start = time.clock()
 
 ncfile = netcdf.netcdf_file(in_file, 'r')
-density = ncfile.variables['ntot_t'][:500,0,:,:,10,:] #index = (t, spec, ky, kx, theta, ri)
+density = ncfile.variables['ntot_t'][:,0,:,:,10,:] #index = (t, spec, ky, kx, theta, ri)
 th = ncfile.variables['theta'][10]
 kx = ncfile.variables['kx'][:]
 ky = ncfile.variables['ky'][:]
-t = ncfile.variables['t'][:500]
+t = ncfile.variables['t'][:]
 
 #Ensure time is on a regular grid for uniformity
 plt.plot(t)

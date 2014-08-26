@@ -42,7 +42,7 @@ def plot_fit(ix, dt, corr_fn, max_index, peaks, mid_idx, tau, plot_type, amin, v
     p1 = plt.plot(dt[nt/2:nt/2+100]*1e6*amin/vth, np.exp(-dt[nt/2:nt/2+100] / tau), 'b', lw=2)
     plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c|]$'])
   if plot_type == 'growing_exp':
-    p1 = plt.plot(dt[nt/2:nt/2+100]*1e6*amin/vth, np.exp(dt[nt/2:nt/2+100] / tau), 'b', lw=2)
+    p1 = plt.plot(dt[nt/2-100:nt/2]*1e6*amin/vth, np.exp(dt[nt/2-100:nt/2] / tau), 'b', lw=2)
     plt.legend(p1, [r'$\exp[|\Delta t_{peak} / \tau_c|]$'])
   if plot_type == 'osc_exp':
     p1 = plt.plot(dt*1e6*amin/vth, np.exp(-(dt / tau[0])**2)*np.cos(tau[1]*dt), 'b', lw=2)
