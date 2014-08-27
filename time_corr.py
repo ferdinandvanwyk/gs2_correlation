@@ -11,5 +11,5 @@ plt.xlabel('Minor Radius')
 plt.ylabel("Time Correlation $(\mu s)$")
 plt.show()
 
-print 'Average = ', np.mean(tau, axis=0)
-print 'Standard Deviation = ', np.std(tau)
+print 'Average = ', np.mean(np.mean(tau, axis=0))
+print 'Standard Deviation = ', np.std(np.mean(tau, axis=0))
