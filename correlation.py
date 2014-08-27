@@ -190,8 +190,6 @@ ky = ncfile.variables['ky'][:]
 t = ncfile.variables['t'][:]
 
 #Ensure time is on a regular grid for uniformity
-plt.plot(t)
-plt.show()
 interp_inp = raw_input('Do you want to interpolate the input (y/n)?')
 if interp_inp == 'y':
   diag_file.write("User chose to interpolate time onto a regular grid.\n")
