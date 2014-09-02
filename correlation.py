@@ -253,7 +253,7 @@ if analysis == 'perp':
   #Fit correlation function and get fitting parameters for time slices of a given size
   time_window = 200
   avg_fit_par = np.empty([nt/time_window-1, 4], dtype=float)
-  avg_fit_par[-1,:] = [10,10,1,0.1]
+  avg_fit_par[-1,:] = [100,10,0.01,0.1]
   for it in range(nt/time_window - 1): 
     avg_fit_par[it, :] = perp_fit(corr_fn[it*time_window:(it+1)*time_window, nx/2-20:nx/2+20, (ny-1)/2-20:(ny-1)/2+20], xpts[nx/2-20:nx/2+20], ypts[(ny-1)/2-20:(ny-1)/2+20], avg_fit_par[it-1,:])
   #avg_fit_par = perp_fit(corr_fn[:, :, :], xpts, ypts)
