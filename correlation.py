@@ -280,7 +280,7 @@ if analysis == 'perp':
   ypts = ypts*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane
   data_fitted = fit.tilted_gauss((x, y), *np.mean(avg_fit_par, axis=0))
   plt.clf()
-  plt.contourf(xpts[44:84], ypts[20:40], np.transpose(avg_corr[44:84,20:40]), 11, levels=np.linspace(-1, 1, 11))
+  plt.contourf(xpts[nx/2-20:nx/2+20], ypts[(ny-1)/2-20:(ny-1)/2+20], np.transpose(avg_corr[nx/2-20:nx/2+20,(ny-1)/2-20:(ny-1)/2+20]), 11, levels=np.linspace(-1, 1, 11))
   cbar = plt.colorbar(ticks=np.linspace(-1, 1, 11))
   cbar.ax.tick_params(labelsize=25)
   #plt.hold(True)
@@ -293,7 +293,7 @@ if analysis == 'perp':
   plt.savefig('analysis/sim_perp.pdf')
 
   plt.clf()
-  plt.contourf(xpts[44:84], ypts[20:40], np.transpose(data_fitted.reshape(nx,ny-1)[44:84,20:40]), 11, levels=np.linspace(-1, 1, 11))
+  plt.contourf(xpts[nx/2-20:nx/2+20], ypts[(ny-1)/2-20:(ny-1)/2+20], np.transpose(data_fitted.reshape(nx,ny-1)[nx/2-20:nx/2+20,(ny-1)/2-20:(ny-1)/2+20]), 11, levels=np.linspace(-1, 1, 11))
   plt.title('$C_{fit}(\Delta x, \Delta y)$', fontsize=25)
   cbar = plt.colorbar(ticks=np.linspace(-1, 1, 11))
   cbar.ax.tick_params(labelsize=25)
