@@ -205,7 +205,7 @@ elif interp_inp == 'n':
   diag_file.write("User chose not to interpolate time onto a regular grid.\n")
   t_reg = np.array(t)
   shape = density.shape
-  ntot_reg = np.swapaxes(density, 1, 2) #ensure ntot_reg[t, kx, ky, ri]
+  ntot_reg = np.array(np.swapaxes(density, 1, 2)) #ensure ntot_reg[t, kx, ky, ri]
 
 
 #Zero out density fluctuations which are larger than the BES
