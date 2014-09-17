@@ -189,6 +189,9 @@ kx = ncfile.variables['kx'][:]
 ky = ncfile.variables['ky'][:]
 t = ncfile.variables['t'][:]
 
+plt.plot(t)
+plt.show()
+
 #Ensure time is on a regular grid for uniformity
 interp_inp = raw_input('Do you want to interpolate the input (y/n)?')
 if interp_inp == 'y':
@@ -323,9 +326,10 @@ elif analysis == 'time':
   ny = (nky-1)*2
 
   # Need to IFFT in x so that x index represents radial locations
-  ntot_real_space = np.empty([nt,nx,ny],dtype=complex)
+  real_space_density = np.empty([nt,nx,ny],dtype=float)
   for it in range(nt):
-    ntot_real_space[it,:,:] = np.fft.irfft2(real_to_complex_2d(ntot_reg[it,:,:,:]), axes=[0,1])
+    real_space_density[it,:,:] = np.fft.irfft2(real_to_complex_2d(ntot_reg[it,:,:,:]), axes=[0,1])
+    real_space_density[it,:,:] = np.roll(real_space_density[it,:,:], nx/2, axis=0)
 
   #Clear memory
   ntot_reg = None; gc.collect();
@@ -335,7 +339,7 @@ elif analysis == 'time':
   time_window = 200
   tau_v_r = np.empty([nt/time_window-1, nx], dtype=float)
   for it in range(nt/time_window - 1): 
-    tau_v_r[it, :] = tau_vs_radius(ntot_real_space[it*time_window:(it+1)*time_window,:,:], t[it*time_window:(it+1)*time_window])
+    tau_v_r[it, :] = tau_vs_radius(real_space_density[it*time_window:(it+1)*time_window,:,:], t[it*time_window:(it+1)*time_window])
 
   np.savetxt('analysis/time_fit.csv', (tau_v_r), delimiter=',', fmt='%1.3f')
 
@@ -361,7 +365,9 @@ elif analysis == 'bes':
 
   real_space_density = np.empty([nt,nx,ny],dtype=float)
   for it in range(nt):
-    real_space_density[it,:,:] = np.fft.irfft2(real_to_complex_2d(ntot_reg[it,:,:,:])*nx*ny/2, axes=[0,1])
+    real_space_density[it,:,:] = np.fft.irfft2(real_to_complex_2d(ntot_reg[it,:,:,:]), axes=[0,1])
+    real_space_density[it,:,:] = np.roll(real_space_density[it,:,:], nx/2, axis=0)
+
 
   xpts = np.linspace(0, 2*np.pi/kx[1], nx)*rhoref # change to meters
   ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) # change to meters and poloidal plane

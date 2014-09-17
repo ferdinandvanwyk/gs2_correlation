@@ -9,17 +9,19 @@ correlation.py
 This program calculates the space and time correlation function using the Wiener-Khinchin theorem and writes the output to a NetCDf file. Notes:
 
 - x and y directions are already in Fourier space and periodic => simply use a 2D real FFT on squared field to find correlation function as a function of dx and dy
-- Time correlation
-  - Time series is real and needs to be put into fourier space before WK theorem can be used.
-  - According to Bendat & Piersol (Sec 11.4): To avoid edge effects due to a non-periodic finite time series, need to pad the time series with zeros. If time series is of length N, pad with N zeros => after FT 0...N-1 will contain the required correlation function and N...2N+1 will contain second part of _circular correlation function_.
-  - Second part can be discarded.
+- Time Correlation
+  - Calculation of the time correlation follows Y.C. Ghim's procedure (PRL 2013).
+  - For each radial grid point, calculate the function C(dt,dy) using the Python correlate routines.
+  - Take a few dy values around dy = 0 and fit the peaks of the function C_dy(dt) with a decaying exponential.
+  - If there is no flow, the dy = 0 C(dt) function will be fitted with a Gaussian function.
+  - This method will break down when the flow is too fast. This usually manifests itself as a significantly shorter time correlation.
 
 film.py
 -------
 
-Contains functions for making films.
+Contains functions for making films using ffmpeg.
 
 fit.py
 ------
 
-Contains functions for fitting perp and time correlation functions.
+Contains functions for fitting perp and time correlation functions as well as plotting time correlation functions with with fitted functions.
