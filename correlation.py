@@ -31,8 +31,8 @@ diag_file = open("analysis/diag.out", "w")
 
 # Read command line argument specifying location of NetCDF file
 analysis =  str(sys.argv[1]) #specify analysis (time or perp)
-if analysis != 'perp' and analysis != 'time' and analysis != 'bes':
-  raise Exception('Please specify analysis: time or perp.')
+if analysis != 'perp' and analysis != 'time' and analysis != 'bes' and analysis != 'zf':
+  raise Exception('Please specify analysis: perp/time/bes/zf.')
 in_file =  str(sys.argv[2])
 diag_file.write("User specified the following analysis: " + str(analysis) + "\n")
 diag_file.write("User specified the following GS2 output file: " + str(in_file) + "\n")
@@ -183,6 +183,7 @@ def tau_vs_radius(ntot, t):
 t_start = time.clock()
 
 ncfile = netcdf.netcdf_file(in_file, 'r')
+phi = ncfile.variables['phi_t'][:,:,:,10,:] #index = (t, ky, kx, theta, ri)
 density = ncfile.variables['ntot_t'][:,0,:,:,10,:] #index = (t, spec, ky, kx, theta, ri)
 th = ncfile.variables['theta'][10]
 kx = ncfile.variables['kx'][:]
@@ -209,6 +210,7 @@ elif interp_inp == 'n':
   t_reg = np.array(t)
   shape = density.shape
   ntot_reg = np.array(np.swapaxes(density, 1, 2)) #ensure ntot_reg[t, kx, ky, ri]
+  phi_reg = np.array(np.swapaxes(phi, 1, 2)) #ensure ntot_reg[t, kx, ky, ri]
 
 
 #Zero out density fluctuations which are larger than the BES
@@ -391,6 +393,45 @@ elif analysis == 'bes':
   #Export film
   print 'Exporting film...'
   film.real_space_film_2d(xpts, ypts, real_space_density[:,:,:], 'density')
+
+#######################
+# Zonal Flow Analysis #
+#######################
+elif analysis == 'zf':
+  diag_file.write("Started zonal flow correlation analysis.\n")
+  shape = phi_reg.shape
+  nt = shape[0]
+  nx = shape[1]
+  ny = shape[2]
+
+  # phi = phi[t,kx,ky,ri]
+  # Need to multiply by nx since ifft contains 1/nx implicitly but spectral->real for GS2 variables require no factor.
+  # Finally, zf_vel is in units of (1/kxfac vth) since technically: zf_vel = kxfac*IFT[(kx*phi_imag)] however kxfac calculation is nontrivial.
+  zf_vel = np.empty([nt,nx],dtype=float)
+  for it in range(nt):
+    zf_vel[it,:] = np.fft.ifft(real_to_complex_1d(phi_reg[it,:,0,:])*kx).imag*nx
+
+  #ZF vs x and t
+  plt.clf()
+  plt.contourf(zf_vel)
+  plt.title('$v_{ZF}(x, t))$', fontsize=25)
+  plt.colorbar()
+  plt.xlabel(r'$ x (\rho_i)$', fontsize=25)
+  plt.ylabel(r'$t (a / v_{thi})$', fontsize=25)
+  plt.xticks(fontsize=25)
+  plt.yticks(fontsize=25)
+  plt.savefig('analysis/zf_2d.pdf')
+
+  # Mean ZF vs x
+  plt.clf()
+  plt.plot(np.mean(zf_vel, axis=0))
+  plt.title('$v_{ZFi, mean}(x))$', fontsize=25)
+  plt.xlabel(r'$ x (\rho_i)$', fontsize=25)
+  plt.ylabel(r'$v_{ZF} (v_{thi}/kxfac)$', fontsize=25)
+  plt.xticks(fontsize=25)
+  plt.yticks(fontsize=25)
+  plt.savefig('analysis/zf_mean.pdf')
+  
 
 diag_file.write(str(analysis) + "analysis finished succesfully.\n")
 plt.close()
