@@ -22,7 +22,9 @@
 ###############################################################################
 
 #This file contains functions which generate films
-import os, sys
+import os
+import sys
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -39,11 +41,11 @@ def film_2d(xpts, ypts, field, nt, field_name):
         plt.xlabel(r'$\Delta x (\rho_i)$')
         plt.ylabel(r'$\Delta y (\rho_i)$')
         fname = "analysis/film_frames/"+field_name+"_%04d.jpg"%it
-        print 'Saving frame = ', fname
+        print('Saving frame = ', fname)
         fig.savefig(fname)
         files.append(fname)
 
-        print 'Making movie animation.mp4'
+        print('Making movie animation.mp4')
         os.system("ffmpeg -threads 2 -y -f image2 -r 40 -i 'analysis/film_frames/"
                   +field_name+"_%04d.jpg' analysis/"+field_name+".mp4")
 
@@ -66,10 +68,10 @@ def real_space_film_2d(xpts, ypts, field, field_name):
         plt.xlabel(r'$x (m)$')
         plt.ylabel(r'$y (m)$')
         fname = "analysis/film_frames/"+field_name+"_%04d.png"%it
-        print 'Saving frame = ', fname
+        print('Saving frame = ', fname)
         fig.savefig(fname)
         files.append(fname)
 
-    print 'Making movie animation.mp4'
+    print('Making movie animation.mp4')
     os.system("ffmpeg -threads 2 -y -f image2 -r 40 -i 'analysis/film_frames/"
               +field_name+"_%04d.png' analysis/"+field_name+".mp4")

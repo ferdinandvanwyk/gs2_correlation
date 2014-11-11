@@ -30,11 +30,15 @@
 #
 # python correlation.py <field> <time/perp/bes/zf> <location of .nc file>
 
+# Standard packages
 import os
 import sys
 import operator #enumerate list
 import time
 import gc #garbage collector
+import configparser
+
+# External Packages
 import numpy as np
 import matplotlib.pyplot as plt
 plt.rcParams.update({'figure.autolayout': True})
@@ -46,29 +50,39 @@ import pickle as pkl
 from mpl_toolkits.mplot3d import Axes3D
 from netCDF4 import Dataset
 
-import fit #local file
-import film #local file
+# Local methods
+import fit
+import film
 
 #Make folder which will contain all the correlation analysis
 os.system("mkdir analysis")
 
-#Open a diagnostic output file.
+#Open the diagnostic output file
 diag_file = open("analysis/diag.out", "w")
 
-# Read command line argument specifying location of NetCDF file
-in_field = str(sys.argv[1]) 
-diag_file.write("User specified the following field: " + str(in_field) + "\n")
-analysis =  str(sys.argv[2])
+####################
+# Read config file #
+####################
+
+config = configparser.ConfigParser()
+config.read("config.ini")
+print(config.sections())
+
+# Analysis information
+in_field =0
+analysis = 0
+in_file = 0
+
+diag_file.write("User specified the following field: " + in_field + "\n")
 if (analysis != 'perp' and analysis != 'time' 
     and analysis != 'bes' and analysis != 'zf'):
     raise Exception('Please specify analysis: perp/time/bes/zf.')
-in_file =  str(sys.argv[3])
-diag_file.write("User specified the following analysis: " + str(analysis) 
+diag_file.write("User specified the following analysis: " + analysis 
                 + "\n")
-diag_file.write("User specified the following GS2 output file: " + str(in_file)
+diag_file.write("User specified the following GS2 output file: " + in_file
                 + "\n")
 
-#Normalization parameters
+# Normalization parameters
 amin = 0.58044 # m
 vth = 1.4587e+05 # m/s
 rhoref = 6.0791e-03 # m
@@ -76,6 +90,7 @@ pitch_angle = 0.6001 # in radians
 diag_file.write("The following normalization parameters were used: " 
                 "[amin, vth, rhoref, pitch_angle] = "
                 + str([amin, vth, rhoref, pitch_angle]) + "\n")
+
 
 #########################
 # Function Declarations #
@@ -119,8 +134,8 @@ def wk_thm_2d(c_field):
     # The power spectrum is defined as abs(A)**2 where A is a COMPLEX array. In 
     # this case f.
     c_field = np.abs(c_field**2)
-    # option 's' below truncates by ny by 1 such that an odd number of y pts are 
-    # output => need to have corr fn at (0,0)
+    # option 's' below truncates by ny by 1 such that an odd number of y pts 
+    # are output => need to have corr fn at (0,0)
     corr = np.fft.irfft2(c_field,axes=[0,1], s=[c_field.shape[0], 
                          2*(c_field.shape[1]-1)-1])
     return corr*c_field.shape[0]*c_field.shape[1]/2
@@ -137,7 +152,8 @@ def perp_fit(corr_fn, xpts, ypts, guess):
     avg_corr = np.mean(corr_fn, axis=0)
 
     # lx, ly, kx, ky
-    popt, pcov = opt.curve_fit(fit.tilted_gauss, (x, y), avg_corr.ravel(), p0=guess)
+    popt, pcov = opt.curve_fit(fit.tilted_gauss, (x, y), avg_corr.ravel(), 
+                               p0=guess)
 
     #plt.contourf(xpts, ypts, np.transpose(avg_corr))
     #plt.hold(True)
@@ -160,8 +176,9 @@ def time_fit(corr_fn, t):
     mid_idx = 61
     os.system("mkdir analysis/corr_fns")
     for ix in range(0,nx): # loop over all radial points
-    for iy in range(mid_idx,mid_idx+5): # only first 5 since rest may be noise
-        max_index[ix, iy-mid_idx], peaks[ix, iy-mid_idx] = 
+        #only read fit first 5 since rest may be noise
+        for iy in range(mid_idx,mid_idx+5):
+            max_index[ix, iy-mid_idx], peaks[ix, iy-mid_idx] = \
                 max(enumerate(corr_fn[:,ix,iy]), key=operator.itemgetter(1))
 
     if (strictly_increasing(max_index[ix,:]) == True or 
@@ -212,12 +229,12 @@ def tau_vs_radius(ntot, t):
     shape = ntot.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
     # change to meters and poloidal plane
     ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) 
-    dypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], ny)*
-                                                    rhoref*np.tan(pitch_angle)
+    dypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], 
+                        ny)*rhoref*np.tan(pitch_angle)
     corr_fn = np.empty([2*nt-1, nx, 2*ny-1], dtype=float); corr_fn[:,:,:] = 0.0
 
     for ix in range(nx):
-        print 'ix = ', ix, ' of ', nx
+        print('ix = ', ix, ' of ', nx)
         corr_fn[:,ix,:] = sig.correlate(ntot[:,ix,:], ntot[:,ix,:])
 
         # Normalize correlation function by the max
@@ -274,15 +291,15 @@ if zero == 'y':
     diag_file.write("User chose to zero out k-modes larger than the approx "
                     "size of the BES.\n")
     shape = ntot_reg.shape
-        for iky in range(shape[2]):
-            for ikx in range(shape[1]):
-                # Roughly the size of BES (160x80mm)
-                if abs(kx[ikx]) < 0.25 and ky[iky] < 0.5: 
-                    ntot_reg[:,ikx,iky] = 0.0
+    for iky in range(shape[2]):
+        for ikx in range(shape[1]):
+            # Roughly the size of BES (160x80mm)
+            if abs(kx[ikx]) < 0.25 and ky[iky] < 0.5: 
+                ntot_reg[:,ikx,iky] = 0.0
 
 #End timer
 t_end = time.clock()
-print 'Interpolation Time = ', t_end-t_start, ' s'
+print('Interpolation Time = ', t_end-t_start, ' s')
 
 #Clear density from memory
 density = None; f = None; gc.collect();
@@ -369,7 +386,7 @@ if analysis == 'perp':
 
     #End timer
     t_end = time.clock()
-    print 'Total Time = ', t_end-t_start, ' s'
+    print('Total Time = ', t_end-t_start, ' s')
 
 #################
 # Time Analysis #
@@ -414,7 +431,7 @@ elif analysis == 'time':
 
     #End timer
     t_end = time.clock()
-    print 'Total Time = ', t_end-t_start, ' s'
+    print('Total Time = ', t_end-t_start, ' s')
 
 ##############
 # BES Output #
@@ -429,11 +446,11 @@ elif analysis == 'bes':
     ny = (nky-1)*2
 
     real_space_density = np.empty([nt,nx,ny],dtype=float)
-        for it in range(nt):
-            real_space_density[it,:,:] = np.fft.irfft2(real_to_complex_2d(
-                                               ntot_reg[it,:,:,:]), axes=[0,1])
-            real_space_density[it,:,:] = np.roll(real_space_density[it,:,:], 
-                                                 nx/2, axis=0)
+    for it in range(nt):
+        real_space_density[it,:,:] = np.fft.irfft2(real_to_complex_2d(
+                                            ntot_reg[it,:,:,:]), axes=[0,1])
+        real_space_density[it,:,:] = np.roll(real_space_density[it,:,:], 
+                                             nx/2, axis=0)
 
     xpts = np.linspace(0, 2*np.pi/kx[1], nx)*rhoref 
     ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle)  
@@ -455,7 +472,7 @@ elif analysis == 'bes':
     nc_file.close()
 
     #Export film
-    print 'Exporting film...'
+    print ('Exporting film...')
     film.real_space_film_2d(xpts, ypts, real_space_density[:,:,:], 'density')
 
 #######################
