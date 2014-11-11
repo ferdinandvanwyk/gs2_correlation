@@ -42,11 +42,8 @@ import configparser
 import numpy as np
 import matplotlib.pyplot as plt
 plt.rcParams.update({'figure.autolayout': True})
-import scipy.optimize as opt
 import scipy.interpolate as interp
-import scipy.signal as sig
 from scipy.io import netcdf
-import pickle as pkl
 from mpl_toolkits.mplot3d import Axes3D
 from netCDF4 import Dataset
 
@@ -67,6 +64,11 @@ analysis = str(config['analysis']['analysis'])
 in_file = str(config['analysis']['cdf_file'])
 out_dir = str(config['analysis']['out_dir'])
 interpolate = bool(config['analysis']['interpolate'])
+zero_bes_scales = str(config['analysis']['zero_bes_scales'])
+if zero_bes_scales == "True":
+    zero_bes_scales = True
+else:
+    zero_bes_scales = False
 spec_idx = str(config['analysis']['species_index'])
 if spec_idx == "None":
     spec_idx = None
@@ -100,8 +102,10 @@ diag_file.write("User specified the following GS2 output file: " + in_file
                 + "\n")
 diag_file.write("User specified the following species index: " + str(spec_idx)
                 + "\n")
-diag_file.write("User specified the following theta index: " + str(theta_idx) 
+diag_file.write("User specified the following theta index: " + str(theta_idx)
                 + "\n")
+diag_file.write("User chose to interpolate: " + str(interpolate) + "\n")
+diag_file.write("User chose to zero BES scales: " + str(zero_bes_scales) + "\n")
 diag_file.write("The following normalization parameters were used: " 
                 "[amin, vth, rhoref, pitch_angle] = "
                 + str([amin, vth, rhoref, pitch_angle]) + "\n")
@@ -143,122 +147,15 @@ def wk_thm_1d(field_1, field_2):
 # assumed to be half complex and 'ri' indicates the real/imaginary axis 
 # (0 real, 1 imag). The output is the correlation function C(dx, dy).
 def wk_thm_2d(c_field):
-    # The Wiener-Khinchin thm states that the autocorrelation function is the FFT 
-    # of the power spectrum.
-    # The power spectrum is defined as abs(A)**2 where A is a COMPLEX array. In 
-    # this case f.
+    # The Wiener-Khinchin thm states that the autocorrelation function is the 
+    # FFT of the power spectrum. The power spectrum is defined as abs(A)**2 
+    # where A is a COMPLEX array. In this case f.
     c_field = np.abs(c_field**2)
     # option 's' below truncates by ny by 1 such that an odd number of y pts 
     # are output => need to have corr fn at (0,0)
     corr = np.fft.irfft2(c_field,axes=[0,1], s=[c_field.shape[0], 
                          2*(c_field.shape[1]-1)-1])
     return corr*c_field.shape[0]*c_field.shape[1]/2
-
-# Fit the 2D correlation function with a tilted Gaussian and extract the 
-# fitting parameters
-def perp_fit(corr_fn, xpts, ypts, guess):
-    shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
-    x,y = np.meshgrid(xpts, ypts)
-    x = np.transpose(x); y = np.transpose(y)
-
-    # Average corr fn over time
-    avg_corr = np.empty([nx, ny], dtype=float)
-    avg_corr = np.mean(corr_fn, axis=0)
-
-    # lx, ly, kx, ky
-    popt, pcov = opt.curve_fit(fit.tilted_gauss, (x, y), avg_corr.ravel(), 
-                               p0=guess)
-
-    #plt.contourf(xpts, ypts, np.transpose(avg_corr))
-    #plt.hold(True)
-    #data_fitted = fit.tilted_gauss((x, y), *popt)
-    #plt.contour(xpts, ypts, np.transpose(data_fitted.reshape(nx,ny)), 8, colors='w')
-    #plt.show()
-
-    return popt
-
-#Fit the peaks of the correlation functions of different dy with decaying exp
-def time_fit(corr_fn, t):
-    shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
-
-    #define delta t range
-    dt = np.linspace(-max(t)+t[0], max(t)-t[0], nt)
-
-    peaks = np.empty([nx, 5]); peaks[:,:] = 0.0;
-    max_index = np.empty([nx, 5], dtype=int);
-    popt = np.empty([nx], dtype=float)
-    mid_idx = 61
-    os.system("mkdir analysis/corr_fns")
-    for ix in range(0,nx): # loop over all radial points
-        #only read fit first 5 since rest may be noise
-        for iy in range(mid_idx,mid_idx+5):
-            max_index[ix, iy-mid_idx], peaks[ix, iy-mid_idx] = \
-                max(enumerate(corr_fn[:,ix,iy]), key=operator.itemgetter(1))
-
-    if (strictly_increasing(max_index[ix,:]) == True or 
-        strictly_increasing(max_index[ix,::-1]) == True):
-        # Perform fitting of decaying exponential to peaks
-        init_guess = (10.0)
-        if max_index[ix, 4] > max_index[ix, 0]:
-            popt[ix], pcov = opt.curve_fit(fit.decaying_exp, 
-                    (dt[max_index[ix,:]]), peaks[ix,:].ravel(), p0=init_guess)
-            fit.plot_fit(ix, dt, corr_fn[:,ix,:], max_index[ix,:], peaks[ix,:], 
-                    mid_idx, popt[ix], 'decaying_exp', amin, vth)
-            diag_file.write("Index " + str(ix) + " was fitted with decaying" 
-                    "exponential. tau = " + str(popt[ix]) + "\n")
-        else:
-            popt[ix], pcov = opt.curve_fit(fit.growing_exp, 
-                    (dt[max_index[ix,::-1]]), peaks[ix,::-1].ravel(), 
-                    p0=init_guess)
-            fit.plot_fit(ix, dt, corr_fn[:,ix,:], max_index[ix, :], peaks[ix,:],
-                    mid_idx, popt[ix], 'growing_exp', amin, vth)
-            diag_file.write("Index " + str(ix) + " was fitted with growing "
-                    "exponential. tau = " + str(popt[ix]) + "\n")
-    else:
-        # If abs(max_index) is not monotonically increasing, this usually means
-        # that there is no flow and that the above method cannot be used to 
-        # calculate the correlation time. Try fitting a decaying oscillating 
-        # exponential to the central peak.
-        corr_fn[:,ix,mid_idx] = corr_fn[:,ix,mid_idx]/max(corr_fn[:,ix,mid_idx])
-        init_guess = (10.0, 1.0)
-        tau_and_omega, pcov = opt.curve_fit(fit.osc_exp, (dt[nt/2-100:nt/2+100]), 
-                (corr_fn[nt/2-100:nt/2+100,ix,mid_idx]).ravel(), p0=init_guess)
-        popt[ix] = tau_and_omega[0]
-        fit.plot_fit(ix, dt, corr_fn[:,ix,:], max_index[ix,:], peaks[ix,:], 
-                     mid_idx, tau_and_omega, 'osc_exp', amin, vth)
-        diag_file.write("Index " + str(ix) + " was fitted with an oscillating "
-                    "Gaussian to the central peak. [tau, omega] = " 
-                    + str(tau_and_omega) + "\n")
-
-    # Return correlation time in seconds
-    return abs(popt)*1e6*amin/vth 
-
-# Function which checks monotonicity. Returns True or False.
-def strictly_increasing(L):
-    return all(x<y for x, y in zip(L, L[1:]))
-
-# Function which takes in density fluctuations and outputs the correlation time
-# as a function of the minor radius
-def tau_vs_radius(ntot, t):
-    shape = ntot.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
-    # change to meters and poloidal plane
-    ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) 
-    dypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], 
-                        ny)*rhoref*np.tan(pitch_angle)
-    corr_fn = np.empty([2*nt-1, nx, 2*ny-1], dtype=float); corr_fn[:,:,:] = 0.0
-
-    for ix in range(nx):
-        print('ix = ', ix, ' of ', nx)
-        corr_fn[:,ix,:] = sig.correlate(ntot[:,ix,:], ntot[:,ix,:])
-
-        # Normalize correlation function by the max
-        corr_fn[:,ix,:] = corr_fn[:,ix,:] / np.max(corr_fn[:,ix,:])
-
-    # Fit exponential decay to peaks of correlation function in dt for few dy's
-    tau = time_fit(corr_fn, t) #tau in seconds
-
-    return tau
-
 
 #############
 # Main Code #
@@ -293,7 +190,7 @@ if interpolate:
                 # Transpose: ntot(t,kx,ky,theta,ri)
                 field[:, j, i, k] = f(t_reg)
     t = t_reg
-elif interp_inp == 'n':
+else:
     diag_file.write("User chose not to interpolate time onto a regular grid.\n")
     t = np.array(t)
     shape = cdf_field.shape
@@ -301,24 +198,23 @@ elif interp_inp == 'n':
     field = np.array(np.swapaxes(np.squeeze(cdf_field), 1, 2)) 
 
 #Zero out density fluctuations which are larger than the BES
-zero = raw_input('Do you want to zero out modes that are larger than the BES?')
-if zero == 'y':
+if zero_bes_scales:
     diag_file.write("User chose to zero out k-modes larger than the approx "
                     "size of the BES.\n")
-    shape = ntot_reg.shape
+    shape = field.shape
     for iky in range(shape[2]):
         for ikx in range(shape[1]):
             # Roughly the size of BES (160x80mm)
             if abs(kx[ikx]) < 0.25 and ky[iky] < 0.5: 
-                ntot_reg[:,ikx,iky] = 0.0
+                field[:,ikx,iky,:] = 0.0
 
 #End timer
 t_end = time.clock()
-print('Interpolation Time = ', t_end-t_start, ' s')
+diag_file.write('Interpolation Time = ' + str(t_end-t_start) + ' s')
 
-#Clear density from memory
-density = None; f = None; gc.collect();
-
+#Clear NetCDF field from memory
+cdf_field = None; f = None; gc.collect();
+sys.exit()
 #################
 # Perp Analysis #
 #################

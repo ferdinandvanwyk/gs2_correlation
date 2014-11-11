@@ -29,6 +29,122 @@ import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.optimize as opt
+import scipy.signal as sig
+
+######################
+# Fitting Procedures #
+######################
+
+# Fit the 2D correlation function with a tilted Gaussian and extract the 
+# fitting parameters
+def perp_fit(corr_fn, xpts, ypts, guess):
+    shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
+    x,y = np.meshgrid(xpts, ypts)
+    x = np.transpose(x); y = np.transpose(y)
+
+    # Average corr fn over time
+    avg_corr = np.empty([nx, ny], dtype=float)
+    avg_corr = np.mean(corr_fn, axis=0)
+
+    # lx, ly, kx, ky
+    popt, pcov = opt.curve_fit(fit.tilted_gauss, (x, y), avg_corr.ravel(), 
+                               p0=guess)
+
+    #plt.contourf(xpts, ypts, np.transpose(avg_corr))
+    #plt.hold(True)
+    #data_fitted = fit.tilted_gauss((x, y), *popt)
+    #plt.contour(xpts, ypts, np.transpose(data_fitted.reshape(nx,ny)), 8, 
+    #            colors='w')
+    #plt.show()
+
+    return popt
+
+#Fit the peaks of the correlation functions of different dy with decaying exp
+def time_fit(corr_fn, t):
+    shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
+
+    #define delta t range
+    dt = np.linspace(-max(t)+t[0], max(t)-t[0], nt)
+
+    peaks = np.empty([nx, 5]); peaks[:,:] = 0.0;
+    max_index = np.empty([nx, 5], dtype=int);
+    popt = np.empty([nx], dtype=float)
+    mid_idx = 61
+    os.system("mkdir analysis/corr_fns")
+    for ix in range(0,nx): # loop over all radial points
+        #only read fit first 5 since rest may be noise
+        for iy in range(mid_idx,mid_idx+5):
+            max_index[ix, iy-mid_idx], peaks[ix, iy-mid_idx] = \
+                max(enumerate(corr_fn[:,ix,iy]), key=operator.itemgetter(1))
+
+    if (strictly_increasing(max_index[ix,:]) == True or 
+        strictly_increasing(max_index[ix,::-1]) == True):
+        # Perform fitting of decaying exponential to peaks
+        init_guess = (10.0)
+        if max_index[ix, 4] > max_index[ix, 0]:
+            popt[ix], pcov = opt.curve_fit(fit.decaying_exp, 
+                    (dt[max_index[ix,:]]), peaks[ix,:].ravel(), p0=init_guess)
+            fit.plot_fit(ix, dt, corr_fn[:,ix,:], max_index[ix,:], peaks[ix,:], 
+                    mid_idx, popt[ix], 'decaying_exp', amin, vth)
+            diag_file.write("Index " + str(ix) + " was fitted with decaying" 
+                    "exponential. tau = " + str(popt[ix]) + "\n")
+        else:
+            popt[ix], pcov = opt.curve_fit(fit.growing_exp, 
+                    (dt[max_index[ix,::-1]]), peaks[ix,::-1].ravel(), 
+                    p0=init_guess)
+            fit.plot_fit(ix, dt, corr_fn[:,ix,:], max_index[ix, :], peaks[ix,:],
+                    mid_idx, popt[ix], 'growing_exp', amin, vth)
+            diag_file.write("Index " + str(ix) + " was fitted with growing "
+                    "exponential. tau = " + str(popt[ix]) + "\n")
+    else:
+        # If abs(max_index) is not monotonically increasing, this usually means
+        # that there is no flow and that the above method cannot be used to 
+        # calculate the correlation time. Try fitting a decaying oscillating 
+        # exponential to the central peak.
+        corr_fn[:,ix,mid_idx] = corr_fn[:,ix,mid_idx]/max(corr_fn[:,ix,mid_idx])
+        init_guess = (10.0, 1.0)
+        tau_and_omega, pcov = opt.curve_fit(fit.osc_exp, (dt[nt/2-100:nt/2+100]), 
+                (corr_fn[nt/2-100:nt/2+100,ix,mid_idx]).ravel(), p0=init_guess)
+        popt[ix] = tau_and_omega[0]
+        fit.plot_fit(ix, dt, corr_fn[:,ix,:], max_index[ix,:], peaks[ix,:], 
+                     mid_idx, tau_and_omega, 'osc_exp', amin, vth)
+        diag_file.write("Index " + str(ix) + " was fitted with an oscillating "
+                    "Gaussian to the central peak. [tau, omega] = " 
+                    + str(tau_and_omega) + "\n")
+
+    # Return correlation time in seconds
+    return abs(popt)*1e6*amin/vth 
+
+# Function which checks monotonicity. Returns True or False.
+def strictly_increasing(L):
+    return all(x<y for x, y in zip(L, L[1:]))
+
+# Function which takes in density fluctuations and outputs the correlation time
+# as a function of the minor radius
+def tau_vs_radius(ntot, t):
+    shape = ntot.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
+    # change to meters and poloidal plane
+    ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) 
+    dypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], 
+                        ny)*rhoref*np.tan(pitch_angle)
+    corr_fn = np.empty([2*nt-1, nx, 2*ny-1], dtype=float); corr_fn[:,:,:] = 0.0
+
+    for ix in range(nx):
+        print('ix = ', ix, ' of ', nx)
+        corr_fn[:,ix,:] = sig.correlate(ntot[:,ix,:], ntot[:,ix,:])
+
+        # Normalize correlation function by the max
+        corr_fn[:,ix,:] = corr_fn[:,ix,:] / np.max(corr_fn[:,ix,:])
+
+    # Fit exponential decay to peaks of correlation function in dt for few dy's
+    tau = time_fit(corr_fn, t) #tau in seconds
+
+    return tau
+
+###########################
+# Model Fitting Functions #
+###########################
 
 #Model function to be fitted to data, as defined in Anthony's papers
 def tilted_gauss(xdata_tuple, lx, ly, kx, ky):
