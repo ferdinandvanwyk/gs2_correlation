@@ -48,7 +48,7 @@ def perp_fit(corr_fn, xpts, ypts, guess):
     avg_corr = np.mean(corr_fn, axis=0)
 
     # lx, ly, kx, ky
-    popt, pcov = opt.curve_fit(fit.tilted_gauss, (x, y), avg_corr.ravel(), 
+    popt, pcov = opt.curve_fit(tilted_gauss, (x, y), avg_corr.ravel(), 
                                p0=guess)
 
     #plt.contourf(xpts, ypts, np.transpose(avg_corr))
@@ -61,7 +61,7 @@ def perp_fit(corr_fn, xpts, ypts, guess):
     return popt
 
 #Fit the peaks of the correlation functions of different dy with decaying exp
-def time_fit(corr_fn, t):
+def time_fit(corr_fn, t, out_dir):
     shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
 
     #define delta t range
@@ -71,7 +71,7 @@ def time_fit(corr_fn, t):
     max_index = np.empty([nx, 5], dtype=int);
     popt = np.empty([nx], dtype=float)
     mid_idx = 61
-    os.system("mkdir analysis/corr_fns")
+    os.system("mkdir " + out_dir + "/corr_fns")
     for ix in range(0,nx): # loop over all radial points
         #only read fit first 5 since rest may be noise
         for iy in range(mid_idx,mid_idx+5):
@@ -83,9 +83,9 @@ def time_fit(corr_fn, t):
         # Perform fitting of decaying exponential to peaks
         init_guess = (10.0)
         if max_index[ix, 4] > max_index[ix, 0]:
-            popt[ix], pcov = opt.curve_fit(fit.decaying_exp, 
+            popt[ix], pcov = opt.curve_fit(decaying_exp, 
                     (dt[max_index[ix,:]]), peaks[ix,:].ravel(), p0=init_guess)
-            fit.plot_fit(ix, dt, corr_fn[:,ix,:], max_index[ix,:], peaks[ix,:], 
+            plot_fit(ix, dt, corr_fn[:,ix,:], max_index[ix,:], peaks[ix,:], 
                     mid_idx, popt[ix], 'decaying_exp', amin, vth)
             diag_file.write("Index " + str(ix) + " was fitted with decaying" 
                     "exponential. tau = " + str(popt[ix]) + "\n")
@@ -122,7 +122,7 @@ def strictly_increasing(L):
 
 # Function which takes in density fluctuations and outputs the correlation time
 # as a function of the minor radius
-def tau_vs_radius(ntot, t):
+def tau_vs_radius(ntot, t, out_dir, diag_file):
     shape = ntot.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
     # change to meters and poloidal plane
     ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) 
@@ -138,7 +138,7 @@ def tau_vs_radius(ntot, t):
         corr_fn[:,ix,:] = corr_fn[:,ix,:] / np.max(corr_fn[:,ix,:])
 
     # Fit exponential decay to peaks of correlation function in dt for few dy's
-    tau = time_fit(corr_fn, t) #tau in seconds
+    tau = time_fit(corr_fn, t, out_dir, diag_file) #tau in seconds
 
     return tau
 
