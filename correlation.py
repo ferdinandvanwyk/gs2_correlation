@@ -54,24 +54,30 @@ from netCDF4 import Dataset
 import fit
 import film
 
-#Make folder which will contain all the correlation analysis
-os.system("mkdir analysis")
-
-#Open the diagnostic output file
-diag_file = open("analysis/diag.out", "w")
-
 ####################
 # Read config file #
 ####################
 
 config = configparser.ConfigParser()
 config.read("config.ini")
-print(config.sections())
 
 # Analysis information
-in_field =0
-analysis = 0
-in_file = 0
+in_field = str(config['analysis']['field'])
+analysis = str(config['analysis']['analysis'])
+in_file = str(config['analysis']['cdf_file'])
+out_dir = str(config['analysis']['out_dir'])
+
+# Normalization parameters
+amin = float(config['normalization']['a_minor']) # m
+vth = float(config['normalization']['vth_ref']) # m/s
+rhoref = float(config['normalization']['rho_ref']) # m
+pitch_angle = float(config['normalization']['pitch_angle']) # in radians
+
+#Make folder which will contain all the correlation analysis
+os.system("mkdir " + out_dir)
+
+#Open the diagnostic output file
+diag_file = open(out_dir + "/diag.out", "w")
 
 diag_file.write("User specified the following field: " + in_field + "\n")
 if (analysis != 'perp' and analysis != 'time' 
@@ -81,16 +87,9 @@ diag_file.write("User specified the following analysis: " + analysis
                 + "\n")
 diag_file.write("User specified the following GS2 output file: " + in_file
                 + "\n")
-
-# Normalization parameters
-amin = 0.58044 # m
-vth = 1.4587e+05 # m/s
-rhoref = 6.0791e-03 # m
-pitch_angle = 0.6001 # in radians
 diag_file.write("The following normalization parameters were used: " 
                 "[amin, vth, rhoref, pitch_angle] = "
                 + str([amin, vth, rhoref, pitch_angle]) + "\n")
-
 
 #########################
 # Function Declarations #
