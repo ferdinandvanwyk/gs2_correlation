@@ -66,6 +66,16 @@ in_field = str(config['analysis']['field'])
 analysis = str(config['analysis']['analysis'])
 in_file = str(config['analysis']['cdf_file'])
 out_dir = str(config['analysis']['out_dir'])
+spec_idx = str(config['analysis']['species_index'])
+if spec_idx == "None":
+    spec_idx = None
+else:
+    spec_idx = int(spec_idx)
+theta_idx = str(config['analysis']['theta_index'])
+if theta_idx == "None":
+    theta_idx = None
+else:
+    theta_idx = int(spec_idx)
 
 # Normalization parameters
 amin = float(config['normalization']['a_minor']) # m
@@ -253,8 +263,7 @@ def tau_vs_radius(ntot, t):
 t_start = time.clock()
 
 ncfile = netcdf.netcdf_file(in_file, 'r')
-phi = ncfile.variables['phi_t'][:,:,:,10,:] #index = (t, ky, kx, theta, ri)
-density = ncfile.variables['ntot_t'][:,0,:,:,10,:] #index = (t, spec, ky, kx, theta, ri)
+field = ncfile.variables[in_field][:,:,:,:] #(t, spec, ky, kx, theta, ri)
 th = ncfile.variables['theta'][10]
 kx = ncfile.variables['kx'][:]
 ky = ncfile.variables['ky'][:]
@@ -262,6 +271,7 @@ t = ncfile.variables['t'][:]
 
 plt.plot(t)
 plt.show()
+sys.exit()
 
 #Ensure time is on a regular grid for uniformity
 interp_inp = raw_input('Do you want to interpolate the input (y/n)?')
