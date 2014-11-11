@@ -66,6 +66,7 @@ in_field = str(config['analysis']['field'])
 analysis = str(config['analysis']['analysis'])
 in_file = str(config['analysis']['cdf_file'])
 out_dir = str(config['analysis']['out_dir'])
+interpolate = bool(config['analysis']['interpolate'])
 spec_idx = str(config['analysis']['species_index'])
 if spec_idx == "None":
     spec_idx = None
@@ -86,8 +87,8 @@ pitch_angle = float(config['normalization']['pitch_angle']) # in radians
 #Make folder which will contain all the correlation analysis
 os.system("mkdir " + out_dir)
 
-#Open the diagnostic output file
-diag_file = open(out_dir + "/diag.out", "w")
+#Open the diagnostic output file and write config parameters for checking
+diag_file = open(out_dir + "/diag_" + analysis + ".out", "w")
 
 diag_file.write("User specified the following field: " + in_field + "\n")
 if (analysis != 'perp' and analysis != 'time' 
@@ -96,6 +97,10 @@ if (analysis != 'perp' and analysis != 'time'
 diag_file.write("User specified the following analysis: " + analysis 
                 + "\n")
 diag_file.write("User specified the following GS2 output file: " + in_file
+                + "\n")
+diag_file.write("User specified the following species index: " + str(spec_idx)
+                + "\n")
+diag_file.write("User specified the following theta index: " + str(theta_idx) 
                 + "\n")
 diag_file.write("The following normalization parameters were used: " 
                 "[amin, vth, rhoref, pitch_angle] = "
@@ -259,40 +264,41 @@ def tau_vs_radius(ntot, t):
 # Main Code #
 #############
 
-#Start timer
+# Start timer
 t_start = time.clock()
 
 ncfile = netcdf.netcdf_file(in_file, 'r')
-field = ncfile.variables[in_field][:,:,:,:] #(t, spec, ky, kx, theta, ri)
-th = ncfile.variables['theta'][10]
+# GS2 Index: (t, spec, ky, kx, theta, ri). Indices suppressed if = None
+cdf_field = ncfile.variables[in_field][:, spec_idx, :, :, theta_idx, :] 
+cdf_field = np.squeeze(cdf_field)
+th = ncfile.variables['theta'][theta_idx]
 kx = ncfile.variables['kx'][:]
 ky = ncfile.variables['ky'][:]
 t = ncfile.variables['t'][:]
 
-plt.plot(t)
-plt.show()
-sys.exit()
-
-#Ensure time is on a regular grid for uniformity
-interp_inp = raw_input('Do you want to interpolate the input (y/n)?')
-if interp_inp == 'y':
+# Check config parameter and interpolate in time if specified. A regular time
+# grid is required by the FFT routines.
+if interpolate:
     diag_file.write("User chose to interpolate time onto a regular grid.\n")
     t_reg = np.linspace(min(t), max(t), len(t))
-    shape = density.shape
-    ntot_reg = np.empty([shape[0], shape[2], shape[1], shape[3]])
+    shape = cdf_field.shape
+    # Create empty array and squeeze axes of length 1
+    field = np.empty(shape)
+    # Swap ky and kx axes such that index = [t, kx, ky, ri]
+    field = np.array(np.swapaxes(field, 1, 2)) 
     for i in range(shape[1]):
         for j in range(shape[2]):
             for k in range(shape[3]):
-                f = interp.interp1d(t, density[:, i, j, k])
-                # transpose: ntot(t,kx,ky,theta,ri)
-                ntot_reg[:, j, i, k] = f(t_reg) 
+                f = interp.interp1d(t, cdf_field[:, i, j, k])
+                # Transpose: ntot(t,kx,ky,theta,ri)
+                field[:, j, i, k] = f(t_reg)
+    t = t_reg
 elif interp_inp == 'n':
     diag_file.write("User chose not to interpolate time onto a regular grid.\n")
-    t_reg = np.array(t)
-    shape = density.shape
-    ntot_reg = np.array(np.swapaxes(density, 1, 2)) #ntot_reg[t, kx, ky, ri]
-    phi_reg = np.array(np.swapaxes(phi, 1, 2)) 
-
+    t = np.array(t)
+    shape = cdf_field.shape
+    # Transpose field and squeeze axes length 1 
+    field = np.array(np.swapaxes(np.squeeze(cdf_field), 1, 2)) 
 
 #Zero out density fluctuations which are larger than the BES
 zero = raw_input('Do you want to zero out modes that are larger than the BES?')
