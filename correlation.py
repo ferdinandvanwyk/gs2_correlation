@@ -62,6 +62,14 @@ config.read("config.ini")
 in_field = str(config['analysis']['field'])
 analysis = str(config['analysis']['analysis'])
 in_file = str(config['analysis']['cdf_file'])
+# Automatically find .out.nc file if only directory specified
+if in_file.find(".out.nc") == -1:
+    in_dir_files = os.listdir(in_file)
+    for s in in_dir_files:
+        if s.find('.out.nc') != -1:
+            in_file = in_file + s
+            break
+
 out_dir = str(config['analysis']['out_dir'])
 interpolate = bool(config['analysis']['interpolate'])
 zero_bes_scales = str(config['analysis']['zero_bes_scales'])
