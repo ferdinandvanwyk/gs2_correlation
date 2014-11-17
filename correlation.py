@@ -50,6 +50,7 @@ from netCDF4 import Dataset
 # Local methods
 import fit
 import film
+import wk
 
 ####################
 # Read config file #
@@ -118,52 +119,6 @@ diag_file.write("The following normalization parameters were used: "
                 "[amin, vth, rhoref, pitch_angle] = "
                 + str([amin, vth, rhoref, pitch_angle]) + "\n")
 
-#########################
-# Function Declarations #
-#########################
-
-# Function which converts from GS2 field to complex field which can be passed 
-# to fft routines
-def real_to_complex_1d(field):
-    n1 = field.shape[0]
-    cplx_field = np.empty([n1],dtype=complex)
-    cplx_field.real = field[:,0]
-    cplx_field.imag = field[:,1]
-    #fix fft normalisation that is appropriate for numpy fft package
-    cplx_field = cplx_field
-    return cplx_field
-
-def real_to_complex_2d(field):
-    # convert fgs2 to numpy 2D real Fourier transform fr(x,y,theta)
-    # nx,ny are number of points within a period
-    # => periodic points are nx+1, ny+1 apart
-    [nk1, nk2] = [ field.shape[0], field.shape[1]]
-    n1 = nk1; n2 = (nk2-1)*2 #assuming second index is half complex
-    cplx_field = np.empty([nk1,nk2],dtype=complex)
-    cplx_field.real = field[:,:,0]
-    cplx_field.imag = field[:,:,1]
-    # fix fft normalisation that is appropriate for numpy fft package
-    cplx_field = cplx_field
-    return cplx_field
-
-def wk_thm_1d(field_1, field_2):
-    field = np.conjugate(field_1)*field_2
-    corr = np.fft.ifft(field)
-    return corr.real*field.shape[0]
-
-# Function which applies WK theorem to a real 2D field field(x,y,ri) where y is
-# assumed to be half complex and 'ri' indicates the real/imaginary axis 
-# (0 real, 1 imag). The output is the correlation function C(dx, dy).
-def wk_thm_2d(c_field):
-    # The Wiener-Khinchin thm states that the autocorrelation function is the 
-    # FFT of the power spectrum. The power spectrum is defined as abs(A)**2 
-    # where A is a COMPLEX array. In this case f.
-    c_field = np.abs(c_field**2)
-    # option 's' below truncates by ny by 1 such that an odd number of y pts 
-    # are output => need to have corr fn at (0,0)
-    corr = np.fft.irfft2(c_field,axes=[0,1], s=[c_field.shape[0], 
-                         2*(c_field.shape[1]-1)-1])
-    return corr*c_field.shape[0]*c_field.shape[1]/2
 
 #############
 # Main Code #
