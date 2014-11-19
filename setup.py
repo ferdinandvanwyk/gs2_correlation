@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 from setuptools import setup
 
 # Utilty function to read the README file. 
@@ -11,8 +12,8 @@ def read(fname):
 
 setup(name='gs2_correlation',
       version='0.3.0',
-      description='Calculates temporal and spatial correlation parameters from 
-      GS2 fluctuation data.',
+      description='Calculates temporal and spatial correlation parameters from' 
+      'GS2 fluctuation data.',
       author='Ferdinand van Wyk',
       author_email='ferdinandvwyk@gmail.com',
       url='https://github.com/ferdinandvwyk/gs2_correlation',
