@@ -10,7 +10,7 @@ def read(fname):
         return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(name='gs2_correlation',
-      version='0.1.0',
+      version='0.3.0',
       description='Calculates temporal and spatial correlation parameters from 
       GS2 fluctuation data.',
       author='Ferdinand van Wyk',
