@@ -3,6 +3,7 @@ import os
 import pytest
 
 # Third Party
+import numpy as np
 
 # Local
 from gs2_correlation.simulation import Simulation
@@ -49,6 +50,10 @@ class TestClass(object):
     def test_zf_bes(self, run, conf):
         run.zero_zf_scales(conf)
         assert (run.field[:, :, 0, :] == 0).all()
+
+    def test_to_complex(self, run):
+        run.to_complex()
+        assert np.iscomplexobj(run.field) == True 
 
      
 

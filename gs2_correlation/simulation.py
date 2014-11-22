@@ -157,6 +157,20 @@ class Simulation(object):
         """
         self.field[:,:,0,:] = 0.0
 
+    def to_complex(self):
+        """Converts field to a complex array.
+
+        Field is in the following format: field[t, kx, ky, ri] where ri 
+        represents a dimension of length 2. 
+
+        * ri = 0 - Real part of the field. 
+        * ri = 1 - Imaginary part of the field. 
+        """
+        self.field = self.field[:,:,:,0] + 1j*self.field[:,:,:,1] 
+    
+    def perp_analysis(self, conf):
+        return None
+        
 
 
 
