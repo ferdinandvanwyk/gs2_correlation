@@ -127,12 +127,16 @@ class Configuration(object):
         self.in_file = str(config_parse['analysis']['cdf_file'])
         if self.in_file.find(self.file_ext) == -1:
             dir_files = os.listdir(self.in_file)
+            found = False
             for s in dir_files:
                 if s.find(self.file_ext) != -1:
                     self.in_file = self.in_file + s
+                    found = True
                     break
-                else:
-                    raise NameError('No file found ending in ' + self.file_ext)
+
+            if not found:
+                raise NameError('No file found ending in ' + self.file_ext)
+
         self.in_field = str(config_parse['analysis']['field'])
         self.analysis = str(config_parse['analysis']['analysis'])
         self.out_dir = str(config_parse.get('analysis', 'out_dir', 

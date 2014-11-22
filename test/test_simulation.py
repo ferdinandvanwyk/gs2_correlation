@@ -50,7 +50,7 @@ class TestClass(object):
         run.zero_zf_scales(conf)
         assert (run.field[:, :, 0, :] == 0).all()
 
-         
+     
 
 
 
