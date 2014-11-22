@@ -41,6 +41,45 @@ import logging
 # Local
 
 class Configuration(object):
+    """Class which holds configuration information.
+
+    After reading in data from configuration file, the instance has the 
+    attributes given below.
+
+    Attributes
+    ----------
+    file_ext : str
+        File extension for NetCDF output file. Default = '.cdf' 
+    cdf_file : str
+        Path (relative or absolute) and/or name of input NetCDF file. If
+        only a path is specified, the directory is searched for a file
+        ending in '.out.nc' and the name is appended to the path.
+    field : str
+        Name of the field to be read in from NetCDF file.
+    analysis : str
+        Type of analysis to be done. Options are 'full', 'perp', 'time', 
+        'bes', 'zf'.
+    out_dir : str
+        Output directory for analysis. Default = './analysis'.
+    interpolate : bool
+        Interpolate in time onto a regular grid.
+    zero_bes_scales : bool
+        Zero out scales which are larger than the BES.
+    species_index : int
+        Specied index to be read from NetCDF file. GS2 convention is to use
+        0 for ion and 1 for electron in a two species simulation.
+    theta_index : int or None
+        Parallel index at which to do analysis. If no theta index in array
+        set to None.
+    amin : float
+        Minor radius of device in *m*.
+    vth : float
+        Thermal velocity of the reference species in *m/s*
+    rhoref : float
+        Larmor radius of the reference species in *m*.
+    pitch_angle : float
+        Pitch angle of the magnetic field lines in *rad*.
+    """
 
     def __init__(self, config_file):
         """Initialize Configuration instance with config file filename.
@@ -61,50 +100,17 @@ class Configuration(object):
         * 'normalization' which gives the normalization parameters for the 
           simulation/experiment.
 
-        The exact parameters read in are documented in the read_config method. 
+        The exact parameters read in are documented in the Attributes above. 
         """
 
         self.config_file = config_file
 
     def read_config(self):
-        """Reads analysis and normalization parameters from config file.
+        """Reads analysis and normalization parameters from self.config_file.
 
-        The full list of possible configuration parameters is listed below, 
-        along with their default values. The parameter names follow the 
-        convention of <config namelist>.<parameter>.
+        The full list of possible configuration parameters is listed in the 
+        Attributes above, along with their default values.
 
-        Parameters
-        ----------
-        analysis.file_ext : str
-            File extension for NetCDF output file. Default = '.out.nc' 
-        analysis.cdf_file : str
-            Path (relative or absolute) and/or name of input NetCDF file. If
-            only a path is specified, the directory is searched for a file
-            ending in '.out.nc' and the name is appended to the path.
-        analysis.field : str
-            Name of the field to be read in from NetCDF file.
-        analysis.analysis : str
-            Type of analysis to be done. Options are 'full', 'perp', 'time', 
-            'bes', 'zf'.
-        analysis.out_dir : str
-            Output directory for analysis. Default = './analysis'.
-        analysis.interpolate : bool
-            Interpolate in time onto a regular grid.
-        analysis.zero_bes_scales : bool
-            Zero out scales which are larger than the BES.
-        analysis.species_index : int or None
-            Specied index to be read from NetCDF file. GS2 convention is to use
-            0 for ion and 1 for electron in a two species simulation.
-        analysis.theta_index : int or None
-            Parallel index at which to do analysis.
-        normalization.amin : float
-            Minor radius of device in *m*.
-        normalization.vth : float
-            Thermal velocity of the reference species in *m/s*
-        normalization.rhoref : float
-            Larmor radius of the reference species in *m*.
-        normalization.pitch_angle : float
-            Pitch angle of the magnetic field lines in *rad*.
         """
 
         logging.info('Started read_config...')
@@ -114,13 +120,13 @@ class Configuration(object):
 
         # Analysis information
         self.file_ext = config_parse.get('analysis', 'file_ext', 
-                                         fallback='.out.nc')
+                                         fallback='.cdf')
         # Automatically find .out.nc file if only directory specified
         self.in_file = str(config_parse['analysis']['cdf_file'])
         if self.in_file.find(self.file_ext) == -1:
             dir_files = os.listdir(self.in_file)
             for s in dir_files:
-                if s.find('self.file_ext') != -1:
+                if s.find(self.file_ext) != -1:
                     self.in_file = self.in_file + s
                     break
                 else:

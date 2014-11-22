@@ -1,11 +1,23 @@
-from gs2_correlation.configuration import Configuration
+# Standard
+import os
 import pytest
+
+# Third Party
+
+# Local
+from gs2_correlation.configuration import Configuration
 
 class TestClass(object):
 
+    def setup_class(self):
+        os.system('tar -zxf test/test_run.tar.gz -C test/.')
+
+    def teardown_class(self):
+        os.system('rm -rf test/test_run')
+
     @pytest.fixture(scope='function')
     def conf(self):
-        return Configuration('test/config.ini')
+        return Configuration('test/test_run/config.ini')
 
     def test_init(self, conf):
         assert type(conf.config_file) == str
@@ -26,5 +38,15 @@ class TestClass(object):
         assert type(conf.vth) == float
         assert type(conf.rhoref) == float
         assert type(conf.pitch_angle) == float
+
+
+
+
+
+
+
+
+
+
 
 

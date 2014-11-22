@@ -31,6 +31,7 @@ import time
 
 # Local
 import configuration
+import simulation
 
 #############
 # Main Code #
@@ -42,10 +43,13 @@ logging.info('')
 logging.info(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
 logging.info('')
 
-# Create and configuration object
+# Create and Configuration object
 conf = configuration.Configuration('config.ini')
 conf.read_config()
 
+#Create Simulation object
+run = simulation.Simulation()
+run.read_netcdf(conf)
 
 
 

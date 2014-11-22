@@ -30,24 +30,66 @@
                                                                                 
 """
 
-# Standard imports
+# Standard
 import os
 import sys
-import operator #enumerate list
-import time
 import gc #garbage collector
-import configparser
+import logging
 
-# Third Party imports
+# Third Party
+import numpy as np
+from scipy.io import netcdf
 
-# Local imports
-
+# Local
 
 class Simulation(object):
-    
-    def __init__(self):
-        return None
+    """Class containing all simulation information.
 
+    The class mainly reads from the simulation NetCDF file and operates on the
+    field specified in the configuration file, such as performing correlations,
+    FFTs, plotting, making films etc.
+
+    Attributes
+    ----------
+
+    field : array_like
+        Field read in from the NetCDF file.
+    kx : array_like
+        Values of the kx grid in the following order: 0,...,kx_max,-kx_max,...
+        kx_min.
+    ky : array_like
+        Values of the ky grid.
+    t : array_like
+        Values of the time grid.
+
+    """
+    
+    def read_netcdf(self, conf):
+        """Read array from NetCDF file.
+
+        Read array specified in configuration file as 'cdf_field'. Function 
+        uses information from the configuration object passed to it. 
+
+        Parameters
+        ----------
+
+        conf : object
+            This is an instance of the Configuration class which contains 
+            information read in from the configuration file, such as NetCDF 
+            filename, location, field to read in etc.
+
+        """
+        ncfile = netcdf.netcdf_file(conf.in_file, 'r')
+
+        # NetCDF order is [t, species, ky, kx, theta, r]
+        self.field = ncfile.variables[conf.in_field][:,conf.spec_idx,:,:,conf.theta_idx,:]
+        self.field = np.squeeze(self.field) 
+
+        self.kx = ncfile.variables['kx'][:]
+        self.ky = ncfile.variables['ky'][:]
+        self.t = ncfile.variables['t'][:]
+
+        
 
 
 
