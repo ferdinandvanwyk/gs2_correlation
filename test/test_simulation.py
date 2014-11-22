@@ -29,10 +29,17 @@ class TestClass(object):
         return sim
 
     def test_read_netcdf(self, run):
-        assert ('field' in vars(run)) == True
-        assert ('kx' in vars(run)) == True
-        assert ('ky' in vars(run)) == True
-        assert ('t' in vars(run)) == True
+        field_shape = run.field.shape
+        arr_shapes = (len(run.t), len(run.kx), len(run.ky), 2)
+        assert field_shape == arr_shapes
+    
+    def test_interpolate(self, run, conf):
+        # Need to think of a good test here
+        run.interpolate(conf)
+        field_shape = run.field.shape
+        arr_shapes = (len(run.t), len(run.kx), len(run.ky), 2)
+        assert field_shape == arr_shapes
+
          
 
 

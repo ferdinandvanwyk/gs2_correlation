@@ -50,6 +50,7 @@ conf.read_config()
 #Create Simulation object
 run = simulation.Simulation()
 run.read_netcdf(conf)
+run.interpolate()
 
 
 

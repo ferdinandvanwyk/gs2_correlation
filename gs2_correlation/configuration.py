@@ -62,7 +62,7 @@ class Configuration(object):
     out_dir : str
         Output directory for analysis. Default = './analysis'.
     interpolate : bool
-        Interpolate in time onto a regular grid.
+        Interpolate in time onto a regular grid. Default = True.
     zero_bes_scales : bool
         Zero out scales which are larger than the BES.
     species_index : int
@@ -135,7 +135,12 @@ class Configuration(object):
         self.analysis = str(config_parse['analysis']['analysis'])
         self.out_dir = str(config_parse.get('analysis', 'out_dir', 
                                             fallback='analysis'))
-        self.interpolate = bool(config_parse['analysis']['interpolate'])
+        self.interpolate = str(config_parse('analysis', 'interpolate'), 
+                                             fallback=True)
+        if self.interpolate == "True":
+            self.interpolate = True
+        else:
+            self.interpolate = False
         self.zero_bes_scales = str(config_parse['analysis']['zero_bes_scales'])
         if self.zero_bes_scales == "True":
             self.zero_bes_scales = True

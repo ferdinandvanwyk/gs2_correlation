@@ -1,34 +1,3 @@
-#########################
-#   gs2_correlation     #
-#   Ferdinand van Wyk   #
-#########################
-
-###############################################################################
-# This file is part of gs2_correlation.
-#
-# gs2_correlation_analysis is free software: you can redistribute it and/or 
-# modify it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# gs2_correlation is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with gs2_correlation.  
-# If not, see <http://www.gnu.org/licenses/>.
-###############################################################################
-
-# gs2_correlation_analysis is a comprehensive suite of methods for calculating
-# correlation parameters for GS2 turbulence. It takes in a field, e.g. phi0,
-# ntot0, etc. These fields are output from GS2 at the value of igomega when 
-# the write_full_moments_notgc flag is set to .true.
-#
-# Use as follows:
-#
-# python correlation.py <field> <time/perp/bes/zf> <location of .nc file>
 
 # Standard packages
 import os
@@ -52,94 +21,9 @@ import fit
 import film
 import wk
 
-####################
-# Read config file #
-####################
-
-config = configparser.ConfigParser()
-config.read("config.ini")
-
-# Analysis information
-in_field = str(config['analysis']['field'])
-analysis = str(config['analysis']['analysis'])
-in_file = str(config['analysis']['cdf_file'])
-# Automatically find .out.nc file if only directory specified
-if in_file.find(".out.nc") == -1:
-    in_dir_files = os.listdir(in_file)
-    for s in in_dir_files:
-        if s.find('.out.nc') != -1:
-            in_file = in_file + s
-            break
-
-out_dir = str(config['analysis']['out_dir'])
-interpolate = bool(config['analysis']['interpolate'])
-zero_bes_scales = str(config['analysis']['zero_bes_scales'])
-if zero_bes_scales == "True":
-    zero_bes_scales = True
-else:
-    zero_bes_scales = False
-spec_idx = str(config['analysis']['species_index'])
-if spec_idx == "None":
-    spec_idx = None
-else:
-    spec_idx = int(spec_idx)
-theta_idx = str(config['analysis']['theta_index'])
-if theta_idx == "None":
-    theta_idx = None
-else:
-    theta_idx = int(spec_idx)
-
-# Normalization parameters
-amin = float(config['normalization']['a_minor']) # m
-vth = float(config['normalization']['vth_ref']) # m/s
-rhoref = float(config['normalization']['rho_ref']) # m
-pitch_angle = float(config['normalization']['pitch_angle']) # in radians
-
-#Make folder which will contain all the correlation analysis
-os.system("mkdir " + out_dir)
-
-#Open the diagnostic output file and write config parameters for checking
-diag_file = open(out_dir + "/diag_" + analysis + ".out", "w")
-
-diag_file.write("User specified the following field: " + in_field + "\n")
-if (analysis != 'perp' and analysis != 'time' 
-    and analysis != 'bes' and analysis != 'zf'):
-    raise Exception('Please specify analysis: perp/time/bes/zf.')
-diag_file.write("User specified the following analysis: " + analysis 
-                + "\n")
-diag_file.write("User specified the following GS2 output file: " + in_file
-                + "\n")
-diag_file.write("User specified the following species index: " + str(spec_idx)
-                + "\n")
-diag_file.write("User specified the following theta index: " + str(theta_idx)
-                + "\n")
-diag_file.write("User chose to interpolate: " + str(interpolate) + "\n")
-diag_file.write("User chose to zero BES scales: " + str(zero_bes_scales) + "\n")
-diag_file.write("The following normalization parameters were used: " 
-                "[amin, vth, rhoref, pitch_angle] = "
-                + str([amin, vth, rhoref, pitch_angle]) + "\n")
-
-
-#############
-# Main Code #
-#############
-
-# Start timer
-t_start = time.clock()
-
-ncfile = netcdf.netcdf_file(in_file, 'r')
-# GS2 Index: (t, spec, ky, kx, theta, ri). Indices suppressed if = None
-cdf_field = ncfile.variables[in_field][:, spec_idx, :, :, theta_idx, :] 
-cdf_field = np.squeeze(cdf_field)
-th = ncfile.variables['theta'][theta_idx]
-kx = ncfile.variables['kx'][:]
-ky = ncfile.variables['ky'][:]
-t = ncfile.variables['t'][:]
-
 # Check config parameter and interpolate in time if specified. A regular time
 # grid is required by the FFT routines.
 if interpolate:
-    diag_file.write("User chose to interpolate time onto a regular grid.\n")
     t_reg = np.linspace(min(t), max(t), len(t))
     shape = cdf_field.shape
     # Create empty array and squeeze axes of length 1

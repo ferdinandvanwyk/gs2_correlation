@@ -39,6 +39,7 @@ import logging
 # Third Party
 import numpy as np
 from scipy.io import netcdf
+import scipy.interpolate as interp
 
 # Local
 
@@ -81,11 +82,14 @@ class Simulation(object):
         """
         logging.info('Start reading from NetCDf file...')
 
-        ncfile = netcdf.netcdf_file(conf.in_file, 'r')
+        # mmap=False does not read directly from cdf file. Copies are created.
+        # This prevents seg faults when cdf file is closed after function exits
+        ncfile = netcdf.netcdf_file(conf.in_file, 'r', mmap=False)
 
         # NetCDF order is [t, species, ky, kx, theta, r]
         self.field = ncfile.variables[conf.in_field][:,conf.spec_idx,:,:,conf.theta_idx,:]
         self.field = np.squeeze(self.field) 
+        self.field = np.swapaxes(self.field, 1, 2)
 
         self.kx = ncfile.variables['kx'][:]
         self.ky = ncfile.variables['ky'][:]
@@ -93,7 +97,30 @@ class Simulation(object):
 
         logging.info('Finished reading from NetCDf file.')
 
-        
+    def interpolate(self, conf):
+        """Interpolates in time onto a regular grid
+
+        Depending on whether the user specified to interpolate, the time grid
+        is interpolated into a regular grid. This is required in order to do 
+        FFTs in time. Interpolation is done by default if not specified.
+
+        Parameters
+        ----------
+
+        conf : object
+            This is an instance of the Configuration class which contains 
+            information read in from the configuration file, such as NetCDF 
+            filename, location, field to read in etc.
+        """
+        if conf.interpolate:
+            t_reg = np.linspace(min(self.t), max(self.t), len(self.t))
+            for i in range(len(self.kx)):
+                for j in range(len(self.ky)):
+                    for k in range(2):
+                        f = interp.interp1d(self.t, self.field[:, i, j, k])
+                        self.field[:, i, j, k] = f(t_reg)
+            self.t = t_reg
+
 
 
 
