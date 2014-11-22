@@ -135,8 +135,8 @@ class Configuration(object):
         self.analysis = str(config_parse['analysis']['analysis'])
         self.out_dir = str(config_parse.get('analysis', 'out_dir', 
                                             fallback='analysis'))
-        self.interpolate = str(config_parse('analysis', 'interpolate'), 
-                                             fallback=True)
+        self.interpolate = str(config_parse.get('analysis', 'interpolate', 
+                                             fallback=True))
         if self.interpolate == "True":
             self.interpolate = True
         else:
