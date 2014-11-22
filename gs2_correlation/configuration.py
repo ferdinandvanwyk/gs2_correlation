@@ -64,7 +64,9 @@ class Configuration(object):
     interpolate : bool
         Interpolate in time onto a regular grid. Default = True.
     zero_bes_scales : bool
-        Zero out scales which are larger than the BES.
+        Zero out scales which are larger than the BES. Default = False.
+    zero_zf_scales : bool
+        Zero out the zonal flow (ky = 0) modes. Default = False.
     species_index : int
         Specied index to be read from NetCDF file. GS2 convention is to use
         0 for ion and 1 for electron in a two species simulation.
@@ -135,22 +137,34 @@ class Configuration(object):
         self.analysis = str(config_parse['analysis']['analysis'])
         self.out_dir = str(config_parse.get('analysis', 'out_dir', 
                                             fallback='analysis'))
+
         self.interpolate = str(config_parse.get('analysis', 'interpolate', 
                                              fallback=True))
         if self.interpolate == "True":
             self.interpolate = True
         else:
             self.interpolate = False
-        self.zero_bes_scales = str(config_parse['analysis']['zero_bes_scales'])
+
+        self.zero_bes_scales = str(config_parse.get('analysis', 
+                                   'zero_bes_scales', fallback=False))
         if self.zero_bes_scales == "True":
             self.zero_bes_scales = True
         else:
             self.zero_bes_scales = False
+
+        self.zero_zf_scales = str(config_parse.get('analysis', 
+                                   'zero_zf_scales', fallback=False))
+        if self.zero_zf_scales == "True":
+            self.zero_zf_scales = True
+        else:
+            self.zero_zf_scales = False
+
         self.spec_idx = str(config_parse['analysis']['species_index'])
         if self.spec_idx == "None":
             self.spec_idx = None
         else:
             self.spec_idx = int(self.spec_idx)
+
         self.theta_idx = str(config_parse['analysis']['theta_index'])
         if self.theta_idx == "None":
             self.theta_idx = None

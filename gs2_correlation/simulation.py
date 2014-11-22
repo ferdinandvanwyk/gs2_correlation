@@ -112,14 +112,50 @@ class Simulation(object):
             information read in from the configuration file, such as NetCDF 
             filename, location, field to read in etc.
         """
-        if conf.interpolate:
-            t_reg = np.linspace(min(self.t), max(self.t), len(self.t))
-            for i in range(len(self.kx)):
-                for j in range(len(self.ky)):
-                    for k in range(2):
-                        f = interp.interp1d(self.t, self.field[:, i, j, k])
-                        self.field[:, i, j, k] = f(t_reg)
-            self.t = t_reg
+        logging.info('Started interpolating onto a regular grid...')
+
+        t_reg = np.linspace(min(self.t), max(self.t), len(self.t))
+        for i in range(len(self.kx)):
+            for j in range(len(self.ky)):
+                for k in range(2):
+                    f = interp.interp1d(self.t, self.field[:, i, j, k])
+                    self.field[:, i, j, k] = f(t_reg)
+        self.t = t_reg
+
+        logging.info('Finished interpolating onto a regular grid.')
+
+    def zero_bes_scales(self, conf):
+        """Sets modes larger than the BES to zero.
+
+        The BES is approximately 160x80mm(rad x pol), so we would set kx < 0.25
+        and ky < 0.5 to zero, since k = 2 pi / L. 
+
+        Parameters
+        ----------
+
+        conf : object
+            This is an instance of the Configuration class which contains 
+            information read in from the configuration file, such as NetCDF 
+            filename, location, field to read in etc.
+        """
+        for ikx in range(len(self.kx)):
+            for iky in range(len(self.ky)):
+                # Roughly the size of BES (160x80mm)
+                if abs(self.kx[ikx]) < 0.25 and self.ky[iky] < 0.5: 
+                    self.field[:,ikx,iky,:] = 0.0
+
+    def zero_zf_scales(self, conf):
+        """Sets ZF (ky = 0) modes to zero.
+
+        Parameters
+        ----------
+
+        conf : object
+            This is an instance of the Configuration class which contains 
+            information read in from the configuration file, such as NetCDF 
+            filename, location, field to read in etc.
+        """
+        self.field[:,:,0,:] = 0.0
 
 
 

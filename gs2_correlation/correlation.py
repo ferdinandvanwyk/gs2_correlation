@@ -21,29 +21,6 @@ import fit
 import film
 import wk
 
-# Check config parameter and interpolate in time if specified. A regular time
-# grid is required by the FFT routines.
-if interpolate:
-    t_reg = np.linspace(min(t), max(t), len(t))
-    shape = cdf_field.shape
-    # Create empty array and squeeze axes of length 1
-    field = np.empty(shape)
-    # Swap ky and kx axes such that index = [t, kx, ky, ri]
-    field = np.array(np.swapaxes(field, 1, 2)) 
-    for i in range(shape[1]):
-        for j in range(shape[2]):
-            for k in range(shape[3]):
-                f = interp.interp1d(t, cdf_field[:, i, j, k])
-                # Transpose: ntot(t,kx,ky,theta,ri)
-                field[:, j, i, k] = f(t_reg)
-    t = t_reg
-else:
-    diag_file.write("User chose not to interpolate time onto a regular grid.\n")
-    t = np.array(t)
-    shape = cdf_field.shape
-    # Transpose field and squeeze axes length 1 
-    field = np.array(np.swapaxes(np.squeeze(cdf_field), 1, 2)) 
-
 # Zero out density fluctuations which are larger than the BES
 if zero_bes_scales:
     diag_file.write("User chose to zero out k-modes larger than the approx "

@@ -50,7 +50,15 @@ conf.read_config()
 #Create Simulation object
 run = simulation.Simulation()
 run.read_netcdf(conf)
-run.interpolate()
+
+if conf.interpolate:
+    run.interpolate(conf)
+
+if conf.zero_bes_scales:
+    run.zero_bes_scales(conf)
+
+if conf.zero_zf_scales:
+    run.zero_zf_scales(conf)
 
 
 

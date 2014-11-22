@@ -39,6 +39,16 @@ class TestClass(object):
         field_shape = run.field.shape
         arr_shapes = (len(run.t), len(run.kx), len(run.ky), 2)
         assert field_shape == arr_shapes
+        
+    def test_zero_bes_scales(self, run, conf):
+        conf.zero_bes_scales = True
+        run.zero_bes_scales(conf)
+        assert (run.field[:, 1, 1, :] == 0).all()
+
+
+    def test_zf_bes(self, run, conf):
+        run.zero_zf_scales(conf)
+        assert (run.field[:, :, 0, :] == 0).all()
 
          
 
