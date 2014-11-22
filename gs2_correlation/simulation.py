@@ -79,6 +79,8 @@ class Simulation(object):
             filename, location, field to read in etc.
 
         """
+        logging.info('Start reading from NetCDf file...')
+
         ncfile = netcdf.netcdf_file(conf.in_file, 'r')
 
         # NetCDF order is [t, species, ky, kx, theta, r]
@@ -88,6 +90,8 @@ class Simulation(object):
         self.kx = ncfile.variables['kx'][:]
         self.ky = ncfile.variables['ky'][:]
         self.t = ncfile.variables['t'][:]
+
+        logging.info('Finished reading from NetCDf file.')
 
         
 
