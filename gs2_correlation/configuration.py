@@ -57,8 +57,8 @@ class Configuration(object):
     field : str
         Name of the field to be read in from NetCDF file.
     analysis : str
-        Type of analysis to be done. Options are 'full', 'perp', 'time', 
-        'bes', 'zf'.
+        Type of analysis to be done. Options are 'all', 'perp', 'time', 'zf',
+        'write_field'.
     out_dir : str
         Output directory for analysis. Default = './analysis'.
     interpolate : bool
@@ -86,6 +86,8 @@ class Configuration(object):
     def __init__(self, config_file):
         """Initialize Configuration instance with config file filename.
 
+        After setting config_file name, it reads the configuration file.
+
         Parameters
         ----------
         config_file : str
@@ -106,6 +108,8 @@ class Configuration(object):
         """
 
         self.config_file = config_file
+
+        self.read_config()
 
     def read_config(self):
         """Reads analysis and normalization parameters from self.config_file.
@@ -138,7 +142,12 @@ class Configuration(object):
                 raise NameError('No file found ending in ' + self.file_ext)
 
         self.in_field = str(config_parse['analysis']['field'])
+
         self.analysis = str(config_parse['analysis']['analysis'])
+        if self.analysis not in ['perp', 'time', 'zf', 'write_field']:
+            raise ValueError('Analysis must be one of (perp, time, zf, '
+                             'write_field)')
+
         self.out_dir = str(config_parse.get('analysis', 'out_dir', 
                                             fallback='analysis'))
 

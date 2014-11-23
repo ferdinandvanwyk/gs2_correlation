@@ -25,34 +25,27 @@ class TestClass(object):
 
     @pytest.fixture(scope='function')
     def run(self, conf):
-        sim = Simulation()
-        sim.read_netcdf(conf)
+        sim = Simulation(conf)
         return sim
 
     def test_read_netcdf(self, run):
         field_shape = run.field.shape
-        arr_shapes = (len(run.t), len(run.kx), len(run.ky), 2)
+        arr_shapes = (len(run.t), len(run.kx), len(run.ky))
         assert field_shape == arr_shapes
     
     def test_interpolate(self, run, conf):
-        # Need to think of a good test here
-        run.interpolate(conf)
         field_shape = run.field.shape
-        arr_shapes = (len(run.t), len(run.kx), len(run.ky), 2)
+        arr_shapes = (len(run.t), len(run.kx), len(run.ky))
         assert field_shape == arr_shapes
         
     def test_zero_bes_scales(self, run, conf):
-        conf.zero_bes_scales = True
-        run.zero_bes_scales(conf)
-        assert (run.field[:, 1, 1, :] == 0).all()
+        assert (run.field[:, 1, 1] == 0).all()
 
 
     def test_zf_bes(self, run, conf):
-        run.zero_zf_scales(conf)
-        assert (run.field[:, :, 0, :] == 0).all()
+        assert (run.field[:, :, 0] == 0).all()
 
     def test_to_complex(self, run):
-        run.to_complex()
         assert np.iscomplexobj(run.field) == True 
 
      

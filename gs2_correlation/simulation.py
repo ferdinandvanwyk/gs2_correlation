@@ -55,6 +55,8 @@ class Simulation(object):
 
     field : array_like
         Field read in from the NetCDF file.
+    perp_corr : array_like
+        Perpendicular correlation function calculated from the field array.
     kx : array_like
         Values of the kx grid in the following order: 0,...,kx_max,-kx_max,...
         kx_min.
@@ -62,9 +64,58 @@ class Simulation(object):
         Values of the ky grid.
     t : array_like
         Values of the time grid.
+    x : array_like
+        Values of the real space x (radial) grid.
+    y : array_like
+        Values of the real space y (poloidal) grid. This has been transformed 
+        from the toroidal plane to the poloidal plane by using the pitch-angle
+        of the magnetic field lines.
+    nkx : int
+        Number of kx values. Also the number of real space x points.
+    nky : int
+        Number of ky values.
+    ny : int
+        Number of real space y. This is ny = 2*(nky - 1). 
+    nt : int
+        Number of time points.
 
     """
-    
+
+    def __init__(self, conf):
+        """Initialize by object using information from configuration file.
+
+        Initialization does the following, depending on the parameters in the 
+        configuration file:
+
+        * Calculates sizes of kx, ky, x, and y.
+        * Reads data from the NetCDF file.
+        * Interpolates onto a regular time grid.
+        * Zeros out BES scales.
+        * Zeros out ZF scales.
+        """
+
+        self.read_netcdf(conf)
+
+        self.nkx = len(self.kx)
+        self.nky = len(self.ky)
+        self.ny = 2*(self.nky - 1)
+
+        self.x = np.linspace(-2*np.pi/self.kx[1], 2*np.pi/self.kx[1], 
+                             self.nkx)*conf.rhoref
+        self.y = np.linspace(-2*np.pi/self.ky[1], 2*np.pi/self.ky[1], 
+                             self.ny)*conf.rhoref*np.tan(conf.pitch_angle)
+
+        if conf.interpolate:
+            self.interpolate(conf)
+
+        if conf.zero_bes_scales:
+            self.zero_bes_scales(conf)
+
+        if conf.zero_zf_scales:
+            self.zero_zf_scales(conf)
+
+        self.to_complex()
+
     def read_netcdf(self, conf):
         """Read array from NetCDF file.
 
@@ -169,8 +220,21 @@ class Simulation(object):
         self.field = self.field[:,:,:,0] + 1j*self.field[:,:,:,1] 
     
     def perp_analysis(self, conf):
-        return None
+
+        logging.info('Start perpendicular correlation analysis...')
+
+        self.wk_2d(conf) 
+
+        logging.info('Finished perpendicular correlation analysis.')
         
+    def wk_2d(self, conf):
+        # ny-1 below since to ensure odd number of y points and that zero is in
+        # the middle of the y domain.
+        self.perp_corr = np.empty([self.nt, self.nx, self.ny-1], dtype=float) 
+        for it in range(self.nt):
+            self.perp_corr[it,:,:] = np.abs(self.field[it,:,:])  
+            corr_fn[it,:,:] = np.fft.fftshift(corr_fn[it,:,:], axes=[0,1])
+            corr_fn[it,:,:] = corr_fn[it,:,:]/np.max(corr_fn[it,:,:])
 
 
 
