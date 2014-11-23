@@ -67,8 +67,11 @@ class Configuration(object):
         Zero out scales which are larger than the BES. Default = False.
     zero_zf_scales : bool
         Zero out the zonal flow (ky = 0) modes. Default = False.
-    time_slice: int 
+    time_slice : int 
         Size of time window for averaging                                         
+    perp_guess : array_like
+        Initial guess for perpendicular correlation function fitting. Of the 
+        form [lx, ly, kx, ky] all in normalized rhoref units.
     species_index : int
         Specied index to be read from NetCDF file. GS2 convention is to use
         0 for ion and 1 for electron in a two species simulation.
@@ -153,26 +156,14 @@ class Configuration(object):
         self.out_dir = str(config_parse.get('analysis', 'out_dir', 
                                             fallback='analysis'))
 
-        self.interpolate = str(config_parse.get('analysis', 'interpolate', 
+        self.interpolate = str(config_parse.getboolean('analysis', 'interpolate', 
                                              fallback=True))
-        if self.interpolate == "True":
-            self.interpolate = True
-        else:
-            self.interpolate = False
 
-        self.zero_bes_scales = str(config_parse.get('analysis', 
+        self.zero_bes_scales = str(config_parse.getboolean('analysis', 
                                    'zero_bes_scales', fallback=False))
-        if self.zero_bes_scales == "True":
-            self.zero_bes_scales = True
-        else:
-            self.zero_bes_scales = False
 
-        self.zero_zf_scales = str(config_parse.get('analysis', 
+        self.zero_zf_scales = str(config_parse.getboolean('analysis', 
                                    'zero_zf_scales', fallback=False))
-        if self.zero_zf_scales == "True":
-            self.zero_zf_scales = True
-        else:
-            self.zero_zf_scales = False
 
         self.spec_idx = str(config_parse['analysis']['species_index'])
         if self.spec_idx == "None":
@@ -187,6 +178,11 @@ class Configuration(object):
             self.theta_idx = int(self.theta_idx)
 
         self.time_slice = int(config_parse['analysis']['time_slice'])
+
+        self.perp_guess = str(config_parse['analysis']['perp_guess'])
+        self.perp_guess = self.perp_guess[1:-1].split(',')
+        self.perp_guess = [float(s) for s in self.perp_guess]
+
 
         # Normalization parameters
         self.amin = float(config_parse['normalization']['a_minor'])

@@ -226,6 +226,13 @@ class Simulation(object):
 
         self.wk_2d(conf) 
 
+        nt_slices = int(self.nt/self.time_slice)
+        self.perp_fit_params = np.empty([nt_slices, 4], dtype=float)
+
+        for it in range(nt_slices):
+            self.perp_fit(conf, it)
+            self.perp_guess = self.perp_fit_params[it,:]
+
         logging.info('Finished perpendicular correlation analysis.')
         
     def wk_2d(self):
@@ -275,6 +282,9 @@ class Simulation(object):
         self.perp_corr = self.perp_corr * self.nkx * self.nky / 2
 
         logging.info("Finished 2D WK theorem.")
+
+    def perp_fit(self, conf):
+        return None
 
 
 
