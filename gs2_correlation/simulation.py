@@ -96,6 +96,7 @@ class Simulation(object):
 
         self.read_netcdf(conf)
 
+        self.nt = len(self.t)
         self.nkx = len(self.kx)
         self.nky = len(self.ky)
         self.ny = 2*(self.nky - 1)
@@ -227,14 +228,39 @@ class Simulation(object):
 
         logging.info('Finished perpendicular correlation analysis.')
         
-    def wk_2d(self, conf):
+    def wk_2d(self):
+        """Calculates perpendicular correlation function for each time step.
+
+        Using the Wiener-Khinchin theorem, the 2D perpendicular correlation 
+        function os calculated for each time step. The zeros are then shifted 
+        to the centre of the domain and the correlation function is normalized.
+        The result is saved as a new Simulation attribute: perp_corr.
+
+        Notes
+        -----
+        The Wiener-Khinchin theorem states the following:
+
+        .. math:: C(\Delta x, \Delta y) = IFFT2[|f(k_x, k_y)|^2]
+
+        where C is the correlation function, *f* is the field, and IFFT2 is the 
+        2D inverse Fourier transform.
+
+        """
+
+        logging.info("Performing 2D WK theorem on field...")
+
         # ny-1 below since to ensure odd number of y points and that zero is in
         # the middle of the y domain.
-        self.perp_corr = np.empty([self.nt, self.nx, self.ny-1], dtype=float) 
+        self.perp_corr = np.empty([self.nt, self.nkx, self.ny-1], dtype=float) 
+        print(self.perp_corr.shape, self.field.shape)
         for it in range(self.nt):
-            self.perp_corr[it,:,:] = np.abs(self.field[it,:,:])  
-            corr_fn[it,:,:] = np.fft.fftshift(corr_fn[it,:,:], axes=[0,1])
-            corr_fn[it,:,:] = corr_fn[it,:,:]/np.max(corr_fn[it,:,:])
+            sq = np.abs(self.field[it,:,:])**2  
+            self.perp_corr[it,:,:] = np.fft.irfft2(sq, s=[self.nkx, self.ny-1])
+            self.perp_corr[it,:,:] = np.fft.fftshift(self.perp_corr[it,:,:])
+            self.perp_corr[it,:,:] = (self.perp_corr[it,:,:] / 
+                                      np.max(self.perp_corr[it,:,:]))
+
+        logging.info("Finished 2D WK theorem.")
 
 
 

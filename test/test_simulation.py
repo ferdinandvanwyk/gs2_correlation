@@ -30,12 +30,12 @@ class TestClass(object):
 
     def test_read_netcdf(self, run):
         field_shape = run.field.shape
-        arr_shapes = (len(run.t), len(run.kx), len(run.ky))
+        arr_shapes = (run.nt, run.nkx, run.nky)
         assert field_shape == arr_shapes
     
     def test_interpolate(self, run, conf):
         field_shape = run.field.shape
-        arr_shapes = (len(run.t), len(run.kx), len(run.ky))
+        arr_shapes = (run.nt, run.nkx, run.nky)
         assert field_shape == arr_shapes
         
     def test_zero_bes_scales(self, run, conf):
@@ -47,6 +47,10 @@ class TestClass(object):
 
     def test_to_complex(self, run):
         assert np.iscomplexobj(run.field) == True 
+
+    def test_wk_2d(self, run):
+        run.wk_2d()
+        assert run.perp_corr.shape == (run.nt, run.nkx, run.ny-1)
 
      
 
