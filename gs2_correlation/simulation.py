@@ -245,6 +245,17 @@ class Simulation(object):
         where C is the correlation function, *f* is the field, and IFFT2 is the 
         2D inverse Fourier transform.
 
+        The normalization required to be consistent with GS2 and NumPy FFT 
+        packages is:
+
+        C_norm = C * nx * ny / 2
+
+        Since GS2 normalizes going from real to spectral space, no additional 
+        factors are necessary when going from spectral to real. However, NumPy 
+        FFT packages contain an implicit normalization in the inverse routines 
+        such that ifft(fft(x)) = x, so we multiply to removethese implicit 
+        factors.
+
         """
 
         logging.info("Performing 2D WK theorem on field...")
@@ -259,6 +270,9 @@ class Simulation(object):
             self.perp_corr[it,:,:] = np.fft.fftshift(self.perp_corr[it,:,:])
             self.perp_corr[it,:,:] = (self.perp_corr[it,:,:] / 
                                       np.max(self.perp_corr[it,:,:]))
+
+        # Normalization appropriate to GS2 and FFT packages.
+        self.perp_corr = self.perp_corr * self.nkx * self.nky / 2
 
         logging.info("Finished 2D WK theorem.")
 
