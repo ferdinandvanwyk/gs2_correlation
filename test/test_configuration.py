@@ -29,6 +29,7 @@ class TestClass(object):
         assert type(conf.in_field) == str
         assert type(conf.analysis) == str
         assert type(conf.out_dir) == str
+        assert type(conf.time_slice) == int
         assert type(conf.interpolate) == bool
         assert type(conf.zero_bes_scales) == bool
         assert (type(conf.spec_idx) == int or type(conf.spec_idx) == type(None))

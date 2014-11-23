@@ -67,6 +67,8 @@ class Configuration(object):
         Zero out scales which are larger than the BES. Default = False.
     zero_zf_scales : bool
         Zero out the zonal flow (ky = 0) modes. Default = False.
+    time_slice: int 
+        Size of time window for averaging                                         
     species_index : int
         Specied index to be read from NetCDF file. GS2 convention is to use
         0 for ion and 1 for electron in a two species simulation.
@@ -183,6 +185,8 @@ class Configuration(object):
             self.theta_idx = None
         else:
             self.theta_idx = int(self.theta_idx)
+
+        self.time_slice = int(config_parse['analysis']['time_slice'])
 
         # Normalization parameters
         self.amin = float(config_parse['normalization']['a_minor'])
