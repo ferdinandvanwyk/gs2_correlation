@@ -40,8 +40,10 @@ import logging
 import numpy as np
 from scipy.io import netcdf
 import scipy.interpolate as interp
+import scipy.optimize as opt
 
 # Local
+import gs2_correlation.fit as fit
 
 class Simulation(object):
     """Class containing all simulation information.
@@ -104,7 +106,7 @@ class Simulation(object):
         self.x = np.linspace(-2*np.pi/self.kx[1], 2*np.pi/self.kx[1], 
                              self.nkx)*conf.rhoref
         self.y = np.linspace(-2*np.pi/self.ky[1], 2*np.pi/self.ky[1], 
-                             self.ny)*conf.rhoref*np.tan(conf.pitch_angle)
+                             self.ny - 1)*conf.rhoref*np.tan(conf.pitch_angle)
 
         if conf.interpolate:
             self.interpolate(conf)
@@ -221,12 +223,33 @@ class Simulation(object):
         self.field = self.field[:,:,:,0] + 1j*self.field[:,:,:,1] 
     
     def perp_analysis(self, conf):
+        """Performs a perpendicular correlation analysis on the field.
+
+        Parameters
+        ----------
+
+        conf : object
+            This is an instance of the Configuration class which contains 
+            information read in from the configuration file, such as NetCDF 
+            filename, location, field to read in etc.
+
+        Notes
+        -----
+
+        * Uses a 2D Wiener-Khinchin theorem to calculate the correlation
+          function.
+        * Splits correlation function into time slices and fits each time 
+          slice with a tilted Gaussian using the perp_fit function.
+        * The fit parameters for the previous time slice is used as the initial
+          guess for the next time slice.
+
+        """
 
         logging.info('Start perpendicular correlation analysis...')
 
-        self.wk_2d(conf) 
+        self.wk_2d() 
 
-        nt_slices = int(self.nt/self.time_slice)
+        nt_slices = int(self.nt/conf.time_slice)
         self.perp_fit_params = np.empty([nt_slices, 4], dtype=float)
 
         for it in range(nt_slices):
@@ -252,13 +275,13 @@ class Simulation(object):
         where C is the correlation function, *f* is the field, and IFFT2 is the 
         2D inverse Fourier transform.
 
-        The normalization required to be consistent with GS2 and NumPy FFT 
+        The normalization required to be consistent with GS2 and `numpy` FFT 
         packages is:
 
-        C_norm = C * nx * ny / 2
+        C_norm = C * nkx * ny / 2
 
         Since GS2 normalizes going from real to spectral space, no additional 
-        factors are necessary when going from spectral to real. However, NumPy 
+        factors are necessary when going from spectral to real. However, `numpy` 
         FFT packages contain an implicit normalization in the inverse routines 
         such that ifft(fft(x)) = x, so we multiply to removethese implicit 
         factors.
@@ -270,7 +293,6 @@ class Simulation(object):
         # ny-1 below since to ensure odd number of y points and that zero is in
         # the middle of the y domain.
         self.perp_corr = np.empty([self.nt, self.nkx, self.ny-1], dtype=float) 
-        print(self.perp_corr.shape, self.field.shape)
         for it in range(self.nt):
             sq = np.abs(self.field[it,:,:])**2  
             self.perp_corr[it,:,:] = np.fft.irfft2(sq, s=[self.nkx, self.ny-1])
@@ -283,8 +305,42 @@ class Simulation(object):
 
         logging.info("Finished 2D WK theorem.")
 
-    def perp_fit(self, conf):
-        return None
+    def perp_fit(self, conf, it):
+        """Fits tilted Gaussian to perpendicular correlation function.
+
+        Parameters
+        ----------
+
+        conf : object
+            This is an instance of the Configuration class which contains 
+            information read in from the configuration file, such as NetCDF 
+            filename, location, field to read in etc.
+        it : int
+            This is the index of the time slice currently being fitted.
+
+        """
+        
+        xpts = self.x[self.nkx/2 - conf.perp_fit_length : 
+                      self.nkx/2 + conf.perp_fit_length]
+        ypts = self.y[(self.ny-1)/2 - conf.perp_fit_length : 
+                      (self.ny-1)/2 + conf.perp_fit_length]
+        corr_fn = self.perp_corr[it*conf.time_slice:(it+1)*conf.time_slice, 
+                                 self.nkx/2 - conf.perp_fit_length : 
+                                 self.nkx/2 + conf.perp_fit_length, 
+                                 (self.ny-1)/2 - conf.perp_fit_length : 
+                                 (self.ny-1)/2 + conf.perp_fit_length] 
+
+        x,y = np.meshgrid(xpts, ypts)
+        x = np.transpose(x); y = np.transpose(y)
+
+        # Average corr_fn over time
+        avg_corr = np.mean(corr_fn, axis=0)
+
+        popt, pcov = opt.curve_fit(fit.tilted_gauss, (x, y), avg_corr.ravel(), 
+                                   p0=conf.perp_guess)
+        
+        self.perp_fit_params[it, :] = popt
+
 
 
 

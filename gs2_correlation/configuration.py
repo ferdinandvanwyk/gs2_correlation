@@ -37,6 +37,7 @@ import configparser
 import logging
 
 # Third Party
+import numpy as np
 
 # Local
 
@@ -69,6 +70,10 @@ class Configuration(object):
         Zero out the zonal flow (ky = 0) modes. Default = False.
     time_slice : int 
         Size of time window for averaging                                         
+    perp_fit_length : int
+        Number of points radially and poloidally to fit Gaussian over. Fitting 
+        over the whole domain usually does not produce a very good fit. Default
+         = 20. 
     perp_guess : array_like
         Initial guess for perpendicular correlation function fitting. Of the 
         form [lx, ly, kx, ky] all in normalized rhoref units.
@@ -129,6 +134,12 @@ class Configuration(object):
         config_parse = configparser.ConfigParser()
         config_parse.read(self.config_file)
 
+        # Normalization parameters
+        self.amin = float(config_parse['normalization']['a_minor'])
+        self.vth = float(config_parse['normalization']['vth_ref'])
+        self.rhoref = float(config_parse['normalization']['rho_ref'])
+        self.pitch_angle = float(config_parse['normalization']['pitch_angle'])
+                
         # Analysis information
         self.file_ext = config_parse.get('analysis', 'file_ext', 
                                          fallback='.cdf')
@@ -156,14 +167,14 @@ class Configuration(object):
         self.out_dir = str(config_parse.get('analysis', 'out_dir', 
                                             fallback='analysis'))
 
-        self.interpolate = str(config_parse.getboolean('analysis', 'interpolate', 
-                                             fallback=True))
+        self.interpolate = config_parse.getboolean('analysis', 'interpolate', 
+                                             fallback=True)
 
-        self.zero_bes_scales = str(config_parse.getboolean('analysis', 
-                                   'zero_bes_scales', fallback=False))
+        self.zero_bes_scales = config_parse.getboolean('analysis', 
+                                   'zero_bes_scales', fallback=False)
 
-        self.zero_zf_scales = str(config_parse.getboolean('analysis', 
-                                   'zero_zf_scales', fallback=False))
+        self.zero_zf_scales = config_parse.getboolean('analysis', 
+                                   'zero_zf_scales', fallback=False)
 
         self.spec_idx = str(config_parse['analysis']['species_index'])
         if self.spec_idx == "None":
@@ -177,19 +188,19 @@ class Configuration(object):
         else:
             self.theta_idx = int(self.theta_idx)
 
-        self.time_slice = int(config_parse['analysis']['time_slice'])
+        self.time_slice = int(config_parse.get('analysis', 'time_slice', 
+                                               fallback=50))
+
+        self.perp_fit_length = int(config_parse.get('analysis', 
+                                               'perp_fit_length', fallback=50))
 
         self.perp_guess = str(config_parse['analysis']['perp_guess'])
         self.perp_guess = self.perp_guess[1:-1].split(',')
         self.perp_guess = [float(s) for s in self.perp_guess]
+        self.perp_guess = self.perp_guess * np.array([self.rhoref, self.rhoref, 
+                                             1/self.rhoref, 1/self.rhoref])
+        self.perp_guess = list(self.perp_guess)
 
-
-        # Normalization parameters
-        self.amin = float(config_parse['normalization']['a_minor'])
-        self.vth = float(config_parse['normalization']['vth_ref'])
-        self.rhoref = float(config_parse['normalization']['rho_ref'])
-        self.pitch_angle = float(config_parse['normalization']['pitch_angle'])
-                
         # Log the variables
         logging.info('The following values were read from ' + self.config_file)
         logging.info(vars(self))

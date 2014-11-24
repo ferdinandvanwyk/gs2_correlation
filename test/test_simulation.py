@@ -51,6 +51,10 @@ class TestClass(object):
     def test_wk_2d(self, run):
         run.wk_2d()
         assert run.perp_corr.shape == (run.nt, run.nkx, run.ny-1)
+    
+    def test_perp_analysis(self, run, conf):
+        run.perp_analysis(conf)
+        assert run.perp_fit_params.shape == (5,4)
 
      
 
