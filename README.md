@@ -1,8 +1,21 @@
 gs2_correlation
 ==================
 
-Several scripts to calculate correlation function, fit correlation function, 
-write out field to poloidal plane.
+Python package to perform a full correlation analysis of GS2 fluctuations. This 
+includes spatial (both radial and poloidal), and temporal correlation analysis.
+
+Documentation
+-------------
+
+The documentation is hosted on [ReadtheDocs](www.readthedocs.org)
+
+Getting Started
+---------------
+
+* Install the requirements by typing
+```
+pip install -r requirements.txt
+```
 
 correlation.py
 --------------
