@@ -34,6 +34,7 @@
 import os
 import sys
 import gc #garbage collector
+import configparser
 import logging
 
 # Third Party
@@ -55,6 +56,51 @@ class Simulation(object):
     Attributes
     ----------
 
+    file_ext : str
+        File extension for NetCDF output file. Default = '.cdf' 
+    cdf_file : str
+        Path (relative or absolute) and/or name of input NetCDF file. If
+        only a path is specified, the directory is searched for a file
+        ending in '.out.nc' and the name is appended to the path.
+    field : str
+        Name of the field to be read in from NetCDF file.
+    analysis : str
+        Type of analysis to be done. Options are 'all', 'perp', 'time', 'zf',
+        'write_field'.
+    out_dir : str
+        Output directory for analysis. Default = './analysis'.
+    interpolate_bool : bool
+        Interpolate in time onto a regular grid. Default = True. Specify as
+        interpolate in configuration file.
+    zero_bes_scales_bool : bool
+        Zero out scales which are larger than the BES. Default = False. Specify
+        as zero_bes_scales in configuration file.
+    zero_zf_scales_bool : bool
+        Zero out the zonal flow (ky = 0) modes. Default = False. Specify as
+        zero_zf_scales in configuration file.
+    time_slice : int 
+        Size of time window for averaging                                         
+    perp_fit_length : int
+        Number of points radially and poloidally to fit Gaussian over. Fitting 
+        over the whole domain usually does not produce a very good fit. Default
+         = 20. 
+    perp_guess : array_like
+        Initial guess for perpendicular correlation function fitting. Of the 
+        form [lx, ly, kx, ky] all in normalized rhoref units.
+    species_index : int
+        Specied index to be read from NetCDF file. GS2 convention is to use
+        0 for ion and 1 for electron in a two species simulation.
+    theta_index : int or None
+        Parallel index at which to do analysis. If no theta index in array
+        set to None.
+    amin : float
+        Minor radius of device in *m*.
+    vth : float
+        Thermal velocity of the reference species in *m/s*
+    rhoref : float
+        Larmor radius of the reference species in *m*.
+    pitch_angle : float
+        Pitch angle of the magnetic field lines in *rad*.
     field : array_like
         Field read in from the NetCDF file.
     perp_corr : array_like
@@ -83,8 +129,9 @@ class Simulation(object):
 
     """
 
-    def __init__(self, conf):
-        """Initialize by object using information from configuration file.
+    def __init__(self, config_file):
+        """
+        Initialized by object using information from configuration file.
 
         Initialization does the following, depending on the parameters in the 
         configuration file:
@@ -94,9 +141,30 @@ class Simulation(object):
         * Interpolates onto a regular time grid.
         * Zeros out BES scales.
         * Zeros out ZF scales.
+
+        Parameters
+        ----------
+        config_file : str
+            Filename of configuration file and path if not in the same 
+            directory.
+
+        Notes
+        -----
+
+        The configuration file should contain the following namelists: 
+
+        * 'analysis' which gives information such as the analysis to be 
+          performed and where to find the NetCDF file.
+        * 'normalization' which gives the normalization parameters for the 
+          simulation/experiment.
+
+        The exact parameters read in are documented in the Attributes above. 
         """
 
-        self.read_netcdf(conf)
+        self.config_file = config_file
+        self.read_config()
+
+        self.read_netcdf()
 
         self.nt = len(self.t)
         self.nkx = len(self.kx)
@@ -104,44 +172,122 @@ class Simulation(object):
         self.ny = 2*(self.nky - 1)
 
         self.x = np.linspace(-2*np.pi/self.kx[1], 2*np.pi/self.kx[1], 
-                             self.nkx)*conf.rhoref
+                             self.nkx)*self.rhoref
         self.y = np.linspace(-2*np.pi/self.ky[1], 2*np.pi/self.ky[1], 
-                             self.ny - 1)*conf.rhoref*np.tan(conf.pitch_angle)
+                             self.ny - 1)*self.rhoref*np.tan(self.pitch_angle)
 
-        if conf.interpolate:
-            self.interpolate(conf)
+        if self.interpolate_bool:
+            self.interpolate()
 
-        if conf.zero_bes_scales:
-            self.zero_bes_scales(conf)
+        if self.zero_bes_scales_bool:
+            self.zero_bes_scales()
 
-        if conf.zero_zf_scales:
-            self.zero_zf_scales(conf)
+        if self.zero_zf_scales_bool:
+            self.zero_zf_scales()
 
         self.to_complex()
 
-    def read_netcdf(self, conf):
-        """Read array from NetCDF file.
+    def read_config(self):
+        """
+        Reads analysis and normalization parameters from self.config_file.
+
+        The full list of possible configuration parameters is listed in the 
+        Attributes above, along with their default values.
+
+        """
+
+        logging.info('Started read_config...')
+
+        config_parse = configparser.ConfigParser()
+        config_parse.read(self.config_file)
+
+        # Normalization parameters
+        self.amin = float(config_parse['normalization']['a_minor'])
+        self.vth = float(config_parse['normalization']['vth_ref'])
+        self.rhoref = float(config_parse['normalization']['rho_ref'])
+        self.pitch_angle = float(config_parse['normalization']['pitch_angle'])
+                
+        # Analysis information
+        self.file_ext = config_parse.get('analysis', 'file_ext', 
+                                         fallback='.cdf')
+        # Automatically find .out.nc file if only directory specified
+        self.in_file = str(config_parse['analysis']['cdf_file'])
+        if self.in_file.find(self.file_ext) == -1:
+            dir_files = os.listdir(self.in_file)
+            found = False
+            for s in dir_files:
+                if s.find(self.file_ext) != -1:
+                    self.in_file = self.in_file + s
+                    found = True
+                    break
+
+            if not found:
+                raise NameError('No file found ending in ' + self.file_ext)
+
+        self.in_field = str(config_parse['analysis']['field'])
+
+        self.analysis = str(config_parse['analysis']['analysis'])
+        if self.analysis not in ['perp', 'time', 'zf', 'write_field']:
+            raise ValueError('Analysis must be one of (perp, time, zf, '
+                             'write_field)')
+
+        self.out_dir = str(config_parse.get('analysis', 'out_dir', 
+                                            fallback='analysis'))
+
+        self.interpolate_bool = config_parse.getboolean('analysis', 'interpolate', 
+                                             fallback=True)
+
+        self.zero_bes_scales_bool = config_parse.getboolean('analysis', 
+                                   'zero_bes_scales', fallback=False)
+
+        self.zero_zf_scales_bool = config_parse.getboolean('analysis', 
+                                   'zero_zf_scales', fallback=False)
+
+        self.spec_idx = str(config_parse['analysis']['species_index'])
+        if self.spec_idx == "None":
+            self.spec_idx = None
+        else:
+            self.spec_idx = int(self.spec_idx)
+
+        self.theta_idx = str(config_parse['analysis']['theta_index'])
+        if self.theta_idx == "None":
+            self.theta_idx = None
+        else:
+            self.theta_idx = int(self.theta_idx)
+
+        self.time_slice = int(config_parse.get('analysis', 'time_slice', 
+                                               fallback=50))
+
+        self.perp_fit_length = int(config_parse.get('analysis', 
+                                               'perp_fit_length', fallback=50))
+
+        self.perp_guess = str(config_parse['analysis']['perp_guess'])
+        self.perp_guess = self.perp_guess[1:-1].split(',')
+        self.perp_guess = [float(s) for s in self.perp_guess]
+        self.perp_guess = self.perp_guess * np.array([self.rhoref, self.rhoref, 
+                                             1/self.rhoref, 1/self.rhoref])
+        self.perp_guess = list(self.perp_guess)
+
+        # Log the variables
+        logging.info('The following values were read from ' + self.config_file)
+        logging.info(vars(self))
+        logging.info('Finished read_config.')
+
+    def read_netcdf(self):
+        """
+        Read array from NetCDF file.
 
         Read array specified in configuration file as 'cdf_field'. Function 
         uses information from the configuration object passed to it. 
-
-        Parameters
-        ----------
-
-        conf : object
-            This is an instance of the Configuration class which contains 
-            information read in from the configuration file, such as NetCDF 
-            filename, location, field to read in etc.
-
         """
         logging.info('Start reading from NetCDf file...')
 
         # mmap=False does not read directly from cdf file. Copies are created.
         # This prevents seg faults when cdf file is closed after function exits
-        ncfile = netcdf.netcdf_file(conf.in_file, 'r', mmap=False)
+        ncfile = netcdf.netcdf_file(self.in_file, 'r', mmap=False)
 
         # NetCDF order is [t, species, ky, kx, theta, r]
-        self.field = ncfile.variables[conf.in_field][:,conf.spec_idx,:,:,conf.theta_idx,:]
+        self.field = ncfile.variables[self.in_field][:,self.spec_idx,:,:,self.theta_idx,:]
         self.field = np.squeeze(self.field) 
         self.field = np.swapaxes(self.field, 1, 2)
 
@@ -151,20 +297,12 @@ class Simulation(object):
 
         logging.info('Finished reading from NetCDf file.')
 
-    def interpolate(self, conf):
+    def interpolate(self):
         """Interpolates in time onto a regular grid
 
         Depending on whether the user specified to interpolate, the time grid
         is interpolated into a regular grid. This is required in order to do 
         FFTs in time. Interpolation is done by default if not specified.
-
-        Parameters
-        ----------
-
-        conf : object
-            This is an instance of the Configuration class which contains 
-            information read in from the configuration file, such as NetCDF 
-            filename, location, field to read in etc.
         """
         logging.info('Started interpolating onto a regular grid...')
 
@@ -178,19 +316,11 @@ class Simulation(object):
 
         logging.info('Finished interpolating onto a regular grid.')
 
-    def zero_bes_scales(self, conf):
+    def zero_bes_scales(self):
         """Sets modes larger than the BES to zero.
 
         The BES is approximately 160x80mm(rad x pol), so we would set kx < 0.25
         and ky < 0.5 to zero, since k = 2 pi / L. 
-
-        Parameters
-        ----------
-
-        conf : object
-            This is an instance of the Configuration class which contains 
-            information read in from the configuration file, such as NetCDF 
-            filename, location, field to read in etc.
         """
         for ikx in range(len(self.kx)):
             for iky in range(len(self.ky)):
@@ -198,16 +328,8 @@ class Simulation(object):
                 if abs(self.kx[ikx]) < 0.25 and self.ky[iky] < 0.5: 
                     self.field[:,ikx,iky,:] = 0.0
 
-    def zero_zf_scales(self, conf):
+    def zero_zf_scales(self):
         """Sets ZF (ky = 0) modes to zero.
-
-        Parameters
-        ----------
-
-        conf : object
-            This is an instance of the Configuration class which contains 
-            information read in from the configuration file, such as NetCDF 
-            filename, location, field to read in etc.
         """
         self.field[:,:,0,:] = 0.0
 
@@ -222,16 +344,8 @@ class Simulation(object):
         """
         self.field = self.field[:,:,:,0] + 1j*self.field[:,:,:,1] 
     
-    def perp_analysis(self, conf):
+    def perp_analysis(self):
         """Performs a perpendicular correlation analysis on the field.
-
-        Parameters
-        ----------
-
-        conf : object
-            This is an instance of the Configuration class which contains 
-            information read in from the configuration file, such as NetCDF 
-            filename, location, field to read in etc.
 
         Notes
         -----
@@ -249,11 +363,11 @@ class Simulation(object):
 
         self.wk_2d() 
 
-        nt_slices = int(self.nt/conf.time_slice)
+        nt_slices = int(self.nt/self.time_slice)
         self.perp_fit_params = np.empty([nt_slices, 4], dtype=float)
 
         for it in range(nt_slices):
-            self.perp_fit(conf, it)
+            self.perp_fit(it)
             self.perp_guess = self.perp_fit_params[it,:]
 
         logging.info('Finished perpendicular correlation analysis.')
@@ -305,30 +419,26 @@ class Simulation(object):
 
         logging.info("Finished 2D WK theorem.")
 
-    def perp_fit(self, conf, it):
+    def perp_fit(self, it):
         """Fits tilted Gaussian to perpendicular correlation function.
 
         Parameters
         ----------
 
-        conf : object
-            This is an instance of the Configuration class which contains 
-            information read in from the configuration file, such as NetCDF 
-            filename, location, field to read in etc.
         it : int
             This is the index of the time slice currently being fitted.
 
         """
         
-        xpts = self.x[self.nkx/2 - conf.perp_fit_length : 
-                      self.nkx/2 + conf.perp_fit_length]
-        ypts = self.y[(self.ny-1)/2 - conf.perp_fit_length : 
-                      (self.ny-1)/2 + conf.perp_fit_length]
-        corr_fn = self.perp_corr[it*conf.time_slice:(it+1)*conf.time_slice, 
-                                 self.nkx/2 - conf.perp_fit_length : 
-                                 self.nkx/2 + conf.perp_fit_length, 
-                                 (self.ny-1)/2 - conf.perp_fit_length : 
-                                 (self.ny-1)/2 + conf.perp_fit_length] 
+        xpts = self.x[self.nkx/2 - self.perp_fit_length : 
+                      self.nkx/2 + self.perp_fit_length]
+        ypts = self.y[(self.ny-1)/2 - self.perp_fit_length : 
+                      (self.ny-1)/2 + self.perp_fit_length]
+        corr_fn = self.perp_corr[it*self.time_slice:(it+1)*self.time_slice, 
+                                 self.nkx/2 - self.perp_fit_length : 
+                                 self.nkx/2 + self.perp_fit_length, 
+                                 (self.ny-1)/2 - self.perp_fit_length : 
+                                 (self.ny-1)/2 + self.perp_fit_length] 
 
         x,y = np.meshgrid(xpts, ypts)
         x = np.transpose(x); y = np.transpose(y)
@@ -337,7 +447,7 @@ class Simulation(object):
         avg_corr = np.mean(corr_fn, axis=0)
 
         popt, pcov = opt.curve_fit(fit.tilted_gauss, (x, y), avg_corr.ravel(), 
-                                   p0=conf.perp_guess)
+                                   p0=self.perp_guess)
         
         self.perp_fit_params[it, :] = popt
 

@@ -7,7 +7,6 @@ import numpy as np
 
 # Local
 from gs2_correlation.simulation import Simulation
-from gs2_correlation.configuration import Configuration
 
 class TestClass(object):
     
@@ -18,31 +17,49 @@ class TestClass(object):
         os.system('rm -rf test/test_run')
 
     @pytest.fixture(scope='function')
-    def conf(self):
-        config = Configuration('test/test_run/config.ini')
-        config.read_config()
-        return config
-
-    @pytest.fixture(scope='function')
-    def run(self, conf):
-        sim = Simulation(conf)
+    def run(self):
+        sim = Simulation('test/test_run/config.ini')
         return sim
+
+    def test_init(self, run):
+        assert type(run.config_file) == str
+
+    def test_read(self, run):
+        run.read_config()
+        assert type(run.in_file) == str
+        assert type(run.file_ext) == str
+        assert type(run.in_field) == str
+        assert type(run.analysis) == str
+        assert type(run.out_dir) == str
+        assert type(run.time_slice) == int
+        assert type(run.perp_fit_length) == int
+        assert type(run.perp_guess) == list
+        assert type(run.interpolate_bool) == bool
+        assert type(run.zero_bes_scales_bool) == bool
+        assert type(run.zero_zf_scales_bool) == bool
+        assert (type(run.spec_idx) == int or type(run.spec_idx) == type(None))
+        assert (type(run.theta_idx) == int or type(run.theta_idx) == 
+                                               type(None))
+        assert type(run.amin) == float
+        assert type(run.vth) == float
+        assert type(run.rhoref) == float
+        assert type(run.pitch_angle) == float
 
     def test_read_netcdf(self, run):
         field_shape = run.field.shape
         arr_shapes = (run.nt, run.nkx, run.nky)
         assert field_shape == arr_shapes
     
-    def test_interpolate(self, run, conf):
+    def test_interpolate(self, run):
         field_shape = run.field.shape
         arr_shapes = (run.nt, run.nkx, run.nky)
         assert field_shape == arr_shapes
         
-    def test_zero_bes_scales(self, run, conf):
+    def test_zero_bes_scales(self, run):
         assert (run.field[:, 1, 1] == 0).all()
 
 
-    def test_zf_bes(self, run, conf):
+    def test_zf_bes(self, run):
         assert (run.field[:, :, 0] == 0).all()
 
     def test_to_complex(self, run):
@@ -52,8 +69,8 @@ class TestClass(object):
         run.wk_2d()
         assert run.perp_corr.shape == (run.nt, run.nkx, run.ny-1)
     
-    def test_perp_analysis(self, run, conf):
-        run.perp_analysis(conf)
+    def test_perp_analysis(self, run):
+        run.perp_analysis()
         assert run.perp_fit_params.shape == (5,4)
 
      

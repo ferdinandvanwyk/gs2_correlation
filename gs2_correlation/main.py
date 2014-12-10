@@ -30,7 +30,6 @@ import time
 # Third Party
 
 # Local
-import configuration
 import simulation
 
 #############
@@ -43,25 +42,22 @@ logging.info('')
 logging.info(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
 logging.info('')
 
-# Create and Configuration object
-conf = configuration.Configuration('config.ini')
-
 #Create Simulation object
-run = simulation.Simulation(conf)
+run = simulation.Simulation('config.ini')
 
-if conf.analysis == 'all':
-    run.perp_analysis(conf)
-    run.time_analysis(conf)
-    run.zf_analysis(conf)
-    run.field_write(conf)
-elif conf.analysis == 'perp':
-    run.perp_analysis(conf)
-elif conf.analysis == 'time':
-    run.time_analysis(conf)
-elif conf.analysis == 'zf':
-    run.zf_analysis(conf)
-elif conf.analysis == 'write_field':
-    run.write_field(conf)
+if run.analysis == 'all':
+    run.perp_analysis()
+    run.time_analysis()
+    run.zf_analysis()
+    run.field_write()
+elif run.analysis == 'perp':
+    run.perp_analysis()
+elif run.analysis == 'time':
+    run.time_analysis()
+elif run.analysis == 'zf':
+    run.zf_analysis()
+elif run.analysis == 'write_field':
+    run.write_field()
 
 
 
