@@ -7,7 +7,8 @@ includes spatial (both radial and poloidal), and temporal correlation analysis.
 Documentation
 -------------
 
-The documentation is hosted on [ReadtheDocs](www.readthedocs.org)
+The documentation is hosted on [ReadtheDocs](https://www.readthedocs.org):
+gs2-correlation.rtfd.org
 
 Getting Started
 ---------------
