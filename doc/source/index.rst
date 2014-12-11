@@ -6,12 +6,20 @@
 Welcome to gs2_correlation's documentation!
 ===========================================
 
-Contents:
+|Build|
+
+gs2_correlation is python package to perform a full correlation analysis of GS2 
+fluctuations. This includes spatial (both radial and poloidal), and temporal 
+correlation analysis.
+
+Contents
+--------
 
 .. toctree::
    :maxdepth: 2
 
-   simulation
+   getting_started.rst
+   simulation.rst
 
 
 

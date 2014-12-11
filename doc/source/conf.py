@@ -17,6 +17,7 @@ import sys
 import os
 from unittest.mock import MagicMock
 
+# Specify mock modules so they don't get built on RTD
 class Mock(MagicMock):
     @classmethod
     def __getattr__(cls, name):
@@ -25,6 +26,15 @@ class Mock(MagicMock):
 MOCK_MODULES = ['numpy', 'scipy', 'scipy.io', 'scipy.signal', 'matplotlib', 
                 'matplotlib.pyplot', 'scipy.interpolate', 'scipy.optimize']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES) 
+
+# on_rtd is whether we are on readthedocs.org, this line of code grabbed from i
+# docs.readthedocs.org
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+
+if not on_rtd:  # only import and set the theme if we're building docs locally
+    import sphinx_rtd_theme
+    html_theme = 'sphinx_rtd_theme'
+    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the

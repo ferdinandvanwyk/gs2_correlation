@@ -1,22 +1,17 @@
 gs2_correlation
 ==================
 
-Python package to perform a full correlation analysis of GS2 fluctuations. This 
-includes spatial (both radial and poloidal), and temporal correlation analysis.
+|Build|
+
+gs2_correlation is python package to perform a full correlation analysis of GS2 
+fluctuations. This includes spatial (both radial and poloidal), and temporal 
+correlation analysis.
 
 Documentation
 -------------
 
 The documentation is hosted on [ReadtheDocs](https://www.readthedocs.org):
 gs2-correlation.rtfd.org
-
-Getting Started
----------------
-
-* Install the requirements by typing
-```
-pip install -r requirements.txt
-```
 
 correlation.py
 --------------
@@ -39,13 +34,3 @@ and dy
   - This method will break down when the flow is too fast. This usually 
     manifests itself as a significantly shorter time correlation.
 
-film.py
--------
-
-Contains functions for making films using ffmpeg.
-
-fit.py
-------
-
-Contains functions for fitting perp and time correlation functions as well as 
-plotting time correlation functions with with fitted functions.
