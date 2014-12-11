@@ -47,7 +47,8 @@ import scipy.optimize as opt
 import gs2_correlation.fit as fit
 
 class Simulation(object):
-    """Class containing all simulation information.
+    """
+    Class containing all simulation information.
 
     The class mainly reads from the simulation NetCDF file and operates on the
     field specified in the configuration file, such as performing correlations,
@@ -126,7 +127,6 @@ class Simulation(object):
         Number of real space y. This is ny = 2*(nky - 1). 
     nt : int
         Number of time points.
-
     """
 
     def __init__(self, config_file):
@@ -298,7 +298,8 @@ class Simulation(object):
         logging.info('Finished reading from NetCDf file.')
 
     def interpolate(self):
-        """Interpolates in time onto a regular grid
+        """
+        Interpolates in time onto a regular grid
 
         Depending on whether the user specified to interpolate, the time grid
         is interpolated into a regular grid. This is required in order to do 
@@ -317,7 +318,8 @@ class Simulation(object):
         logging.info('Finished interpolating onto a regular grid.')
 
     def zero_bes_scales(self):
-        """Sets modes larger than the BES to zero.
+        """
+        Sets modes larger than the BES to zero.
 
         The BES is approximately 160x80mm(rad x pol), so we would set kx < 0.25
         and ky < 0.5 to zero, since k = 2 pi / L. 
@@ -329,12 +331,14 @@ class Simulation(object):
                     self.field[:,ikx,iky,:] = 0.0
 
     def zero_zf_scales(self):
-        """Sets ZF (ky = 0) modes to zero.
+        """
+        Sets zonal flow (ky = 0) modes to zero.
         """
         self.field[:,:,0,:] = 0.0
 
     def to_complex(self):
-        """Converts field to a complex array.
+        """
+        Converts field to a complex array.
 
         Field is in the following format: field[t, kx, ky, ri] where ri 
         represents a dimension of length 2. 
@@ -345,7 +349,8 @@ class Simulation(object):
         self.field = self.field[:,:,:,0] + 1j*self.field[:,:,:,1] 
     
     def perp_analysis(self):
-        """Performs a perpendicular correlation analysis on the field.
+        """
+        Performs a perpendicular correlation analysis on the field.
 
         Notes
         -----
@@ -356,7 +361,6 @@ class Simulation(object):
           slice with a tilted Gaussian using the perp_fit function.
         * The fit parameters for the previous time slice is used as the initial
           guess for the next time slice.
-
         """
 
         logging.info('Start perpendicular correlation analysis...')
@@ -373,7 +377,8 @@ class Simulation(object):
         logging.info('Finished perpendicular correlation analysis.')
         
     def wk_2d(self):
-        """Calculates perpendicular correlation function for each time step.
+        """
+        Calculates perpendicular correlation function for each time step.
 
         Using the Wiener-Khinchin theorem, the 2D perpendicular correlation 
         function os calculated for each time step. The zeros are then shifted 
@@ -399,7 +404,6 @@ class Simulation(object):
         FFT packages contain an implicit normalization in the inverse routines 
         such that ifft(fft(x)) = x, so we multiply to removethese implicit 
         factors.
-
         """
 
         logging.info("Performing 2D WK theorem on field...")
@@ -420,14 +424,14 @@ class Simulation(object):
         logging.info("Finished 2D WK theorem.")
 
     def perp_fit(self, it):
-        """Fits tilted Gaussian to perpendicular correlation function.
+        """
+        Fits tilted Gaussian to perpendicular correlation function.
 
         Parameters
         ----------
 
         it : int
             This is the index of the time slice currently being fitted.
-
         """
         
         xpts = self.x[self.nkx/2 - self.perp_fit_length : 
