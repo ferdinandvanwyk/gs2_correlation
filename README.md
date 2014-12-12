@@ -9,7 +9,7 @@ Documentation
 -------------
 
 The documentation is hosted on [ReadtheDocs](https://www.readthedocs.org):
-gs2-correlation.rtfd.org
+[gs2-correlation.rtfd.org](https://gs2-correlation.rtfd.org)
 
 correlation.py
 --------------
