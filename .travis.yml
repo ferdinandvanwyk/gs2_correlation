@@ -3,7 +3,7 @@ python:
   - "3.4"
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -y libhdf5* libnetcdf*
+  - sudo apt-get install -y libhdf5-1.8.4 libnetcdf4
 # command to install dependencies
 install: "pip install -r requirements.txt"
 # command to run tests
