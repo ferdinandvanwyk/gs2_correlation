@@ -51,6 +51,7 @@ if not on_rtd:  # only import and set the theme if we're building docs locally
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
     'sphinx.ext.pngmath',
     'sphinx.ext.viewcode',
     'numpydoc'
