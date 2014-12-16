@@ -42,6 +42,9 @@ import numpy as np
 from scipy.io import netcdf
 import scipy.interpolate as interp
 import scipy.optimize as opt
+import matplotlib.pyplot as plt
+plt.rcParams.update({'figure.autolayout': True})
+import seaborn as sns
 
 # Local
 import gs2_correlation.fit as fit
@@ -69,7 +72,7 @@ class Simulation(object):
         Type of analysis to be done. Options are 'all', 'perp', 'time', 'zf',
         'write_field'.
     out_dir : str
-        Output directory for analysis. Default = './analysis'.
+        Output directory for analysis: "analysis".
     interpolate_bool : bool
         Interpolate in time onto a regular grid. Default = True. Specify as
         interpolate in configuration file.
@@ -102,6 +105,9 @@ class Simulation(object):
         Larmor radius of the reference species in *m*.
     pitch_angle : float
         Pitch angle of the magnetic field lines in *rad*.
+    seaborn_context : str
+        Context for plot output: paper, notebook, talk, poster. See: 
+        http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
     field : array_like
         Field read in from the NetCDF file.
     perp_corr : array_like
@@ -115,10 +121,22 @@ class Simulation(object):
         Values of the time grid.
     x : array_like
         Values of the real space x (radial) grid.
+    dx : array_like
+        Values of the dx (radial separation) grid.
+    fit_dx : array_like
+        dx values for section that will be fitted
+    fit_dx_mesh : array_like
+        dx grid (in fitting region) as a 2D mesh.
     y : array_like
         Values of the real space y (poloidal) grid. This has been transformed 
         from the toroidal plane to the poloidal plane by using the pitch-angle
         of the magnetic field lines.
+    dy : array_like
+        Values of the dy (poloidal separation) grid.
+    fit_dy : array_like
+        dy values for section that will be fitted
+    fit_dy_mesh : array_like
+        dy grid (in fitting region) as a 2D mesh.
     nkx : int
         Number of kx values. Also the number of real space x points.
     nky : int
@@ -153,10 +171,10 @@ class Simulation(object):
 
         The configuration file should contain the following namelists: 
 
-        * 'analysis' which gives information such as the analysis to be 
-          performed and where to find the NetCDF file.
-        * 'normalization' which gives the normalization parameters for the 
-          simulation/experiment.
+        * 'analysis': information such as the analysis to be performed and 
+          where to find the NetCDF file.
+        * 'normalization': normalization parameters for the simulation/experiment.
+        * 'output': parameters which relate to the output produced by the code. 
 
         The exact parameters read in are documented in the Attributes above. 
         """
@@ -164,17 +182,31 @@ class Simulation(object):
         self.config_file = config_file
         self.read_config()
 
+        sns.set_context(self.seaborn_context)
+
         self.read_netcdf()
 
+        if self.out_dir not in os.listdir():
+            os.system("mkdir " + self.out_dir)
         self.nt = len(self.t)
         self.nkx = len(self.kx)
         self.nky = len(self.ky)
         self.ny = 2*(self.nky - 1)
 
-        self.x = np.linspace(-2*np.pi/self.kx[1], 2*np.pi/self.kx[1], 
+        self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nkx)*self.rhoref
+        self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny - 1)*self.rhoref \
+                             *np.tan(self.pitch_angle)
+        self.dx = np.linspace(-2*np.pi/self.kx[1], 2*np.pi/self.kx[1], 
                              self.nkx)*self.rhoref
-        self.y = np.linspace(-2*np.pi/self.ky[1], 2*np.pi/self.ky[1], 
+        self.dy = np.linspace(-2*np.pi/self.ky[1], 2*np.pi/self.ky[1], 
                              self.ny - 1)*self.rhoref*np.tan(self.pitch_angle)
+        self.fit_dx = self.dx[self.nkx/2 - self.perp_fit_length : 
+                      self.nkx/2 + self.perp_fit_length]
+        self.fit_dy = self.dy[(self.ny-1)/2 - self.perp_fit_length : 
+                      (self.ny-1)/2 + self.perp_fit_length]
+        self.fit_dx_mesh, self.fit_dy_mesh = np.meshgrid(self.fit_dx, self.fit_dy)
+        self.fit_dx_mesh = np.transpose(self.fit_dx_mesh)
+        self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
 
         if self.interpolate_bool:
             self.interpolate()
@@ -201,13 +233,19 @@ class Simulation(object):
         config_parse = configparser.ConfigParser()
         config_parse.read(self.config_file)
 
-        # Normalization parameters
+        ##########################
+        # Normalization Namelist #
+        ##########################
+
         self.amin = float(config_parse['normalization']['a_minor'])
         self.vth = float(config_parse['normalization']['vth_ref'])
         self.rhoref = float(config_parse['normalization']['rho_ref'])
         self.pitch_angle = float(config_parse['normalization']['pitch_angle'])
                 
-        # Analysis information
+        #####################
+        # Analysis Namelist #
+        #####################
+
         self.file_ext = config_parse.get('analysis', 'file_ext', 
                                          fallback='.cdf')
         # Automatically find .out.nc file if only directory specified
@@ -267,6 +305,13 @@ class Simulation(object):
         self.perp_guess = self.perp_guess * np.array([self.rhoref, self.rhoref, 
                                              1/self.rhoref, 1/self.rhoref])
         self.perp_guess = list(self.perp_guess)
+
+        ###################
+        # Output Namelist #
+        ###################
+
+        self.seaborn_context = str(config_parse.get('output', 'seaborn_context', 
+                                              fallback='talk'))
 
         # Log the variables
         logging.info('The following values were read from ' + self.config_file)
@@ -374,6 +419,11 @@ class Simulation(object):
             self.perp_fit(it)
             self.perp_guess = self.perp_fit_params[it,:]
 
+        np.savetxt(self.out_dir + '/perp_fit_params.csv', (self.perp_fit_params), 
+                   delimiter=',', fmt='%1.3f')
+
+        self.perp_plots()
+
         logging.info('Finished perpendicular correlation analysis.')
         
     def wk_2d(self):
@@ -418,9 +468,6 @@ class Simulation(object):
             self.perp_corr[it,:,:] = (self.perp_corr[it,:,:] / 
                                       np.max(self.perp_corr[it,:,:]))
 
-        # Normalization appropriate to GS2 and FFT packages.
-        self.perp_corr = self.perp_corr * self.nkx * self.nky / 2
-
         logging.info("Finished 2D WK theorem.")
 
     def perp_fit(self, it):
@@ -434,30 +481,76 @@ class Simulation(object):
             This is the index of the time slice currently being fitted.
         """
         
-        xpts = self.x[self.nkx/2 - self.perp_fit_length : 
-                      self.nkx/2 + self.perp_fit_length]
-        ypts = self.y[(self.ny-1)/2 - self.perp_fit_length : 
-                      (self.ny-1)/2 + self.perp_fit_length]
         corr_fn = self.perp_corr[it*self.time_slice:(it+1)*self.time_slice, 
                                  self.nkx/2 - self.perp_fit_length : 
                                  self.nkx/2 + self.perp_fit_length, 
                                  (self.ny-1)/2 - self.perp_fit_length : 
                                  (self.ny-1)/2 + self.perp_fit_length] 
 
-        x,y = np.meshgrid(xpts, ypts)
-        x = np.transpose(x); y = np.transpose(y)
-
         # Average corr_fn over time
         avg_corr = np.mean(corr_fn, axis=0)
 
-        popt, pcov = opt.curve_fit(fit.tilted_gauss, (x, y), avg_corr.ravel(), 
-                                   p0=self.perp_guess)
+        popt, pcov = opt.curve_fit(fit.tilted_gauss, (self.fit_dx_mesh, 
+                                                      self.fit_dy_mesh), 
+                                   avg_corr.ravel(), p0=self.perp_guess)
         
         self.perp_fit_params[it, :] = popt
 
+    def perp_plots(self):
+        """
+        Function which plots various things relevant to perpendicular analysis.
 
+        * Time-averaged correlation function
+        * Tilted Gaussian using time-averaged fitting parameters
+        * The above two graphs overlayed
+        """
+        logging.info("Writing perp_analysis plots...")
+        
+        # Set plot options
+        sns.set_style('darkgrid', {'axes.axisbelow':False})
+        
+        #Time averaged correlation
+        plt.clf()
+        corr_fn = self.perp_corr[:, self.nkx/2 - self.perp_fit_length : 
+                                    self.nkx/2 + self.perp_fit_length, 
+                                    (self.ny-1)/2 - self.perp_fit_length : 
+                                    (self.ny-1)/2 + self.perp_fit_length] 
+        avg_corr = np.mean(corr_fn, axis=0) # Average over time
+        plt.contourf(self.fit_dx, self.fit_dy, np.transpose(avg_corr), 11,
+                     levels=np.linspace(-1, 1, 11), cmap='jet')
+        plt.colorbar(ticks=np.linspace(-1, 1, 11))
+        plt.xlabel(r'$\Delta x (m)$')
+        plt.ylabel(r'$\Delta y (m)$')
+        plt.savefig(self.out_dir + '/time_avg_correlation.pdf')
 
+        # Tilted Gaussian using time-averaged fitting parameters 
+        data_fitted = fit.tilted_gauss((self.fit_dx_mesh, self.fit_dy_mesh), 
+                                        *np.mean(self.perp_fit_params, axis=0))
+        plt.clf()
+        plt.contourf(self.fit_dx, self.fit_dy, 
+                     np.transpose(data_fitted.reshape(len(self.fit_dx),
+                                                      len(self.fit_dy))), 
+                                  11, levels=np.linspace(-1, 1, 11), cmap='jet')
+        plt.title('$C_{fit}(\Delta x, \Delta y)$')
+        plt.colorbar(ticks=np.linspace(-1, 1, 11))
+        plt.xlabel(r'$\Delta x (m)$')
+        plt.ylabel(r'$\Delta y (m)$')
+        plt.savefig(self.out_dir + '/perp_corr_fit.pdf')
 
+        # Avg correlation and fitted function overlayed
+        plt.clf()
+        plt.contourf(self.fit_dx, self.fit_dy, np.transpose(avg_corr), 10, 
+                     levels=np.linspace(-1, 1, 11), cmap='jet')
+        plt.colorbar(ticks=np.linspace(-1, 1, 11))
+        plt.contour(self.fit_dx, self.fit_dy, 
+                     np.transpose(data_fitted.reshape(len(self.fit_dx),
+                                                      len(self.fit_dy))), 
+                                  11, levels=np.linspace(-1, 1, 11), colors='k')
+        plt.xlabel(r'$\Delta x (m)$')
+        plt.ylabel(r'$\Delta y (m)$')
+        plt.savefig(self.out_dir + '/perp_fit_comparison.pdf')
+
+        logging.info("Finished writing perp_analysis plots...")
 
 
 

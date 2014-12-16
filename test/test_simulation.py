@@ -73,6 +73,14 @@ class TestClass(object):
         run.perp_analysis()
         assert run.perp_fit_params.shape == (5,4)
 
+    def test_perp_plots(self, run):
+        run.perp_analysis()
+        assert ('time_avg_correlation.pdf' in os.listdir('test/test_run/v/id_1/analysis'))
+        assert ('perp_corr_fit.pdf' in os.listdir('test/test_run/v/id_1/analysis'))
+        assert ('perp_fit_comparison.pdf' in os.listdir('test/test_run/v/id_1/analysis'))
+
+
+
      
 
 
