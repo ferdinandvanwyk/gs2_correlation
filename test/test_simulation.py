@@ -4,6 +4,8 @@ import pytest
 
 # Third Party
 import numpy as np
+import matplotlib
+matplotlib.use('Agg') # specifically for Travis CI to avoid backend errors
 
 # Local
 from gs2_correlation.simulation import Simulation
