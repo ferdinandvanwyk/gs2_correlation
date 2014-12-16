@@ -36,30 +36,6 @@ import scipy.signal as sig
 # Fitting Procedures #
 ######################
 
-# Fit the 2D correlation function with a tilted Gaussian and extract the 
-# fitting parameters
-def perp_fit(corr_fn, xpts, ypts, guess):
-    shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
-    x,y = np.meshgrid(xpts, ypts)
-    x = np.transpose(x); y = np.transpose(y)
-
-    # Average corr fn over time
-    avg_corr = np.empty([nx, ny], dtype=float)
-    avg_corr = np.mean(corr_fn, axis=0)
-
-    # lx, ly, kx, ky
-    popt, pcov = opt.curve_fit(tilted_gauss, (x, y), avg_corr.ravel(), 
-                               p0=guess)
-
-    #plt.contourf(xpts, ypts, np.transpose(avg_corr))
-    #plt.hold(True)
-    #data_fitted = fit.tilted_gauss((x, y), *popt)
-    #plt.contour(xpts, ypts, np.transpose(data_fitted.reshape(nx,ny)), 8, 
-    #            colors='w')
-    #plt.show()
-
-    return popt
-
 #Fit the peaks of the correlation functions of different dy with decaying exp
 def time_fit(corr_fn, t, out_dir):
     shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];

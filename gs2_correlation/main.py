@@ -26,6 +26,7 @@ import os
 import sys
 import logging
 import time
+import argparse
 
 # Third Party
 
@@ -36,6 +37,12 @@ import simulation
 # Main Code #
 #############
 
+# Get command line argument specifying configuration file
+parser = argparse.ArgumentParser(description='Perform correlation analysis')
+parser.add_argument('config_file', metavar='config_file', type=str, 
+                    help='location of the configuration file')
+args = parser.parse_args()
+
 # Set up logging framework
 logging.basicConfig(filename='main.log', level=logging.INFO)
 logging.info('')
@@ -43,7 +50,7 @@ logging.info(time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
 logging.info('')
 
 #Create Simulation object
-run = simulation.Simulation('config.ini')
+run = simulation.Simulation(args.config_file)
 
 if run.analysis == 'all':
     run.perp_analysis()
