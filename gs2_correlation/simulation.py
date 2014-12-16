@@ -182,7 +182,9 @@ class Simulation(object):
         self.config_file = config_file
         self.read_config()
 
+        # Set plot options
         sns.set_context(self.seaborn_context)
+        sns.set_style('darkgrid', {'axes.axisbelow':False, 'legend.frameon': True})
 
         self.read_netcdf()
 
@@ -423,6 +425,7 @@ class Simulation(object):
                    delimiter=',', fmt='%1.3f')
 
         self.perp_plots()
+        self.perp_analysis_summary()
 
         logging.info('Finished perpendicular correlation analysis.')
         
@@ -506,9 +509,6 @@ class Simulation(object):
         """
         logging.info("Writing perp_analysis plots...")
         
-        # Set plot options
-        sns.set_style('darkgrid', {'axes.axisbelow':False})
-        
         #Time averaged correlation
         plt.clf()
         corr_fn = self.perp_corr[:, self.nkx/2 - self.perp_fit_length : 
@@ -551,6 +551,52 @@ class Simulation(object):
         plt.savefig(self.out_dir + '/perp_fit_comparison.pdf')
 
         logging.info("Finished writing perp_analysis plots...")
+
+    def perp_analysis_summary(self):
+        """
+        Prints out a summary of the perpendicular analysis.
+
+        * Plots fitting parameters as a function of time window.
+        * Averages them in time and calculates a standard deviation.
+        * Writes summary to a text file.
+        """
+        logging.info("Writing perp_analysis summary...")
+
+        plt.clf()
+        plt.plot(self.perp_fit_params[:,0], label=r'$l_x (m)$')
+        plt.plot(self.perp_fit_params[:,1], label=r'$l_y (m)$')
+        plt.plot(self.perp_fit_params[:,2], label=r'$k_x (m^{-1}$')
+        plt.plot(self.perp_fit_params[:,3], label=r'$k_y (m^{-1})$')
+        plt.legend()
+        plt.xlabel('Time Window')
+        plt.yscale('log')
+        plt.savefig(self.out_dir + '/perp_fit_params_vs_time_slice.pdf')
+
+        summary_file = open(self.out_dir + '/perp_fit_summary.txt', 'w')
+        summary_file.write('lx = ' + str(np.mean(self.perp_fit_params[:,0]))
+                           + " m\n")
+        summary_file.write('std(lx) = ' + str(np.std(self.perp_fit_params[:,0]))
+                           + " m\n")
+        summary_file.write('ly = ' + str(np.mean(self.perp_fit_params[:,1]))
+                           + " m\n")
+        summary_file.write('std(ly) = ' + str(np.std(self.perp_fit_params[:,1]))
+                           + " m\n")
+        summary_file.write('kx = ' + str(np.mean(self.perp_fit_params[:,2]))
+                           + " m^-1\n")
+        summary_file.write('std(kx) = ' + str(np.std(self.perp_fit_params[:,2]))
+                           + " m^-1\n")
+        summary_file.write('ky = ' + str(np.mean(self.perp_fit_params[:,3])) 
+                           + " m^-1\n")
+        summary_file.write('std(ky) = ' + str(np.std(self.perp_fit_params[:,3])) 
+                           + " m^-1\n")
+        summary_file.write('theta = ' + str(np.arctan(np.mean(self.perp_fit_params[:,2]/ \
+                            self.perp_fit_params[:,3]))) + "\n")
+        summary_file.write('std(theta) = ' + str(np.std(self.perp_fit_params[:,3]/\
+                           self.perp_fit_params[:,3])) + "\n")
+        summary_file.close()
+
+        logging.info("Finished writing perp_analysis summary...")
+
 
 
 

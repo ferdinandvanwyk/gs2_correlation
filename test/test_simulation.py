@@ -77,9 +77,15 @@ class TestClass(object):
 
     def test_perp_plots(self, run):
         run.perp_analysis()
+        assert ('perp_fit_params.csv' in os.listdir('test/test_run/v/id_1/analysis'))
         assert ('time_avg_correlation.pdf' in os.listdir('test/test_run/v/id_1/analysis'))
         assert ('perp_corr_fit.pdf' in os.listdir('test/test_run/v/id_1/analysis'))
         assert ('perp_fit_comparison.pdf' in os.listdir('test/test_run/v/id_1/analysis'))
+
+    def test_perp_plots(self, run):
+        run.perp_analysis()
+        assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis'))
+        assert ('perp_fit_summary.txt' in os.listdir('test/test_run/v/id_1/analysis'))
 
 
 
