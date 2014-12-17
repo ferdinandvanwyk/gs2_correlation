@@ -597,7 +597,28 @@ class Simulation(object):
 
         logging.info("Finished writing perp_analysis summary...")
 
+    def time_analysis(self):
+        """
+        Performs a time correlation analysis on the field.
 
+        Notes
+        -----
+
+        * 
+        """
+        logging.info("Starting time_analysis...")
+
+        self.field_to_real_space()
+
+
+
+
+        logging.info("Finished time_analysis...")
+
+    def field_to_real_space(self):
+        """
+        Converts field from kx, ky to x and y and saves as new attribute.
+        """
 
 
 
