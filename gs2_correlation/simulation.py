@@ -225,9 +225,58 @@ class Simulation(object):
         """
         Reads analysis and normalization parameters from self.config_file.
 
-        The full list of possible configuration parameters is listed in the 
-        Attributes above, along with their default values.
+        The full list of possible configuration parameters is listed below.
 
+        Parameters
+        ----------
+        file_ext : str, '.cdf'
+            File extension for NetCDF output file.
+        cdf_file : str
+            Path (relative or absolute) and/or name of input NetCDF file. If
+            only a path is specified, the directory is searched for a file
+            ending in '.out.nc' and the name is appended to the path.
+        in_field : str
+            Name of the field to be read in from NetCDF file.
+        analysis : str
+            Type of analysis to be done. Options are 'all', 'perp', 'time', 'zf',
+            'write_field'.
+        out_dir : str
+            Output directory for analysis: "analysis".
+        interpolate_bool : bool
+            Interpolate in time onto a regular grid. Default = True. Specify as
+            interpolate in configuration file.
+        zero_bes_scales_bool : bool
+            Zero out scales which are larger than the BES. Default = False. Specify
+            as zero_bes_scales in configuration file.
+        zero_zf_scales_bool : bool
+            Zero out the zonal flow (ky = 0) modes. Default = False. Specify as
+            zero_zf_scales in configuration file.
+        time_slice : int 
+            Size of time window for averaging                                         
+        perp_fit_length : int
+            Number of points radially and poloidally to fit Gaussian over. Fitting 
+            over the whole domain usually does not produce a very good fit. Default
+             = 20. 
+        perp_guess : array_like
+            Initial guess for perpendicular correlation function fitting. Of the 
+            form [lx, ly, kx, ky] all in normalized rhoref units.
+        species_index : int
+            Specied index to be read from NetCDF file. GS2 convention is to use
+            0 for ion and 1 for electron in a two species simulation.
+        theta_index : int or None
+            Parallel index at which to do analysis. If no theta index in array
+            set to None.
+        amin : float
+            Minor radius of device in *m*.
+        vth : float
+            Thermal velocity of the reference species in *m/s*
+        rhoref : float
+            Larmor radius of the reference species in *m*.
+        pitch_angle : float
+            Pitch angle of the magnetic field lines in *rad*.
+        seaborn_context : str
+            Context for plot output: paper, notebook, talk, poster. See: 
+            http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
         """
 
         logging.info('Started read_config...')
@@ -619,6 +668,13 @@ class Simulation(object):
         """
         Converts field from kx, ky to x and y and saves as new attribute.
         """
+
+        self.field_real_space = np.empty([nt,nx,ny],dtype=float)
+        for it in range(nt):
+            field_real_space[it,:,:] = np.fft.irfft2(real_to_complex_2d(
+                                            field[it,:,:,:]), axes=[0,1])
+            field_real_space[it,:,:] = np.roll(field_real_space[it,:,:], 
+                                                 nx/2, axis=0)
 
 
 
