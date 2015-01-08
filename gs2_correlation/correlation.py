@@ -35,7 +35,7 @@ ny = (nky-1)*2
 # separately, and calculating C(dy, dt). Depending on whether there is 
 # significant flow, can fit a decaying exponential to either the central peak 
 # or the envelope of peaks of different dy's
-elif analysis == 'time':
+if analysis == 'time':
     diag_file.write("Started 'time' analysis.\n")
 
     # Need to IFFT in x so that x index represents radial locations
