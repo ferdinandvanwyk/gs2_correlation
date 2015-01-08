@@ -46,7 +46,8 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.pngmath',
     'sphinx.ext.viewcode',
-    'numpydoc'
+    #'numpydoc'
+    'sphinxcontrib.napoleon'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
