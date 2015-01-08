@@ -36,12 +36,14 @@ import sys
 import gc #garbage collector
 import configparser
 import logging
+import operator #enumerate list
 
 # Third Party
 import numpy as np
 from scipy.io import netcdf
 import scipy.interpolate as interp
 import scipy.optimize as opt
+import scipy.signal as sig
 import matplotlib.pyplot as plt
 plt.rcParams.update({'figure.autolayout': True})
 import seaborn as sns
@@ -91,6 +93,10 @@ class Simulation(object):
     perp_guess : array_like
         Initial guess for perpendicular correlation function fitting. Of the
         form [lx, ly, kx, ky] all in normalized rhoref units.
+    time_guess : int
+        Initial guess for the correlation time in normalized GS2 units.
+    npeaks_fit : int
+        Number of peaks to fit when calculating the correlation time.
     species_index : int
         Specied index to be read from NetCDF file. GS2 convention is to use
         0 for ion and 1 for electron in a two species simulation.
@@ -109,9 +115,21 @@ class Simulation(object):
         Context for plot output: paper, notebook, talk, poster. See:
         http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
     field : array_like
-        Field read in from the NetCDF file.
+        Field read in from the NetCDF file. Automatically converted to a complex
+        array.
+    field_real_space : array_like
+        Field in real space coordinates (x,y)
     perp_corr : array_like
         Perpendicular correlation function calculated from the field array.
+    perp_fit_params : array_like
+        Parameters obtained from perp fitting procedure. Of size (nt_slices, 4) 
+        since fitting finds lx, ly, kx, ky.
+    time_corr : array_like
+        Correlation function used to calculate the correlation function. It is
+        of size (nt_slices, 2*time_slice-1, nx, 2*ny-1), owing to the 2D 
+        correlation calculated in the t and y directions.
+    corr_time : array_like
+        Parameters obtained from time fitting procedure. Of size (nt_slices, nx).
     kx : array_like
         Values of the kx grid in the following order: 0,...,kx_max,-kx_max,...
         kx_min.
@@ -119,6 +137,11 @@ class Simulation(object):
         Values of the ky grid.
     t : array_like
         Values of the time grid.
+    dt : array_like
+        Values of the time separations. Min and max values will depend on
+        time_slice.
+    nt_slices : int
+        Number of time slices. nt_slices = nt/time_slice 
     x : array_like
         Values of the real space x (radial) grid.
     dx : array_like
@@ -138,11 +161,13 @@ class Simulation(object):
     fit_dy_mesh : array_like
         dy grid (in fitting region) as a 2D mesh.
     nkx : int
-        Number of kx values. Also the number of real space x points.
+        Number of kx values.
     nky : int
         Number of ky values.
+    nx : int
+        Number of real space x points.
     ny : int
-        Number of real space y. This is ny = 2*(nky - 1).
+        Number of real space y points. This is ny = 2*(nky - 1).
     nt : int
         Number of time points.
     """
@@ -184,7 +209,6 @@ class Simulation(object):
 
         # Set plot options
         sns.set_context(self.seaborn_context)
-        sns.set_style('darkgrid', {'axes.axisbelow':False, 'legend.frameon': True})
 
         self.read_netcdf()
 
@@ -193,9 +217,11 @@ class Simulation(object):
         self.nt = len(self.t)
         self.nkx = len(self.kx)
         self.nky = len(self.ky)
+        self.nx = self.nkx
         self.ny = 2*(self.nky - 1)
 
-        self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nkx)*self.rhoref
+        self.nt_slices = int(self.nt/self.time_slice)
+        self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rhoref
         self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny - 1)*self.rhoref \
                              *np.tan(self.pitch_angle)
         self.dx = np.linspace(-2*np.pi/self.kx[1], 2*np.pi/self.kx[1],
@@ -257,6 +283,10 @@ class Simulation(object):
         perp_guess : array_like, [1,1,1,1]
             Initial guess for perpendicular correlation function fitting. Of the
             form [lx, ly, kx, ky] all in normalized rhoref units.
+        time_guess : int, 10
+            Initial guess for the correlation time in normalized GS2 units.
+        npeaks_fit : int, 5
+            Number of peaks to fit when calculating the correlation time.
         species_index : int or None
             Specied index to be read from NetCDF file. GS2 convention is to use
             0 for ion and 1 for electron in a two species simulation. If reading
@@ -346,7 +376,7 @@ class Simulation(object):
                                                fallback=50))
 
         self.perp_fit_length = int(config_parse.get('analysis',
-                                               'perp_fit_length'), fallback=20)
+                                               'perp_fit_length', fallback=20))
 
         self.perp_guess = str(config_parse['analysis']['perp_guess'])
         self.perp_guess = self.perp_guess[1:-1].split(',')
@@ -354,6 +384,12 @@ class Simulation(object):
         self.perp_guess = self.perp_guess * np.array([self.rhoref, self.rhoref,
                                              1/self.rhoref, 1/self.rhoref])
         self.perp_guess = list(self.perp_guess)
+
+        self.npeaks_fit = int(config_parse.get('analysis',
+                                               'npeaks_fit', fallback=5))
+
+        self.time_guess = int(config_parse.get('analysis',
+                                               'time_guess', fallback=10))
 
         ###################
         # Output Namelist #
@@ -459,16 +495,17 @@ class Simulation(object):
 
         logging.info('Start perpendicular correlation analysis...')
 
+        if 'perp' not in os.listdir(self.out_dir):
+            os.system("mkdir " + self.out_dir + '/perp')
+
         self.wk_2d()
+        self.perp_fit_params = np.empty([self.nt_slices, 4], dtype=float)
 
-        nt_slices = int(self.nt/self.time_slice)
-        self.perp_fit_params = np.empty([nt_slices, 4], dtype=float)
-
-        for it in range(nt_slices):
+        for it in range(self.nt_slices):
             self.perp_fit(it)
             self.perp_guess = self.perp_fit_params[it,:]
 
-        np.savetxt(self.out_dir + '/perp_fit_params.csv', (self.perp_fit_params),
+        np.savetxt(self.out_dir + '/perp/perp_fit_params.csv', (self.perp_fit_params),
                    delimiter=',', fmt='%1.3f')
 
         self.perp_plots()
@@ -510,10 +547,10 @@ class Simulation(object):
 
         # ny-1 below since to ensure odd number of y points and that zero is in
         # the middle of the y domain.
-        self.perp_corr = np.empty([self.nt, self.nkx, self.ny-1], dtype=float)
+        self.perp_corr = np.empty([self.nt, self.nx, self.ny-1], dtype=float)
         for it in range(self.nt):
             sq = np.abs(self.field[it,:,:])**2
-            self.perp_corr[it,:,:] = np.fft.irfft2(sq, s=[self.nkx, self.ny-1])
+            self.perp_corr[it,:,:] = np.fft.irfft2(sq, s=[self.nx, self.ny-1])
             self.perp_corr[it,:,:] = np.fft.fftshift(self.perp_corr[it,:,:])
             self.perp_corr[it,:,:] = (self.perp_corr[it,:,:] /
                                       np.max(self.perp_corr[it,:,:]))
@@ -532,8 +569,8 @@ class Simulation(object):
         """
 
         corr_fn = self.perp_corr[it*self.time_slice:(it+1)*self.time_slice,
-                                 self.nkx/2 - self.perp_fit_length :
-                                 self.nkx/2 + self.perp_fit_length,
+                                 self.nx/2 - self.perp_fit_length :
+                                 self.nx/2 + self.perp_fit_length,
                                  (self.ny-1)/2 - self.perp_fit_length :
                                  (self.ny-1)/2 + self.perp_fit_length]
 
@@ -556,10 +593,11 @@ class Simulation(object):
         """
         logging.info("Writing perp_analysis plots...")
 
+        sns.set_style('darkgrid', {'axes.axisbelow':False, 'legend.frameon': True})
         #Time averaged correlation
         plt.clf()
-        corr_fn = self.perp_corr[:, self.nkx/2 - self.perp_fit_length :
-                                    self.nkx/2 + self.perp_fit_length,
+        corr_fn = self.perp_corr[:, self.nx/2 - self.perp_fit_length :
+                                    self.nx/2 + self.perp_fit_length,
                                     (self.ny-1)/2 - self.perp_fit_length :
                                     (self.ny-1)/2 + self.perp_fit_length]
         avg_corr = np.mean(corr_fn, axis=0) # Average over time
@@ -568,7 +606,7 @@ class Simulation(object):
         plt.colorbar(ticks=np.linspace(-1, 1, 11))
         plt.xlabel(r'$\Delta x (m)$')
         plt.ylabel(r'$\Delta y (m)$')
-        plt.savefig(self.out_dir + '/time_avg_correlation.pdf')
+        plt.savefig(self.out_dir + '/perp/time_avg_correlation.pdf')
 
         # Tilted Gaussian using time-averaged fitting parameters
         data_fitted = fit.tilted_gauss((self.fit_dx_mesh, self.fit_dy_mesh),
@@ -582,7 +620,7 @@ class Simulation(object):
         plt.colorbar(ticks=np.linspace(-1, 1, 11))
         plt.xlabel(r'$\Delta x (m)$')
         plt.ylabel(r'$\Delta y (m)$')
-        plt.savefig(self.out_dir + '/perp_corr_fit.pdf')
+        plt.savefig(self.out_dir + '/perp/perp_corr_fit.pdf')
 
         # Avg correlation and fitted function overlayed
         plt.clf()
@@ -595,7 +633,7 @@ class Simulation(object):
                                   11, levels=np.linspace(-1, 1, 11), colors='k')
         plt.xlabel(r'$\Delta x (m)$')
         plt.ylabel(r'$\Delta y (m)$')
-        plt.savefig(self.out_dir + '/perp_fit_comparison.pdf')
+        plt.savefig(self.out_dir + '/perp/perp_fit_comparison.pdf')
 
         logging.info("Finished writing perp_analysis plots...")
 
@@ -617,9 +655,9 @@ class Simulation(object):
         plt.legend()
         plt.xlabel('Time Window')
         plt.yscale('log')
-        plt.savefig(self.out_dir + '/perp_fit_params_vs_time_slice.pdf')
+        plt.savefig(self.out_dir + '/perp/perp_fit_params_vs_time_slice.pdf')
 
-        summary_file = open(self.out_dir + '/perp_fit_summary.txt', 'w')
+        summary_file = open(self.out_dir + '/perp/perp_fit_summary.txt', 'w')
         summary_file.write('lx = ' + str(np.mean(self.perp_fit_params[:,0]))
                            + " m\n")
         summary_file.write('std(lx) = ' + str(np.std(self.perp_fit_params[:,0]))
@@ -651,28 +689,202 @@ class Simulation(object):
         Notes
         -----
 
-        *
+        * Change from (kx, ky) to (x, y)
+        * Split into time windows and perform correlation analysis on each 
+          window separately.
         """
         logging.info("Starting time_analysis...")
 
+        if 'time' not in os.listdir(self.out_dir):
+            os.system("mkdir " + self.out_dir + '/time')
+        if 'corr_fns' not in os.listdir(self.out_dir+'/time'):
+            os.system("mkdir " + self.out_dir + '/time/corr_fns')
+
         self.field_to_real_space()
+        
+        self.time_corr = np.empty([self.nt_slices, 2*self.time_slice-1, self.nx,
+                                   2*self.ny-1], dtype=float)
+        self.corr_time = np.empty([self.nt_slices, self.nx], dtype=float)
 
-
-
+        for it in range(self.nt_slices):
+            self.calculate_time_corr(it)
+            self.time_corr_fit(it)
 
         logging.info("Finished time_analysis...")
 
     def field_to_real_space(self):
         """
-        Converts field from kx, ky to x and y and saves as new attribute.
+        Converts field from (kx, ky) to (x, y) and saves as new array attribute.
         """
 
-        self.field_real_space = np.empty([nt,nx,ny],dtype=float)
-        for it in range(nt):
-            field_real_space[it,:,:] = np.fft.irfft2(real_to_complex_2d(
-                                            field[it,:,:,:]), axes=[0,1])
-            field_real_space[it,:,:] = np.roll(field_real_space[it,:,:],
-                                                 nx/2, axis=0)
+        self.field_real_space = np.empty([self.nt,self.nx,self.ny],dtype=float)
+        for it in range(self.nt):
+            self.field_real_space[it,:,:] = np.fft.irfft2(self.field[it,:,:])
+            self.field_real_space[it,:,:] = np.roll(self.field_real_space[it,:,:],
+                                                    int(self.nx/2), axis=0)
+
+    def calculate_time_corr(self, it):
+        """
+        Calculate the time correlation for a given time window at each x.
+
+        Parameters
+        ----------
+
+        it : int
+            This is the index of the time slice currently being calculated.
+        """
+        
+        field_window = self.field_real_space[it*self.time_slice:(it+1)*
+                                             self.time_slice,:,:]
+
+        for ix in range(self.nx):
+            self.time_corr[it,:,ix,:] = sig.fftconvolve(field_window[:,ix,:], 
+                                                        field_window[::-1,ix,::-1])
+            self.time_corr[it,:,ix,:] = (self.time_corr[it,:,ix,:] /  
+                                        np.max(self.time_corr[it,:,ix,:]))
+
+    def time_corr_fit(self, it):
+        """
+        Fit the time correlation function with exponentials to find correlation
+        time.
+
+        Notes
+        -----
+
+        The fitting procedure consists of the following steps:
+        
+        * Loop over radial points
+        * Identify the time correlation function peaks
+        * Determine what type of function to fit to the peaks
+        * Fitting the appropriate function
+
+        The peaks can be fitted with a growing/decaying exponential depending
+        on the direction of decrease of the peaks, or an oscillating exponential
+        if the peaks don't monotically increase or decrease.
+
+        Parameters
+        ----------
+
+        it : int
+            This is the index of the time slice currently being fitted.
+        """
+        t = self.t[it*self.time_slice:(it+1)*self.time_slice]
+        self.dt = np.linspace(-max(t)+t[0], max(t)-t[0], 2*self.time_slice-1)
+
+        peaks = np.zeros([self.nx, self.npeaks_fit], dtype=float)
+        max_index = np.empty([self.nx, self.npeaks_fit], dtype=int);
+        mid_idx = int(self.ny/2)
+
+        for ix in range(self.nx):
+            for iy in range(mid_idx,mid_idx+self.npeaks_fit):
+                max_index[ix, iy-mid_idx], peaks[ix, iy-mid_idx] = \
+                    max(enumerate(self.time_corr[it,:,ix,iy]), 
+                        key=operator.itemgetter(1))
+
+            if (fit.strictly_increasing(max_index[ix,:]) == True or 
+                fit.strictly_increasing(max_index[ix,::-1]) == True):
+                if max_index[ix, self.npeaks_fit-1] > max_index[ix, 0]:
+                    self.corr_time[it, ix], pcov = opt.curve_fit(
+                                                       fit.decaying_exp, 
+                                                       (self.dt[max_index[ix,:]]), 
+                                                       peaks[ix,:].ravel(), 
+                                                       p0=self.time_guess)
+                    self.time_plot(it, ix, max_index, peaks, 'decaying')
+                    logging.info("Index " + str(ix) + " was fitted with decaying" 
+                            "exponential. tau = " + str(self.corr_time[it,ix]) 
+                            + "\n")
+                else:
+                    self.corr_time[it, ix], pcov = opt.curve_fit(
+                                                       fit.growing_exp, 
+                                                       (self.dt[max_index[ix,:]]), 
+                                                       peaks[ix,:].ravel(), 
+                                                       p0=self.time_guess)
+                    self.time_plot(it, ix, max_index, peaks, 'growing')
+                    logging.info("Index " + str(ix) + " was fitted with growing "
+                            "exponential. tau = " + str(self.corr_time[it,ix]) 
+                            + "\n")
+            else:
+                # If abs(max_index) is not monotonically increasing, this 
+                # usually means that there is no flow and that the above method
+                # cannot be used to calculate the correlation time. Try fitting
+                # a decaying oscillating exponential to the central peak.
+                self.time_corr[it,:,ix,mid_idx] = self.time_corr[it,:,ix,mid_idx]/ \
+                                                  max(self.time_corr[it,:,ix,mid_idx])
+                init_guess = (self.time_guess, 1.0)
+                tau_and_omega, pcov = opt.curve_fit(
+                                          fit.osc_exp, 
+                                          (self.dt), 
+                                          (self.time_corr[it,:,ix,mid_idx]).ravel(), 
+                                          p0=init_guess)
+                self.corr_time[it,ix] = tau_and_omega[0]
+                self.time_plot(it, ix, max_index, peaks, 'decaying', 
+                               omega=tau_and_omega[1])
+                logging.info("Index " + str(ix) + " was fitted with an oscillating "
+                            "Gaussian to the central peak. [tau, omega] = " 
+                            + str(tau_and_omega) + "\n")
+
+    def time_plot(self, it, ix, max_index, peaks, plot_type, **kwargs):
+        """
+        Plots the time correlation peaks as well as the apprpriate fitting 
+        function.
+
+        Parameters
+        ----------
+        
+        it : int
+            Time slice currently being fitted.
+        ix : int
+            Radial index currently being fitted.
+        max_index : array_like
+            Array containing radial indices of the peaks. Size: (nx, npeaks_fit)
+        peaks : array_like
+            Array of peak values at the max_index values. Size: (nx, npeaks_fit)
+        plot_type : str
+            Type of fitting function to plot. One of: 'growing'/'decaying'/
+            'oscillating'
+        """
+        sns.set_style('darkgrid', {'axes.axisbelow':True, 'legend.frameon': True})
+            
+        mid_idx = int(self.ny/2)
+        plt.clf()
+        plt.plot(self.dt, self.time_corr[it,:,ix,mid_idx:mid_idx+self.npeaks_fit])
+        plt.hold(True)
+        plt.plot(self.dt[max_index[ix,:]], peaks[ix,:], 'o', color='#7A1919')
+        plt.hold(True)
+
+        if plot_type == 'decaying':
+            p1 = plt.plot(self.dt, fit.decaying_exp(self.dt,self.corr_time[it,ix]), 
+                          color='#3333AD', lw=2, 
+                          label=r'$\exp[-|\Delta t_{peak} / \tau_c|]$')
+            plt.legend()
+        if plot_type == 'growing':
+            p1 = plt.plot(self.dt, fit.decaying_exp(self.dt,self.corr_time[it,ix]), 
+                          color='#3333AD', lw=2, 
+                          label=r'$\exp[|\Delta t_{peak} / \tau_c|]$')
+            plt.legend()
+        if plot_type == 'oscillating':
+            p1 = plt.plot(self.dt, fit.osc_exp(self.dt,self.time_corr[it,ix]), 
+                          color='#3333AD', lw=2, 
+                          label=r'$\exp[- (\Delta t_{peak} / \tau_c)^2] '
+                                 '\cos(\omega \Delta t) $')
+            plt.legend()
+
+        plt.xlabel(r'$\Delta t (\mu s)})$')
+        plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
+        plt.savefig(self.out_dir + '/time/corr_fns/time_fit_it_' + str(it) + 
+                    '_ix_' + str(ix) + '.pdf')
+
+
+
+
+        
+        
+        
+
+
+
+
+
 
 
 

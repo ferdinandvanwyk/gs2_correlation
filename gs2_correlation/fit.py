@@ -32,92 +32,6 @@ import matplotlib.pyplot as plt
 import scipy.optimize as opt
 import scipy.signal as sig
 
-######################
-# Fitting Procedures #
-######################
-
-#Fit the peaks of the correlation functions of different dy with decaying exp
-def time_fit(corr_fn, t, out_dir):
-    shape = corr_fn.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
-
-    #define delta t range
-    dt = np.linspace(-max(t)+t[0], max(t)-t[0], nt)
-
-    peaks = np.empty([nx, 5]); peaks[:,:] = 0.0;
-    max_index = np.empty([nx, 5], dtype=int);
-    popt = np.empty([nx], dtype=float)
-    mid_idx = 61
-    os.system("mkdir " + out_dir + "/corr_fns")
-    for ix in range(0,nx): # loop over all radial points
-        #only read fit first 5 since rest may be noise
-        for iy in range(mid_idx,mid_idx+5):
-            max_index[ix, iy-mid_idx], peaks[ix, iy-mid_idx] = \
-                max(enumerate(corr_fn[:,ix,iy]), key=operator.itemgetter(1))
-
-    if (strictly_increasing(max_index[ix,:]) == True or 
-        strictly_increasing(max_index[ix,::-1]) == True):
-        # Perform fitting of decaying exponential to peaks
-        init_guess = (10.0)
-        if max_index[ix, 4] > max_index[ix, 0]:
-            popt[ix], pcov = opt.curve_fit(decaying_exp, 
-                    (dt[max_index[ix,:]]), peaks[ix,:].ravel(), p0=init_guess)
-            plot_fit(ix, dt, corr_fn[:,ix,:], max_index[ix,:], peaks[ix,:], 
-                    mid_idx, popt[ix], 'decaying_exp', amin, vth)
-            diag_file.write("Index " + str(ix) + " was fitted with decaying" 
-                    "exponential. tau = " + str(popt[ix]) + "\n")
-        else:
-            popt[ix], pcov = opt.curve_fit(fit.growing_exp, 
-                    (dt[max_index[ix,::-1]]), peaks[ix,::-1].ravel(), 
-                    p0=init_guess)
-            fit.plot_fit(ix, dt, corr_fn[:,ix,:], max_index[ix, :], peaks[ix,:],
-                    mid_idx, popt[ix], 'growing_exp', amin, vth)
-            diag_file.write("Index " + str(ix) + " was fitted with growing "
-                    "exponential. tau = " + str(popt[ix]) + "\n")
-    else:
-        # If abs(max_index) is not monotonically increasing, this usually means
-        # that there is no flow and that the above method cannot be used to 
-        # calculate the correlation time. Try fitting a decaying oscillating 
-        # exponential to the central peak.
-        corr_fn[:,ix,mid_idx] = corr_fn[:,ix,mid_idx]/max(corr_fn[:,ix,mid_idx])
-        init_guess = (10.0, 1.0)
-        tau_and_omega, pcov = opt.curve_fit(fit.osc_exp, (dt[nt/2-100:nt/2+100]), 
-                (corr_fn[nt/2-100:nt/2+100,ix,mid_idx]).ravel(), p0=init_guess)
-        popt[ix] = tau_and_omega[0]
-        fit.plot_fit(ix, dt, corr_fn[:,ix,:], max_index[ix,:], peaks[ix,:], 
-                     mid_idx, tau_and_omega, 'osc_exp', amin, vth)
-        diag_file.write("Index " + str(ix) + " was fitted with an oscillating "
-                    "Gaussian to the central peak. [tau, omega] = " 
-                    + str(tau_and_omega) + "\n")
-
-    # Return correlation time in seconds
-    return abs(popt)*1e6*amin/vth 
-
-# Function which checks monotonicity. Returns True or False.
-def strictly_increasing(L):
-    return all(x<y for x, y in zip(L, L[1:]))
-
-# Function which takes in density fluctuations and outputs the correlation time
-# as a function of the minor radius
-def tau_vs_radius(ntot, t, out_dir, diag_file):
-    shape = ntot.shape; nt = shape[0]; nx = shape[1]; ny = shape[2];
-    # change to meters and poloidal plane
-    ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle) 
-    dypts = np.linspace(-2*np.pi/ky[1], 2*np.pi/ky[1], 
-                        ny)*rhoref*np.tan(pitch_angle)
-    corr_fn = np.empty([2*nt-1, nx, 2*ny-1], dtype=float); corr_fn[:,:,:] = 0.0
-
-    for ix in range(nx):
-        print('ix = ', ix, ' of ', nx)
-        corr_fn[:,ix,:] = sig.correlate(ntot[:,ix,:], ntot[:,ix,:])
-
-        # Normalize correlation function by the max
-        corr_fn[:,ix,:] = corr_fn[:,ix,:] / np.max(corr_fn[:,ix,:])
-
-    # Fit exponential decay to peaks of correlation function in dt for few dy's
-    tau = time_fit(corr_fn, t, out_dir, diag_file) #tau in seconds
-
-    return tau
-
 ###########################
 # Model Fitting Functions #
 ###########################
@@ -149,38 +63,11 @@ def osc_exp(t, tau_c, omega):
     # fitting function only works on 1D data, reshape later to plot
     return fit_fn.ravel() 
 
-# General plotting function called by the various fitting methods to plot the 
-# correlation function along with its fit. This is done for every radial value.
-# plot_type can be either 'decaying_exp', 'growing_exp', or 'osc_exp', to plot 
-# either an exponential fit to the correlation function peaks, or an 
-# oscillating Gaussian to the central peak if there is no flow in which case 
-# tau = [tau, omega].
-def plot_fit(ix, dt, corr_fn, max_index, peaks, mid_idx, tau, 
-             plot_type, amin, vth):
-    nt = len(dt)
-    plt.clf()
-    plt.plot(dt*1e6*amin/vth, corr_fn[:,mid_idx:mid_idx+5])
-    plt.hold(True)
-    plt.plot(dt[max_index[:]]*1e6*amin/vth, peaks[:], 'ro')
-    plt.hold(True)
+###################
+# Misc Procedures #
+###################
 
-    if plot_type == 'decaying_exp':
-        p1 = plt.plot(dt[nt/2:nt/2+100]*1e6*amin/vth, 
-                      np.exp(-dt[nt/2:nt/2+100] / tau), 'b', lw=2)
-        plt.legend(p1, [r'$\exp[-|\Delta t_{peak} / \tau_c|]$'])
-    if plot_type == 'growing_exp':
-        p1 = plt.plot(dt[nt/2-100:nt/2]*1e6*amin/vth, 
-                      np.exp(dt[nt/2-100:nt/2] / tau), 'b', lw=2)
-        plt.legend(p1, [r'$\exp[|\Delta t_{peak} / \tau_c|]$'])
-    if plot_type == 'osc_exp':
-        p1 = plt.plot(dt*1e6*amin/vth, 
-                      np.exp(-(dt / tau[0])**2)*np.cos(tau[1]*dt), 'b', lw=2)
-        plt.legend(p1, [r'$\exp[- (\Delta t_{peak} / \tau_c)^2] '
-                         '\cos(\omega \Delta t) $'])
-
-    plt.xlabel(r'$\Delta t (\mu s)})$', fontsize=25)
-    plt.ylabel(r'$C_{\Delta y}(\Delta t)$', fontsize=25)
-    plt.xticks(fontsize=25)
-    plt.yticks(fontsize=25)
-    plt.savefig('analysis/corr_fns/time_fit_ix_' + str(ix) + '.pdf')
+# Function which checks monotonicity. Returns True or False.
+def strictly_increasing(L):
+    return all(x<y for x, y in zip(L, L[1:]))
 
