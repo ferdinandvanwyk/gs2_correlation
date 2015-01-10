@@ -68,7 +68,7 @@ class Simulation(object):
         Path (relative or absolute) and/or name of input NetCDF file. If
         only a path is specified, the directory is searched for a file
         ending in '.cdf' and the name is appended to the path.
-    field : str
+    in_field : str
         Name of the field to be read in from NetCDF file.
     analysis : str
         Type of analysis to be done. Options are 'all', 'perp', 'time', 'zf',
@@ -710,6 +710,16 @@ class Simulation(object):
             self.calculate_time_corr(it)
             self.time_corr_fit(it)
 
+        np.savetxt(self.out_dir + '/time/corr_time.csv', (self.corr_time),
+                   delimiter=',', fmt='%1.3f')
+
+        # Plot corr_time as a function of radius, average over time window
+        plt.clf()
+        plt.plot(self.x, np.mean(self.corr_time, axis=0))
+        plt.xlabel("Radius (m)")
+        plt.ylabel(r'Correlations Time $\tau_c$ (s)')
+        plt.savefig(self.out_dir + '/time/corr_time.pdf')
+
         logging.info("Finished time_analysis...")
 
     def field_to_real_space(self):
@@ -790,9 +800,9 @@ class Simulation(object):
                                                        peaks[ix,:].ravel(), 
                                                        p0=self.time_guess)
                     self.time_plot(it, ix, max_index, peaks, 'decaying')
-                    logging.info("Index " + str(ix) + " was fitted with decaying" 
-                            "exponential. tau = " + str(self.corr_time[it,ix]) 
-                            + "\n")
+                    logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
+                                 "with decaying exponential. tau = " 
+                                 + str(self.corr_time[it,ix]) + "\n")
                 else:
                     self.corr_time[it, ix], pcov = opt.curve_fit(
                                                        fit.growing_exp, 
@@ -800,9 +810,9 @@ class Simulation(object):
                                                        peaks[ix,:].ravel(), 
                                                        p0=self.time_guess)
                     self.time_plot(it, ix, max_index, peaks, 'growing')
-                    logging.info("Index " + str(ix) + " was fitted with growing "
-                            "exponential. tau = " + str(self.corr_time[it,ix]) 
-                            + "\n")
+                    logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
+                                 "with growing exponential. tau = " 
+                                 + str(self.corr_time[it,ix]) + "\n")
             else:
                 # If abs(max_index) is not monotonically increasing, this 
                 # usually means that there is no flow and that the above method
@@ -817,11 +827,12 @@ class Simulation(object):
                                           (self.time_corr[it,:,ix,mid_idx]).ravel(), 
                                           p0=init_guess)
                 self.corr_time[it,ix] = tau_and_omega[0]
-                self.time_plot(it, ix, max_index, peaks, 'decaying', 
+                self.time_plot(it, ix, max_index, peaks, 'oscillating', 
                                omega=tau_and_omega[1])
-                logging.info("Index " + str(ix) + " was fitted with an oscillating "
-                            "Gaussian to the central peak. [tau, omega] = " 
-                            + str(tau_and_omega) + "\n")
+                logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
+                             "with an oscillating "
+                             "Gaussian to the central peak. (tau, omega) = " 
+                             + str(tau_and_omega) + "\n")
 
     def time_plot(self, it, ix, max_index, peaks, plot_type, **kwargs):
         """
@@ -853,17 +864,17 @@ class Simulation(object):
         plt.hold(True)
 
         if plot_type == 'decaying':
-            p1 = plt.plot(self.dt, fit.decaying_exp(self.dt,self.corr_time[it,ix]), 
+            plt.plot(self.dt, fit.decaying_exp(self.dt,self.corr_time[it,ix]), 
                           color='#3333AD', lw=2, 
                           label=r'$\exp[-|\Delta t_{peak} / \tau_c|]$')
             plt.legend()
         if plot_type == 'growing':
-            p1 = plt.plot(self.dt, fit.decaying_exp(self.dt,self.corr_time[it,ix]), 
+            plt.plot(self.dt, fit.decaying_exp(self.dt,self.corr_time[it,ix]), 
                           color='#3333AD', lw=2, 
                           label=r'$\exp[|\Delta t_{peak} / \tau_c|]$')
             plt.legend()
         if plot_type == 'oscillating':
-            p1 = plt.plot(self.dt, fit.osc_exp(self.dt,self.time_corr[it,ix]), 
+            plt.plot(self.dt, fit.osc_exp(self.dt,self.time_corr[it,ix]), 
                           color='#3333AD', lw=2, 
                           label=r'$\exp[- (\Delta t_{peak} / \tau_c)^2] '
                                  '\cos(\omega \Delta t) $')
@@ -876,6 +887,37 @@ class Simulation(object):
 
 
 
+    def write_field(self):
+        """
+        Outputs the field to NetCDF in real space and creates a film.
+        """
+        logging.info("Starting write_field...")
+        
+        if 'write_field' not in os.listdir(self.out_dir):
+            os.system("mkdir " + self.out_dir + '/write_field')
+        if 'film_frames' not in os.listdir(self.out_dir+'/write_field'):
+            os.system("mkdir " + self.out_dir + '/write_field/film_frames')
+
+        self.field_to_real_space()
+
+        print(self.y, self.ny)
+        
+        nc_file = netcdf.netcdf_file(self.out_dir + '/'+self.in_field+'.nc', 'w')
+        nc_file.createDimension('x', self.nx)
+        nc_file.createDimension('y', self.ny)
+        nc_file.createDimension('t', self.nt)
+        nc_x = nc_file.createVariable('x','d',('x',))
+        nc_y = nc_file.createVariable('y','d',('y',))
+        nc_t = nc_file.createVariable('t','d',('t',))
+        nc_ntot = nc_file.createVariable('n','d',('t', 'x', 'y',))
+        nc_x[:] = self.x[:]
+        nc_y[:] = self.y[:]
+        nc_t[:] = self.t[:] - self.t[0]
+        nc_ntot[:,:,:] = self.field_real_space[:,:,:]
+        nc_file.close()
+
+        
+        logging.info("Finished write_field...")
 
         
         
