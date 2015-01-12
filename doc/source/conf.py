@@ -46,8 +46,8 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.pngmath',
     'sphinx.ext.viewcode',
-    #'numpydoc'
-    'sphinxcontrib.napoleon'
+    'numpydoc'
+    #'sphinxcontrib.napoleon'
 ]
 
 # Napoleon settings
