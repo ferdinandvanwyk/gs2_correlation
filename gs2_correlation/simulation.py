@@ -170,6 +170,11 @@ class Simulation(object):
         Number of real space y points. This is ny = 2*(nky - 1).
     nt : int
         Number of time points.
+    ncfile : object
+        SciPy NetCDF object referencing all arrays in the NetCDF file. Arrays
+        are not loaded into memory due to the large amount of memory needed, 
+        but simply read from the NetCDF file. Since the field is manipulated, 
+        it is copied into a NumPy array, however.
     """
 
     def __init__(self, config_file):
