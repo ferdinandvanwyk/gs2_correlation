@@ -222,7 +222,7 @@ class Simulation(object):
 
         self.nt_slices = int(self.nt/self.time_slice)
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rhoref
-        self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny - 1)*self.rhoref \
+        self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rhoref \
                              *np.tan(self.pitch_angle)
         self.dx = np.linspace(-2*np.pi/self.kx[1], 2*np.pi/self.kx[1],
                              self.nkx)*self.rhoref
@@ -412,18 +412,18 @@ class Simulation(object):
         """
         logging.info('Start reading from NetCDf file...')
 
-        # mmap=False does not read directly from cdf file. Copies are created.
-        # This prevents seg faults when cdf file is closed after function exits
-        ncfile = netcdf.netcdf_file(self.in_file, 'r', mmap=False)
+        self.ncfile = netcdf.netcdf_file(self.in_file, 'r')
 
         # NetCDF order is [t, species, ky, kx, theta, r]
-        self.field = ncfile.variables[self.in_field][:,self.spec_idx,:,:,self.theta_idx,:]
+        # ncfile.variable returns netcdf object - convert to array
+        self.field = np.array(self.ncfile.variables[self.in_field]
+                                        [:,self.spec_idx,:,:,self.theta_idx,:])
         self.field = np.squeeze(self.field)
         self.field = np.swapaxes(self.field, 1, 2)
 
-        self.kx = ncfile.variables['kx'][:]
-        self.ky = ncfile.variables['ky'][:]
-        self.t = ncfile.variables['t'][:]
+        self.kx = self.ncfile.variables['kx'][:]
+        self.ky = self.ncfile.variables['ky'][:]
+        self.t = self.ncfile.variables['t'][:]
 
         logging.info('Finished reading from NetCDf file.')
 
@@ -899,10 +899,8 @@ class Simulation(object):
             os.system("mkdir " + self.out_dir + '/write_field/film_frames')
 
         self.field_to_real_space()
-
-        print(self.y, self.ny)
         
-        nc_file = netcdf.netcdf_file(self.out_dir + '/'+self.in_field+'.nc', 'w')
+        nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/'+self.in_field+'.nc', 'w')
         nc_file.createDimension('x', self.nx)
         nc_file.createDimension('y', self.ny)
         nc_file.createDimension('t', self.nt)
@@ -915,9 +913,9 @@ class Simulation(object):
         nc_t[:] = self.t[:] - self.t[0]
         nc_ntot[:,:,:] = self.field_real_space[:,:,:]
         nc_file.close()
-
         
         logging.info("Finished write_field...")
+
 
         
         
