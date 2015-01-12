@@ -879,7 +879,8 @@ class Simulation(object):
                           label=r'$\exp[|\Delta t_{peak} / \tau_c|]$')
             plt.legend()
         if plot_type == 'oscillating':
-            plt.plot(self.dt, fit.osc_exp(self.dt,self.time_corr[it,ix]), 
+            print(self.dt.shape, self.corr_time.shape, kwargs['omega'])
+            plt.plot(self.dt, fit.osc_exp(self.dt,self.corr_time[it,ix], kwargs['omega']), 
                           color='#3333AD', lw=2, 
                           label=r'$\exp[- (\Delta t_{peak} / \tau_c)^2] '
                                  '\cos(\omega \Delta t) $')
@@ -905,7 +906,7 @@ class Simulation(object):
 
         self.field_to_real_space()
         
-        nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/'+self.in_field+'.nc', 'w')
+        nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/'+self.in_field+'.cdf', 'w')
         nc_file.createDimension('x', self.nx)
         nc_file.createDimension('y', self.ny)
         nc_file.createDimension('t', self.nt)
