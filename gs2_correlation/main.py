@@ -57,6 +57,7 @@ if run.analysis == 'all':
     run.time_analysis()
     run.zf_analysis()
     run.field_write()
+    run.make_film()
 elif run.analysis == 'perp':
     run.perp_analysis()
 elif run.analysis == 'time':
@@ -65,7 +66,7 @@ elif run.analysis == 'zf':
     run.zf_analysis()
 elif run.analysis == 'write_field':
     run.write_field()
-elif run.analysis == 'make_film':
+elif run.analysis == 'film':
     run.make_film()
 
 

@@ -69,44 +69,6 @@ if analysis == 'time':
     t_end = time.clock()
     print('Total Time = ', t_end-t_start, ' s')
 
-##############
-# BES Output #
-##############
-elif analysis == 'bes':
-    diag_file.write("Started 'bes' film making and density fluctuations write "
-                    "out to NetCDF.\n")
-
-    field_real_space = np.empty([nt,nx,ny],dtype=float)
-    for it in range(nt):
-        field_real_space[it,:,:] = np.fft.irfft2(real_to_complex_2d(
-                                            field[it,:,:,:]), axes=[0,1])
-        field_real_space[it,:,:] = np.roll(field_real_space[it,:,:], 
-                                             int(nx/2), axis=0)
-
-    xpts = np.linspace(0, 2*np.pi/kx[1], nx)*rhoref 
-    ypts = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref*np.tan(pitch_angle)  
-    tpts = np.array(t*amin/vth)
-
-    #Write out density fluctuations in real space to be analyzed
-    nc_file = netcdf.netcdf_file(out_dir + '/density.nc', 'w')
-    nc_file.createDimension('x',nx)
-    nc_file.createDimension('y',ny)
-    nc_file.createDimension('t',nt)
-    nc_x = nc_file.createVariable('x','d',('x',))
-    nc_y = nc_file.createVariable('y','d',('y',))
-    nc_t = nc_file.createVariable('t','d',('t',))
-    nc_ntot = nc_file.createVariable('n','d',('t', 'x', 'y',))
-    nc_x[:] = xpts[:]
-    nc_y[:] = ypts[:]
-    nc_t[:] = tpts[:] - tpts[0]
-    nc_ntot[:,:,:] = field_real_space[:,:,:]
-    nc_file.close()
-
-    #Export film
-    print ('Exporting film...')
-    film.real_space_film_2d(xpts, ypts, field_real_space[:,:,:],
-                            in_field, out_dir)
-
 #######################
 # Zonal Flow Analysis #
 #######################

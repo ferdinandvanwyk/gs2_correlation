@@ -271,7 +271,7 @@ class Simulation(object):
             Name of the field to be read in from NetCDF file.
         analysis : str, 'all'
             Type of analysis to be done. Options are 'all', 'perp', 'time', 'zf',
-            'write_field', make_film.
+            'write_field', 'film'.
         out_dir : str, 'analysis'
             Output directory for analysis.
         interpolate : bool, True
@@ -351,7 +351,7 @@ class Simulation(object):
         self.analysis = config_parse.get('analysis', 'analysis',
                                          fallback='all')
         if self.analysis not in ['all', 'perp', 'time', 'zf', 'write_field', 
-                                 'make_film']:
+                                 'film']:
             raise ValueError('Analysis must be one of (perp, time, zf, '
                              'write_field, make_film)')
 
@@ -706,6 +706,7 @@ class Simulation(object):
             os.system("mkdir " + self.out_dir + '/time')
         if 'corr_fns' not in os.listdir(self.out_dir+'/time'):
             os.system("mkdir " + self.out_dir + '/time/corr_fns')
+        os.system('rm ' + self.out_dir + '/time/corr_fns/*')
 
         self.field_to_real_space()
         
@@ -724,7 +725,7 @@ class Simulation(object):
         plt.clf()
         plt.plot(self.x, np.mean(self.corr_time, axis=0))
         plt.xlabel("Radius (m)")
-        plt.ylabel(r'Correlations Time $\tau_c$ (s)')
+        plt.ylabel(r'Correlations Time $\tau_c$ (\mu s)')
         plt.savefig(self.out_dir + '/time/corr_time.pdf')
 
         logging.info("Finished time_analysis...")
@@ -790,7 +791,7 @@ class Simulation(object):
 
         peaks = np.zeros([self.nx, self.npeaks_fit], dtype=float)
         max_index = np.empty([self.nx, self.npeaks_fit], dtype=int);
-        mid_idx = int(self.ny/2)
+        mid_idx = self.ny-1
 
         for ix in range(self.nx):
             for iy in range(mid_idx,mid_idx+self.npeaks_fit):
@@ -863,7 +864,7 @@ class Simulation(object):
         """
         sns.set_style('darkgrid', {'axes.axisbelow':True, 'legend.frameon': True})
             
-        mid_idx = int(self.ny/2)
+        mid_idx = self.ny-1
         plt.clf()
         plt.plot(self.dt, self.time_corr[it,:,ix,mid_idx:mid_idx+self.npeaks_fit])
         plt.hold(True)
@@ -871,21 +872,22 @@ class Simulation(object):
         plt.hold(True)
 
         if plot_type == 'decaying':
-            plt.plot(self.dt, fit.decaying_exp(self.dt,self.corr_time[it,ix]), 
-                          color='#3333AD', lw=2, 
-                          label=r'$\exp[-|\Delta t_{peak} / \tau_c|]$')
+            plt.plot(self.dt[self.time_slice-1:], 
+                     fit.decaying_exp(self.dt[self.time_slice-1:],self.corr_time[it,ix]), 
+                     color='#3333AD', lw=2, 
+                     label=r'$\exp[-|\Delta t_{peak} / \tau_c|]$')
             plt.legend()
         if plot_type == 'growing':
-            plt.plot(self.dt, fit.decaying_exp(self.dt,self.corr_time[it,ix]), 
-                          color='#3333AD', lw=2, 
-                          label=r'$\exp[|\Delta t_{peak} / \tau_c|]$')
+            plt.plot(self.dt[:self.time_slice-1], 
+                     fit.growing_exp(self.dt[:self.time_slice-1],self.corr_time[it,ix]), 
+                     color='#3333AD', lw=2, 
+                     label=r'$\exp[|\Delta t_{peak} / \tau_c|]$')
             plt.legend()
         if plot_type == 'oscillating':
-            print(self.dt.shape, self.corr_time.shape, kwargs['omega'])
             plt.plot(self.dt, fit.osc_exp(self.dt,self.corr_time[it,ix], kwargs['omega']), 
-                          color='#3333AD', lw=2, 
-                          label=r'$\exp[- (\Delta t_{peak} / \tau_c)^2] '
-                                 '\cos(\omega \Delta t) $')
+                     color='#3333AD', lw=2, 
+                     label=r'$\exp[- (\Delta t_{peak} / \tau_c)^2] '
+                            '\cos(\omega \Delta t) $')
             plt.legend()
 
         plt.xlabel(r'$\Delta t (\mu s)})$')
@@ -957,10 +959,10 @@ class Simulation(object):
         it : int
             Time index to plot and save.
         """
-        print('Saving frame ', it)
+        logging.info('Saving frame %d of %d'%(it,self.nt))
 
-        field_max = np.max(self.field_real_space)
-        field_min = np.min(self.field_real_space)
+        field_max = 2#np.max(self.field_real_space)
+        field_min = 1#np.min(self.field_real_space)
 
         plt.clf()
         plt.contourf(self.x, self.y, np.transpose(self.field_real_space[it,:,:]),
@@ -968,6 +970,7 @@ class Simulation(object):
                      cmap='afmhot')
         plt.xlabel(r'$x (m)$')
         plt.ylabel(r'$y (m)$')
+        plt.colorbar()
         plt.savefig(self.out_dir + "/film/film_frames/" + self.in_field + 
                     "_%04d.png"%it, dpi=110)
 
