@@ -37,6 +37,7 @@ import gc #garbage collector
 import configparser
 import logging
 import operator #enumerate list
+import multiprocessing
 
 # Third Party
 import numpy as np
@@ -270,7 +271,7 @@ class Simulation(object):
             Name of the field to be read in from NetCDF file.
         analysis : str, 'all'
             Type of analysis to be done. Options are 'all', 'perp', 'time', 'zf',
-            'write_field'.
+            'write_field', make_film.
         out_dir : str, 'analysis'
             Output directory for analysis.
         interpolate : bool, True
@@ -349,9 +350,10 @@ class Simulation(object):
 
         self.analysis = config_parse.get('analysis', 'analysis',
                                          fallback='all')
-        if self.analysis not in ['all', 'perp', 'time', 'zf', 'write_field']:
+        if self.analysis not in ['all', 'perp', 'time', 'zf', 'write_field', 
+                                 'make_film']:
             raise ValueError('Analysis must be one of (perp, time, zf, '
-                             'write_field)')
+                             'write_field, make_film)')
 
         self.out_dir = str(config_parse.get('analysis', 'out_dir',
                                             fallback='analysis'))
@@ -895,18 +897,17 @@ class Simulation(object):
 
     def write_field(self):
         """
-        Outputs the field to NetCDF in real space and creates a film.
+        Outputs the field to NetCDF in real space.
         """
         logging.info("Starting write_field...")
         
         if 'write_field' not in os.listdir(self.out_dir):
             os.system("mkdir " + self.out_dir + '/write_field')
-        if 'film_frames' not in os.listdir(self.out_dir+'/write_field'):
-            os.system("mkdir " + self.out_dir + '/write_field/film_frames')
 
         self.field_to_real_space()
         
-        nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/'+self.in_field+'.cdf', 'w')
+        nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' + 
+                                     self.in_field +'.cdf', 'w')
         nc_file.createDimension('x', self.nx)
         nc_file.createDimension('y', self.ny)
         nc_file.createDimension('t', self.nt)
@@ -921,6 +922,54 @@ class Simulation(object):
         nc_file.close()
         
         logging.info("Finished write_field...")
+
+    def make_film(self):
+        """
+        Creates film from real space field time frames.
+        """
+        logging.info("Starting make_film...")
+
+        if 'film' not in os.listdir(self.out_dir):
+            os.system("mkdir " + self.out_dir + '/film')
+        if 'film_frames' not in os.listdir(self.out_dir+'/film'):
+            os.system("mkdir " + self.out_dir + '/film/film_frames')
+
+        self.field_to_real_space()
+
+        #Use multiprocessing to write graphs then make movie
+        #pool = multiprocessing.Pool()
+        #plot_args = zip(self.x, self.y, self.field_real_space, range(self.nt))
+        #pool.map(self.plot_real_space_field, plot_args)
+        for it in range(self.nt):
+            self.plot_real_space_field(it)
+
+        os.system("avconv -threads 2 -y -f image2 -r 40 -i 'analysis/film/film_frames/"
+                  + self.in_field +"_%04d.png' analysis/film/"+self.in_field+".mp4")
+
+        logging.info("Finished make_film...")
+
+    def plot_real_space_field(self, it):
+        """
+        Plots real space field and saves as a file indexed by time index.
+
+        Parameters
+        ----------
+        it : int
+            Time index to plot and save.
+        """
+        print('Saving frame ', it)
+
+        field_max = np.max(self.field_real_space)
+        field_min = np.min(self.field_real_space)
+
+        plt.clf()
+        plt.contourf(self.x, self.y, np.transpose(self.field_real_space[it,:,:]),
+                     levels=np.linspace(field_min, field_max, 30),
+                     cmap='afmhot')
+        plt.xlabel(r'$x (m)$')
+        plt.ylabel(r'$y (m)$')
+        plt.savefig(self.out_dir + "/film/film_frames/" + self.in_field + 
+                    "_%04d.png"%it, dpi=110)
 
 
         

@@ -75,3 +75,12 @@ def real_space_film_2d(xpts, ypts, field, field_name, out_dir):
     print('Making movie animation.mp4')
     os.system("avconv -threads 2 -y -f image2 -r 40 -i 'analysis/film_frames/"
               +field_name+"_%04d.png' analysis/"+field_name+".mp4")
+
+
+
+
+
+
+
+
+

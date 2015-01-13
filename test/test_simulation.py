@@ -73,16 +73,10 @@ class TestClass(object):
     def test_perp_analysis(self, run):
         run.perp_analysis()
         assert run.perp_fit_params.shape == (5,4)
-
-    def test_perp_plots(self, run):
-        run.perp_analysis()
         assert ('perp_fit_params.csv' in os.listdir('test/test_run/v/id_1/analysis/perp'))
         assert ('time_avg_correlation.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
         assert ('perp_corr_fit.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
         assert ('perp_fit_comparison.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-
-    def test_perp_analysis_summary(self, run):
-        run.perp_analysis()
         assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
         assert ('perp_fit_summary.txt' in os.listdir('test/test_run/v/id_1/analysis/perp'))
 
@@ -90,18 +84,9 @@ class TestClass(object):
         run.time_analysis()
         assert ('corr_time.csv' in os.listdir('test/test_run/v/id_1/analysis/time'))
         assert ('corr_time.pdf' in os.listdir('test/test_run/v/id_1/analysis/time'))
-
-    def test_field_to_real_space(self, run):
-        run.time_analysis()
         assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
-
-    def test_calculate_time_corr(self, run):
-        run.time_analysis()
         assert run.time_corr.shape == (run.nt_slices, 2*run.time_slice-1,
                                        run.nx, 2*run.ny-1)
-
-    def test_time_corr_fit(self, run):
-        run.time_analysis()
         assert ('corr_fns' in os.listdir('test/test_run/v/id_1/analysis/time'))
         assert ('time_fit_it_0_ix_0.pdf' in 
                 os.listdir('test/test_run/v/id_1/analysis/time/corr_fns'))
@@ -109,6 +94,10 @@ class TestClass(object):
     def test_write_field(self, run):
         run.write_field()
         assert ('ntot_igomega_by_mode.cdf' in os.listdir('test/test_run/v/id_1/analysis/write_field'))
+
+    def test_make_film(self, run):
+        run.make_film()
+        assert ('ntot_igomega_by_mode_0000.png' in os.listdir('test/test_run/v/id_1/analysis/film/film_frames'))
 
             
 

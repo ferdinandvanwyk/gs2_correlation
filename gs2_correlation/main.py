@@ -65,6 +65,8 @@ elif run.analysis == 'zf':
     run.zf_analysis()
 elif run.analysis == 'write_field':
     run.write_field()
+elif run.analysis == 'make_film':
+    run.make_film()
 
 
 
