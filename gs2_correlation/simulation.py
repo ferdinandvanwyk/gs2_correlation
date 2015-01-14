@@ -176,6 +176,10 @@ class Simulation(object):
         are not loaded into memory due to the large amount of memory needed, 
         but simply read from the NetCDF file. Since the field is manipulated, 
         it is copied into a NumPy array, however.
+    field_max : float
+        Maximum value of the real space field.
+    field_min : float
+        Minimum value of the real space field.
     """
 
     def __init__(self, config_file):
@@ -227,6 +231,7 @@ class Simulation(object):
         self.ny = 2*(self.nky - 1)
 
         self.nt_slices = int(self.nt/self.time_slice)
+        self.t = self.t*self.amin/self.vth
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rhoref
         self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rhoref \
                              *np.tan(self.pitch_angle)
@@ -938,15 +943,15 @@ class Simulation(object):
 
         self.field_to_real_space()
 
-        #Use multiprocessing to write graphs then make movie
-        #pool = multiprocessing.Pool()
-        #plot_args = zip(self.x, self.y, self.field_real_space, range(self.nt))
-        #pool.map(self.plot_real_space_field, plot_args)
+        self.field_max = np.max(self.field_real_space)
+        self.field_min = np.min(self.field_real_space)
         for it in range(self.nt):
             self.plot_real_space_field(it)
 
         os.system("avconv -threads 2 -y -f image2 -r 40 -i 'analysis/film/film_frames/"
-                  + self.in_field +"_%04d.png' analysis/film/"+self.in_field+".mp4")
+                  + self.in_field + "_spec_" + str(self.spec_idx) + "_%04d.png'"  
+                  " analysis/film/" + self.in_field + "_spec_" + 
+                  str(self.spec_idx) +".mp4")
 
         logging.info("Finished make_film...")
 
@@ -961,18 +966,16 @@ class Simulation(object):
         """
         logging.info('Saving frame %d of %d'%(it,self.nt))
 
-        field_max = 2#np.max(self.field_real_space)
-        field_min = 1#np.min(self.field_real_space)
-
         plt.clf()
+        contours = np.around(np.linspace(self.field_min, self.field_max, 30),7)
         plt.contourf(self.x, self.y, np.transpose(self.field_real_space[it,:,:]),
-                     levels=np.linspace(field_min, field_max, 30),
-                     cmap='afmhot')
+                     levels=contours, cmap='afmhot')
         plt.xlabel(r'$x (m)$')
         plt.ylabel(r'$y (m)$')
+        plt.title(r'Time = %f $\mu s$'%(self.t[it]*1e6))
         plt.colorbar()
         plt.savefig(self.out_dir + "/film/film_frames/" + self.in_field + 
-                    "_%04d.png"%it, dpi=110)
+                    "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=110)
 
 
         
