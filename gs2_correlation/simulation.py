@@ -977,7 +977,7 @@ class Simulation(object):
                      levels=contours, cmap='afmhot')
         plt.xlabel(r'$x (m)$')
         plt.ylabel(r'$y (m)$')
-        plt.title(r'Time = %f $\mu s$'%(self.t[it]*1e6))
+        plt.title(r'Time = %f $\mu s$'%((self.t[it]-self.t[0])*1e6))
         plt.colorbar()
         plt.savefig(self.out_dir + "/film/film_frames/" + self.in_field + 
                     "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=110)
