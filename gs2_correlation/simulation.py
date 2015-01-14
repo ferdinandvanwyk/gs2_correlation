@@ -953,7 +953,7 @@ class Simulation(object):
         for it in range(self.nt):
             self.plot_real_space_field(it)
 
-        os.system("avconv -threads 2 -y -f image2 -r " + self.film_fps + 
+        os.system("avconv -threads 2 -y -f image2 -r " + str(self.film_fps) + 
                   " -i 'analysis/film/film_frames/" + self.in_field + "_spec_" + 
                   str(self.spec_idx) + "_%04d.png' analysis/film/" + 
                   self.in_field + "_spec_" + str(self.spec_idx) +".mp4")
