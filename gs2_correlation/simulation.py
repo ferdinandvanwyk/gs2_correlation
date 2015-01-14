@@ -115,6 +115,8 @@ class Simulation(object):
     seaborn_context : str
         Context for plot output: paper, notebook, talk, poster. See:
         http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
+    film_fps : int, 40
+        Frames per second of the film.
     field : array_like
         Field read in from the NetCDF file. Automatically converted to a complex
         array.
@@ -316,6 +318,8 @@ class Simulation(object):
         seaborn_context : str, 'talk'
             Context for plot output: paper, notebook, talk, poster. See:
             http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
+        film_fps : int, 40
+            Frames per second of the film.
         """
         logging.info('Started read_config...')
 
@@ -409,6 +413,7 @@ class Simulation(object):
 
         self.seaborn_context = str(config_parse.get('output', 'seaborn_context',
                                               fallback='talk'))
+        self.film_fps = int(config_parse.get('output', 'film_fps', fallback=40))
 
         # Log the variables
         logging.info('The following values were read from ' + self.config_file)
@@ -948,10 +953,10 @@ class Simulation(object):
         for it in range(self.nt):
             self.plot_real_space_field(it)
 
-        os.system("avconv -threads 2 -y -f image2 -r 40 -i 'analysis/film/film_frames/"
-                  + self.in_field + "_spec_" + str(self.spec_idx) + "_%04d.png'"  
-                  " analysis/film/" + self.in_field + "_spec_" + 
-                  str(self.spec_idx) +".mp4")
+        os.system("avconv -threads 2 -y -f image2 -r " + self.film_fps + 
+                  " -i 'analysis/film/film_frames/" + self.in_field + "_spec_" + 
+                  str(self.spec_idx) + "_%04d.png' analysis/film/" + 
+                  self.in_field + "_spec_" + str(self.spec_idx) +".mp4")
 
         logging.info("Finished make_film...")
 
