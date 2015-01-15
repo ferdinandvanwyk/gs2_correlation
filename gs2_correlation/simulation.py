@@ -234,6 +234,7 @@ class Simulation(object):
 
         self.nt_slices = int(self.nt/self.time_slice)
         self.t = self.t*self.amin/self.vth
+        self.time_guess = self.time_guess*self.amin/self.vth
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rhoref
         self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rhoref \
                              *np.tan(self.pitch_angle)
@@ -454,11 +455,11 @@ class Simulation(object):
         """
         logging.info('Started interpolating onto a regular grid...')
 
-        t_reg = np.linspace(min(self.t), max(self.t), len(self.t))
+        t_reg = np.linspace(min(self.t), max(self.t), self.nt)
         for i in range(len(self.kx)):
             for j in range(len(self.ky)):
                 for k in range(2):
-                    f = interp.interp1d(self.t, self.field[:, i, j, k])
+                    f = interp.interp1d(self.t, self.field[:, i, j, k], axis=0)
                     self.field[:, i, j, k] = f(t_reg)
         self.t = t_reg
 
@@ -728,15 +729,7 @@ class Simulation(object):
             self.calculate_time_corr(it)
             self.time_corr_fit(it)
 
-        np.savetxt(self.out_dir + '/time/corr_time.csv', (self.corr_time),
-                   delimiter=',', fmt='%1.3f')
-
-        # Plot corr_time as a function of radius, average over time window
-        plt.clf()
-        plt.plot(self.x, np.mean(self.corr_time, axis=0))
-        plt.xlabel("Radius (m)")
-        plt.ylabel(r'Correlations Time $\tau_c$ (\mu s)')
-        plt.savefig(self.out_dir + '/time/corr_time.pdf')
+        self.time_analysis_summary()
 
         logging.info("Finished time_analysis...")
 
@@ -820,7 +813,7 @@ class Simulation(object):
                     self.time_plot(it, ix, max_index, peaks, 'decaying')
                     logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
                                  "with decaying exponential. tau = " 
-                                 + str(self.corr_time[it,ix]) + "\n")
+                                 + str(self.corr_time[it,ix]) + " s\n")
                 else:
                     self.corr_time[it, ix], pcov = opt.curve_fit(
                                                        fit.growing_exp, 
@@ -830,7 +823,7 @@ class Simulation(object):
                     self.time_plot(it, ix, max_index, peaks, 'growing')
                     logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
                                  "with growing exponential. tau = " 
-                                 + str(self.corr_time[it,ix]) + "\n")
+                                 + str(self.corr_time[it,ix]) + " s\n")
             else:
                 # If abs(max_index) is not monotonically increasing, this 
                 # usually means that there is no flow and that the above method
@@ -876,26 +869,26 @@ class Simulation(object):
             
         mid_idx = self.ny-1
         plt.clf()
-        plt.plot(self.dt, self.time_corr[it,:,ix,mid_idx:mid_idx+self.npeaks_fit])
+        plt.plot(self.dt*1e6, self.time_corr[it,:,ix,mid_idx:mid_idx+self.npeaks_fit])
         plt.hold(True)
-        plt.plot(self.dt[max_index[ix,:]], peaks[ix,:], 'o', color='#7A1919')
+        plt.plot(self.dt[max_index[ix,:]]*1e6, peaks[ix,:], 'o', color='#7A1919')
         plt.hold(True)
 
         if plot_type == 'decaying':
-            plt.plot(self.dt[self.time_slice-1:], 
+            plt.plot(self.dt[self.time_slice-1:]*1e6, 
                      fit.decaying_exp(self.dt[self.time_slice-1:],self.corr_time[it,ix]), 
                      color='#3333AD', lw=2, 
                      label=r'$\exp[-|\Delta t_{peak} / \tau_c|]$')
             plt.legend()
         if plot_type == 'growing':
-            plt.plot(self.dt[:self.time_slice-1], 
+            plt.plot(self.dt[:self.time_slice-1]*1e6, 
                      fit.growing_exp(self.dt[:self.time_slice-1],self.corr_time[it,ix]), 
                      color='#3333AD', lw=2, 
                      label=r'$\exp[|\Delta t_{peak} / \tau_c|]$')
             plt.legend()
         if plot_type == 'oscillating':
-            plt.plot(self.dt, fit.osc_exp(self.dt,self.corr_time[it,ix], kwargs['omega']), 
-                     color='#3333AD', lw=2, 
+            plt.plot(self.dt*1e6, fit.osc_exp(self.dt,self.corr_time[it,ix], 
+                     kwargs['omega']), color='#3333AD', lw=2, 
                      label=r'$\exp[- (\Delta t_{peak} / \tau_c)^2] '
                             '\cos(\omega \Delta t) $')
             plt.legend()
@@ -905,7 +898,37 @@ class Simulation(object):
         plt.savefig(self.out_dir + '/time/corr_fns/time_fit_it_' + str(it) + 
                     '_ix_' + str(ix) + '.pdf')
 
+    def time_analysis_summary(self):
+        """
+        Prints out a summary of the time analysis.
 
+        * Plots average correlation time as a function of radius.
+        * Calculates standard deviation.
+        * Writes summary to a text file.
+        """
+        logging.info("Writing time_analysis summary...")
+
+        np.savetxt(self.out_dir + '/time/corr_time.csv', (self.corr_time),
+                   delimiter=',', fmt='%.4e')
+
+        self.corr_time = np.abs(self.corr_time)
+
+        # Plot corr_time as a function of radius, average over time window
+        plt.clf()
+        plt.plot(self.x, np.mean(self.corr_time*1e6, axis=0))
+        plt.ylim(ymin=0)
+        plt.xlabel("Radius (m)")
+        plt.ylabel(r'Correlations Time $\tau_c$ ($\mu$ s)')
+        plt.savefig(self.out_dir + '/time/corr_time.pdf')
+
+        summary_file = open(self.out_dir + '/time/time_fit_summary.txt', 'w')
+        summary_file.write('tau_c = ' + str(np.mean(self.corr_time)*1e6)
+                           + " mu s\n")
+        summary_file.write('std(tau_c) = ' + str(np.std(np.mean(self.corr_time, axis=0))*1e6)
+                           + " mu s\n")
+        summary_file.close()
+
+        logging.info("Finished writing time_analysis summary...")
 
     def write_field(self):
         """
@@ -945,6 +968,8 @@ class Simulation(object):
             os.system("mkdir " + self.out_dir + '/film')
         if 'film_frames' not in os.listdir(self.out_dir+'/film'):
             os.system("mkdir " + self.out_dir + '/film/film_frames')
+        os.system("rm " + self.out_dir + "/film/film_frames/" + self.in_field + 
+                  "_spec_" + str(self.spec_idx) + "*.png")
 
         self.field_to_real_space()
 
