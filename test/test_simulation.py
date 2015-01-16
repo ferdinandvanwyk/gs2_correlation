@@ -98,6 +98,7 @@ class TestClass(object):
     def test_make_film(self, run):
         run.make_film()
         assert ('ntot_igomega_by_mode_spec_0_0000.png' in os.listdir('test/test_run/v/id_1/analysis/film/film_frames'))
+        assert ('ntot_igomega_by_mode_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/film/'))
 
             
 
