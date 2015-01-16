@@ -7,6 +7,7 @@ before_install:
   - sudo apt-get install -y python-numpy python-scipy
   - sudo apt-get install -y libhdf5-serial-dev netcdf-bin libnetcdf-dev 
   - sudo apt-get install -y libfreetype6-dev libpng-dev
+  - sudo apt-get install -y ffmpeg libav-tools
 # command to install dependencies
 install: 
     - pip install -r requirements.txt
