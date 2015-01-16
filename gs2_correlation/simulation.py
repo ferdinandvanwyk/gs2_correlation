@@ -117,6 +117,9 @@ class Simulation(object):
         http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
     film_fps : int, 40
         Frames per second of the film.
+    film_contours : int, 30
+        Number of contours to use when making films. More contours => bigger 
+        files.
     field : array_like
         Field read in from the NetCDF file. Automatically converted to a complex
         array.
@@ -321,6 +324,9 @@ class Simulation(object):
             http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
         film_fps : int, 40
             Frames per second of the film.
+        film_contours : int, 30
+            Number of contours to use when making films. More contours => bigger 
+            files.
         """
         logging.info('Started read_config...')
 
@@ -413,8 +419,10 @@ class Simulation(object):
         ###################
 
         self.seaborn_context = str(config_parse.get('output', 'seaborn_context',
-                                              fallback='talk'))
+                                                    fallback='talk'))
         self.film_fps = int(config_parse.get('output', 'film_fps', fallback=40))
+        self.film_contours = int(config_parse.get('output', 'film_contours', 
+                                                  fallback=30))
 
         # Log the variables
         logging.info('The following values were read from ' + self.config_file)
@@ -979,9 +987,10 @@ class Simulation(object):
             self.plot_real_space_field(it)
 
         os.system("avconv -threads 2 -y -f image2 -r " + str(self.film_fps) + 
-                  " -i 'analysis/film/film_frames/" + self.in_field + "_spec_" + 
-                  str(self.spec_idx) + "_%04d.png' analysis/film/" + 
-                  self.in_field + "_spec_" + str(self.spec_idx) +".mp4")
+                  " -i '" + self.out_dir + "/film/film_frames/" + self.in_field + 
+                  "_spec_" + str(self.spec_idx) + "_%04d.png' " + 
+                  self.out_dir +"/film/" + self.in_field + "_spec_" + 
+                  str(self.spec_idx) +".mp4")
 
         logging.info("Finished make_film...")
 
@@ -997,7 +1006,8 @@ class Simulation(object):
         logging.info('Saving frame %d of %d'%(it,self.nt))
 
         plt.clf()
-        contours = np.around(np.linspace(self.field_min, self.field_max, 30),7)
+        contours = np.around(np.linspace(self.field_min, self.field_max, 
+                                         self.film_contours),7)
         plt.contourf(self.x, self.y, np.transpose(self.field_real_space[it,:,:]),
                      levels=contours, cmap='afmhot')
         plt.xlabel(r'$x (m)$')
