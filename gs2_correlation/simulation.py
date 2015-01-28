@@ -676,7 +676,7 @@ class Simulation(object):
         plt.clf()
         plt.plot(self.perp_fit_params[:,0], label=r'$l_x (m)$')
         plt.plot(self.perp_fit_params[:,1], label=r'$l_y (m)$')
-        plt.plot(self.perp_fit_params[:,2], label=r'$k_x (m^{-1}$')
+        plt.plot(self.perp_fit_params[:,2], label=r'$k_x (m^{-1})$')
         plt.plot(self.perp_fit_params[:,3], label=r'$k_y (m^{-1})$')
         plt.legend()
         plt.xlabel('Time Window')
@@ -1011,11 +1011,15 @@ class Simulation(object):
         plt.contourf(self.x, self.y, np.transpose(self.field_real_space[it,:,:]),
                      levels=contours, cmap='afmhot')
         plt.xlabel(r'$x (m)$')
+
+
         plt.ylabel(r'$y (m)$')
         plt.title(r'Time = %f $\mu s$'%((self.t[it]-self.t[0])*1e6))
         plt.colorbar()
         plt.savefig(self.out_dir + "/film/film_frames/" + self.in_field + 
                     "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=110)
+
+
 
 
         

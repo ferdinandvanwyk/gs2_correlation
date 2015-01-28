@@ -28,7 +28,7 @@ run the tests, run the following in the package root directory:
     $ pip install -e .
     $ py.test
 
-As an additional testing phase, the continuos integration (CI) framework Travis_
+As an additional testing phase, the continuous integration (CI) framework Travis_
 to build and run the tests upon every push to the GitHub repository. The current 
 build status is shown by the ``build`` badge at the top of the main page.
 
@@ -47,7 +47,13 @@ changes to the documentation files The current build status is shown by the
     $ make html
 
 where ``html`` can be replaced with other acceptable formats, such as latex,
-latexpdf, text, etc.
+latexpdf, text, etc. In order to view the Latex document, it first has to be 
+built:
+
+.. code:: bash
+
+   $ cd build/latex
+   $ make
 
 .. _Read the Docs: https://readthedocs.org/ 
 .. _gs2-correlation.rtfd.org : http://gs2-correlation.rtfd.org
