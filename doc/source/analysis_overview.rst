@@ -85,7 +85,28 @@ Films of the field varying in time is done as follows:
 * Use avconv to combine png files into a film at a rate of *film_fps* frames
   per second.
 
-Zonal Flows
------------
+Zonal Flow Velocity
+-------------------
+
+The ZF velocity is calculatd by:
+
+* Reading in the electrostatic potential at ky = 0.
+* Calculating v_zf = Re(IFT[phi(ky=0)*kx])*nx. The *nx* term is necessary since
+  the spectral->real conversion does not require any normalization but the 
+  Numpy routines contain an explicit 1/n normalization to ensure IFT(A) = a.
+* This gives v_zf(t,x) which can be plotted in 2D and averaged in time to give
+  the mean ZF velocity as a function of radius.
+
+
+
+
+
+
+
+
+
+
+
+
 
 

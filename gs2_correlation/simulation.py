@@ -123,6 +123,11 @@ class Simulation(object):
     field : array_like
         Field read in from the NetCDF file. Automatically converted to a complex
         array.
+    phi_zf : array_like
+        Electrostatic potential of the zonal component read in from the NetCDF 
+        file. This is used to calculate the ZF velocity. The variable that is 
+        read in is 'phi_igomega_by_mode', which is phi written out on a plane at 
+        theta=igomega.
     field_real_space : array_like
         Field in real space coordinates (x,y)
     perp_corr : array_like
@@ -450,6 +455,10 @@ class Simulation(object):
         self.kx = self.ncfile.variables['kx'][:]
         self.ky = self.ncfile.variables['ky'][:]
         self.t = self.ncfile.variables['t'][:]
+
+        self.phi_zf = np.array(self.ncfile.variables['phi_igomega_by_mode']
+                                                    [:,0,:,:])
+                
 
         logging.info('Finished reading from NetCDf file.')
 
@@ -1019,6 +1028,51 @@ class Simulation(object):
         plt.savefig(self.out_dir + "/film/film_frames/" + self.in_field + 
                     "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=110)
 
+    def zf_analysis(self):
+        """
+        This function uses phi to calculate the zonal flow velocity v_zf(x,t).
+
+        Two plots are produced: a 2D plot of v_zf vs x and t, and the time
+        averaged v_zf as a function of radius.
+
+        The formula for the ZF velocity is:
+
+        v_zf = Re(IFT[phi(ky=0)*kx])*nx
+        """
+        logging.info('Starting zf_analysis...')
+
+        if 'zf' not in os.listdir(self.out_dir):
+            os.system("mkdir " + self.out_dir + '/zf')
+
+        self.phi_zf = self.phi_zf[:,:,0] + 1j*self.phi_zf[:,:,1] 
+
+        # Need to multiply by nx since ifft contains 1/nx implicitly but 
+        # spectral->real for GS2 variables require no factor. Finally, zf_vel is in 
+        # units of (1/kxfac vth) since technically: zf_vel = kxfac*IFT[(kx*phi_imag)] 
+        # however kxfac calculation is nontrivial.
+        self.v_zf = np.empty([self.nt,self.nx],dtype=float)
+        for it in range(self.nt):
+            self.v_zf[it,:] = np.fft.ifft(self.phi_zf[it,:]*self.kx).imag*self.nx
+
+        contours = np.around(np.linspace(np.min(self.v_zf), np.max(self.v_zf), 
+                                         30),2)
+        plt.clf()
+        plt.contourf(self.x, self.t*1e6, self.v_zf, cmap='jet', levels=contours)
+        plt.title('$v_{ZF}(x, t))$')
+        plt.colorbar()
+        plt.xlabel(r'$ x (m)$')
+        plt.ylabel(r'$t (\mu s)$')
+        plt.savefig(self.out_dir + '/zf/zf_vs_x_t.pdf')
+
+        # Mean ZF vs x
+        plt.clf()
+        plt.plot(self.x, np.mean(self.v_zf, axis=0))
+        plt.title('$v_{ZFi, mean}(x))$')
+        plt.xlabel(r'$ x (m)$')
+        plt.ylabel(r'$v_{ZF} (v_{th,i}/kxfac)$')
+        plt.savefig(self.out_dir + '/zf/zf_mean_vs_x.pdf')
+
+        logging.info('Finished zf_analysis.')
 
 
 

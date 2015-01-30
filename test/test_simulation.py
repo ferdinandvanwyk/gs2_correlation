@@ -100,6 +100,10 @@ class TestClass(object):
         assert ('ntot_igomega_by_mode_spec_0_0000.png' in os.listdir('test/test_run/v/id_1/analysis/film/film_frames'))
         assert ('ntot_igomega_by_mode_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/film/'))
 
+    def test_zf_analysis(self, run):
+        run.zf_analysis()
+        assert ('zf_vs_x_t.pdf' in os.listdir('test/test_run/v/id_1/analysis/zf'))
+        assert ('zf_mean_vs_x.pdf' in os.listdir('test/test_run/v/id_1/analysis/zf'))
             
 
 
