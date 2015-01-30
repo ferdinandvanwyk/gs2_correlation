@@ -44,14 +44,46 @@ defined in the configuration file. The correlation time may also depend on the
 size of this time slice, so some tests should be done to ensure that this is 
 understood.
 
-For each time slice we want to calculate the correlation function C(dt, x, dy), 
-leaving us with a function C(it, dt, x, dy), where *it* denotes the time slice
+For each time slice we want to calculate the correlation function *C(dt, x, dy)*, 
+leaving us with a function *C(it, dt, x, dy)*, where *it* denotes the time slice
 index. This is done by using the SciPy function, ``scipy.signal.fftconvolve``.
 Noting that a convolution and a correlation calculation is related by a 
 reversal of the indices of the second function.
 
+Fitting
+^^^^^^^
+
+The fitting procedure is best illustrated by the following diagram.
+
+.. image:: time_corr.svg
+
+The coloured lines are the correlation function for several different 
+separations in *y*. The blue line is the decaying exponential fit to the peaks
+of the correlation function, and the correlation time is the characteristic
+time of the decaying exponential. Depending on the direction of flow, the 
+peaks may be exponentially increasing or decreasing, and the appropriate 
+function is fitted in either case. In regions where there is no flow, a Gaussian
+function is fitted to the central, *dy* = 0, function and the correlation time
+is taken to be the characteristic time of the exponential envelope.
+
+The following options are relevant to the fitting procedure:
+
+* npeaks_fit: determines the number of peaks to fit with a decaying exponential.
+  Having too few or too many may cause the fitting procedure to fail.
+* time_guess: This is the initial guess used in the fitting procedure in 
+  normalized time units. Visual inspection can be used to verify the fitting
+  procedure.
+
 Create a Film
 -------------
+
+Films of the field varying in time is done as follows:
+
+* Convert field to real space: *f(t, x, y)*.
+* Determine max and min values of the field to keep the graph scale constant.
+* Write out each frame of the film as png files.
+* Use avconv to combine png files into a film at a rate of *film_fps* frames
+  per second.
 
 Zonal Flows
 -----------
