@@ -1029,7 +1029,7 @@ class Simulation(object):
         contours = np.around(np.linspace(self.field_min, self.field_max, 
                                          self.film_contours),7)
         plt.contourf(self.x, self.y, np.transpose(self.field_real_space[it,:,:]),
-                     levels=contours, cmap='afmhot')
+                     levels=contours, cmap='coolwarm')
         plt.xlabel(r'$x (m)$')
 
 
