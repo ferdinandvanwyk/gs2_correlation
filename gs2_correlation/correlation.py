@@ -69,42 +69,6 @@ if analysis == 'time':
     t_end = time.clock()
     print('Total Time = ', t_end-t_start, ' s')
 
-#######################
-# Zonal Flow Analysis #
-#######################
-elif analysis == 'zf':
-    diag_file.write("Started zonal flow correlation analysis.\n")
-
-    # phi = phi[t,kx,ky,ri]
-    # Need to multiply by nx since ifft contains 1/nx implicitly but 
-    # spectral->real for GS2 variables require no factor. Finally, zf_vel is in 
-    # units of (1/kxfac vth) since technically: zf_vel = kxfac*IFT[(kx*phi_imag)] 
-    # however kxfac calculation is nontrivial.
-    zf_vel = np.empty([nt,nx],dtype=float)
-    for it in range(nt):
-        zf_vel[it,:] = np.fft.ifft(real_to_complex_1d(field[it,:,0,:])*kx).imag*nx
-
-    #ZF vs x and t
-    plt.clf()
-    plt.contourf(zf_vel)
-    plt.title('$v_{ZF}(x, t))$', fontsize=25)
-    plt.colorbar()
-    plt.xlabel(r'$ x (\rho_i)$', fontsize=25)
-    plt.ylabel(r'$t (a / v_{thi})$', fontsize=25)
-    plt.xticks(fontsize=25)
-    plt.yticks(fontsize=25)
-    plt.savefig(out_dir + '/zf_2d.pdf')
-
-    # Mean ZF vs x
-    plt.clf()
-    plt.plot(np.mean(zf_vel, axis=0))
-    plt.title('$v_{ZFi, mean}(x))$', fontsize=25)
-    plt.xlabel(r'$ x (\rho_i)$', fontsize=25)
-    plt.ylabel(r'$v_{ZF} (v_{thi}/kxfac)$', fontsize=25)
-    plt.xticks(fontsize=25)
-    plt.yticks(fontsize=25)
-    plt.savefig(out_dir + '/zf_mean.pdf')
-
 diag_file.write(analysis + " analysis finished succesfully.\n")
 plt.close()
 diag_file.close()
