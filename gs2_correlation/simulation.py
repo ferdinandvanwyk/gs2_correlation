@@ -641,7 +641,7 @@ class Simulation(object):
                                     (self.ny-1)/2 + self.perp_fit_length]
         avg_corr = np.mean(corr_fn, axis=0) # Average over time
         plt.contourf(self.fit_dx, self.fit_dy, np.transpose(avg_corr), 11,
-                     levels=np.linspace(-1, 1, 11), cmap='jet')
+                     levels=np.linspace(-1, 1, 11), cmap='coolwarm')
         plt.colorbar(ticks=np.linspace(-1, 1, 11))
         plt.xlabel(r'$\Delta x (m)$')
         plt.ylabel(r'$\Delta y (m)$')
@@ -654,7 +654,7 @@ class Simulation(object):
         plt.contourf(self.fit_dx, self.fit_dy,
                      np.transpose(data_fitted.reshape(len(self.fit_dx),
                                                       len(self.fit_dy))),
-                                  11, levels=np.linspace(-1, 1, 11), cmap='jet')
+                                  11, levels=np.linspace(-1, 1, 11), cmap='coolwarm')
         plt.title('$C_{fit}(\Delta x, \Delta y)$')
         plt.colorbar(ticks=np.linspace(-1, 1, 11))
         plt.xlabel(r'$\Delta x (m)$')
@@ -664,7 +664,7 @@ class Simulation(object):
         # Avg correlation and fitted function overlayed
         plt.clf()
         plt.contourf(self.fit_dx, self.fit_dy, np.transpose(avg_corr), 10,
-                     levels=np.linspace(-1, 1, 11), cmap='jet')
+                     levels=np.linspace(-1, 1, 11), cmap='coolwarm')
         plt.colorbar(ticks=np.linspace(-1, 1, 11))
         plt.contour(self.fit_dx, self.fit_dy,
                      np.transpose(data_fitted.reshape(len(self.fit_dx),
