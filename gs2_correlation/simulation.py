@@ -324,6 +324,9 @@ class Simulation(object):
             Larmor radius of the reference species in *m*.
         pitch_angle : float
             Pitch angle of the magnetic field lines in *rad*.
+        r_maj : Major radius of the outboard midplane. Used when writing out 
+            the field to the NetCDF file. This is **not** the *rmaj* value from
+            GS2.
         seaborn_context : str, 'talk'
             Context for plot output: paper, notebook, talk, poster. See:
             http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
@@ -346,6 +349,7 @@ class Simulation(object):
         self.vth = float(config_parse['normalization']['vth_ref'])
         self.rhoref = float(config_parse['normalization']['rho_ref'])
         self.pitch_angle = float(config_parse['normalization']['pitch_angle'])
+        self.rmaj = float(config_parse['normalization']['rmaj'])
 
         #####################
         # Analysis Namelist #
@@ -950,6 +954,13 @@ class Simulation(object):
     def write_field(self):
         """
         Outputs the field to NetCDF in real space.
+
+        Notes
+        -----
+
+        * The radial coordinate is major radius, i.e. the major radius of the
+          flux tube is added onto the radial values from GS2.
+        * The poloidal coordinate is centered at 0.
         """
         logging.info("Starting write_field...")
         
@@ -960,15 +971,15 @@ class Simulation(object):
         
         nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' + 
                                      self.in_field +'.cdf', 'w')
-        nc_file.createDimension('x', self.nx)
-        nc_file.createDimension('y', self.ny)
-        nc_file.createDimension('t', self.nt)
-        nc_x = nc_file.createVariable('x','d',('x',))
-        nc_y = nc_file.createVariable('y','d',('y',))
-        nc_t = nc_file.createVariable('t','d',('t',))
-        nc_ntot = nc_file.createVariable('n','d',('t', 'x', 'y',))
-        nc_x[:] = self.x[:]
-        nc_y[:] = self.y[:]
+        nc_file.createDimension('NR', self.nx)
+        nc_file.createDimension('NZ', self.ny)
+        nc_file.createDimension('NT', self.nt)
+        nc_x = nc_file.createVariable('r','d',('NR',))
+        nc_y = nc_file.createVariable('z','d',('NZ',))
+        nc_t = nc_file.createVariable('t','d',('NT',))
+        nc_ntot = nc_file.createVariable('ntot','d',('NT', 'NR', 'NZ',))
+        nc_x[:] = self.x[:] + self.rmaj
+        nc_y[:] = self.y[:] - self.y[-1]/2 
         nc_t[:] = self.t[:] - self.t[0]
         nc_ntot[:,:,:] = self.field_real_space[:,:,:]
         nc_file.close()
