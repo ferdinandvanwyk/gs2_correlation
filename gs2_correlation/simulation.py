@@ -978,7 +978,7 @@ class Simulation(object):
         nc_y = nc_file.createVariable('z','d',('NZ',))
         nc_t = nc_file.createVariable('t','d',('NT',))
         nc_ntot = nc_file.createVariable('ntot','d',('NT', 'NR', 'NZ',))
-        nc_x[:] = self.x[:] + self.rmaj
+        nc_x[:] = self.x[:] - self.x[-1]/2 + self.rmaj
         nc_y[:] = self.y[:] - self.y[-1]/2 
         nc_t[:] = self.t[:] - self.t[0]
         nc_ntot[:,:,:] = self.field_real_space[:,:,:]
