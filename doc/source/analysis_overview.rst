@@ -55,7 +55,7 @@ Fitting
 
 The fitting procedure is best illustrated by the following diagram.
 
-.. image:: time_corr.svg
+.. image:: time_corr.png
 
 The coloured lines are the correlation function for several different 
 separations in *y*. The blue line is the decaying exponential fit to the peaks
