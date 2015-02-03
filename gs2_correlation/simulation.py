@@ -1031,8 +1031,6 @@ class Simulation(object):
         plt.contourf(self.x, self.y, np.transpose(self.field_real_space[it,:,:]),
                      levels=contours, cmap='coolwarm')
         plt.xlabel(r'$x (m)$')
-
-
         plt.ylabel(r'$y (m)$')
         plt.title(r'Time = %f $\mu s$'%((self.t[it]-self.t[0])*1e6))
         plt.colorbar()
