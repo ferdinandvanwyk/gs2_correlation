@@ -979,7 +979,6 @@ class Simulation(object):
         nc_file.createDimension('z', self.ny)
         nc_file.createDimension('t', self.nt)
         nc_file.createDimension('none', 1)
-        nc_file.createDimension('species', 2)
         nc_nref = nc_file.createVariable('nref','d', ('none',))
         nc_tref = nc_file.createVariable('tref','d', ('none',))
         nc_x = nc_file.createVariable('r','d',('r',))
