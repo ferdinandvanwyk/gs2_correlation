@@ -128,6 +128,10 @@ class Simulation(object):
         file. This is used to calculate the ZF velocity. The variable that is 
         read in is 'phi_igomega_by_mode', which is phi written out on a plane at 
         theta=igomega.
+    phi : array_like
+        Electrostatic potential read in from the NetCDF. The variable that is 
+        read in is 'phi_igomega_by_mode', which is phi written out on a plane at 
+        theta=igomega.
     field_real_space : array_like
         Field in real space coordinates (x,y)
     perp_corr : array_like
@@ -350,6 +354,8 @@ class Simulation(object):
         self.rhoref = float(config_parse['normalization']['rho_ref'])
         self.pitch_angle = float(config_parse['normalization']['pitch_angle'])
         self.rmaj = float(config_parse['normalization']['rmaj'])
+        self.nref = float(config_parse.get('normalization', 'nref', fallback=1))
+        self.tref = float(config_parse.get('normalization', 'tref', fallback=1))
 
         #####################
         # Analysis Namelist #
@@ -460,9 +466,7 @@ class Simulation(object):
         self.ky = self.ncfile.variables['ky'][:]
         self.t = self.ncfile.variables['t'][:]
 
-        self.phi_zf = np.array(self.ncfile.variables['phi_igomega_by_mode']
-                                                    [:,0,:,:])
-                
+        self.phi = np.array(self.ncfile.variables['phi_igomega_by_mode'][:])
 
         logging.info('Finished reading from NetCDf file.')
 
@@ -936,13 +940,19 @@ class Simulation(object):
         
         nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' + 
                                      self.in_field +'.cdf', 'w')
-        nc_file.createDimension('NR', self.nx)
-        nc_file.createDimension('NZ', self.ny)
-        nc_file.createDimension('NT', self.nt)
-        nc_x = nc_file.createVariable('r','d',('NR',))
-        nc_y = nc_file.createVariable('z','d',('NZ',))
-        nc_t = nc_file.createVariable('t','d',('NT',))
-        nc_ntot = nc_file.createVariable('ntot','d',('NT', 'NR', 'NZ',))
+        nc_file.createDimension('r', self.nx)
+        nc_file.createDimension('z', self.ny)
+        nc_file.createDimension('t', self.nt)
+        nc_file.createDimension('none', 1)
+        nc_file.createDimension('species', 2)
+        nc_nref = nc_file.createVariable('nref','d', ('none',))
+        nc_tref = nc_file.createVariable('tref','d', ('none',))
+        nc_x = nc_file.createVariable('r','d',('r',))
+        nc_y = nc_file.createVariable('z','d',('z',))
+        nc_t = nc_file.createVariable('t','d',('t',))
+        nc_ntot = nc_file.createVariable('ntot','d',('t', 'r', 'z',))
+        nc_nref[:] = self.nref
+        nc_tref[:] = self.tref
         nc_x[:] = self.x[:] - self.x[-1]/2 + self.rmaj
         nc_y[:] = self.y[:] - self.y[-1]/2 
         nc_t[:] = self.t[:] - self.t[0]
@@ -1018,7 +1028,7 @@ class Simulation(object):
         if 'zf' not in os.listdir(self.out_dir):
             os.system("mkdir " + self.out_dir + '/zf')
 
-        self.phi_zf = self.phi_zf[:,:,0] + 1j*self.phi_zf[:,:,1] 
+        self.phi_zf = self.phi[:,0,:,0] + 1j*self.phi[:,0,:,1] 
 
         # Need to multiply by nx since ifft contains 1/nx implicitly but 
         # spectral->real for GS2 variables require no factor. Finally, zf_vel is in 
