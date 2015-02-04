@@ -25,6 +25,8 @@ Contents
    getting_started.rst
    analysis_overview.rst
    simulation.rst
+   full_box.rst
+   middle_box.rst
 
 
 

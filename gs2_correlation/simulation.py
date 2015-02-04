@@ -50,7 +50,7 @@ plt.rcParams.update({'figure.autolayout': True})
 import seaborn as sns
 
 # Local
-import gs2_correlation.fit as fit
+import gs2_correlation.fitting_functions as fit
 
 class Simulation(object):
     """
@@ -516,41 +516,6 @@ class Simulation(object):
         * ri = 1 - Imaginary part of the field.
         """
         self.field = self.field[:,:,:,0] + 1j*self.field[:,:,:,1]
-
-    def perp_analysis(self):
-        """
-        Performs a perpendicular correlation analysis on the field.
-
-        Notes
-        -----
-
-        * Uses a 2D Wiener-Khinchin theorem to calculate the correlation
-          function.
-        * Splits correlation function into time slices and fits each time
-          slice with a tilted Gaussian using the perp_fit function.
-        * The fit parameters for the previous time slice is used as the initial
-          guess for the next time slice.
-        """
-
-        logging.info('Start perpendicular correlation analysis...')
-
-        if 'perp' not in os.listdir(self.out_dir):
-            os.system("mkdir " + self.out_dir + '/perp')
-
-        self.wk_2d()
-        self.perp_fit_params = np.empty([self.nt_slices, 4], dtype=float)
-
-        for it in range(self.nt_slices):
-            self.perp_fit(it)
-            self.perp_guess = self.perp_fit_params[it,:]
-
-        np.savetxt(self.out_dir + '/perp/perp_fit_params.csv', (self.perp_fit_params),
-                   delimiter=',', fmt='%1.3f')
-
-        self.perp_plots()
-        self.perp_analysis_summary()
-
-        logging.info('Finished perpendicular correlation analysis.')
 
     def wk_2d(self):
         """

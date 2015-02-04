@@ -56,7 +56,7 @@ logging.info('')
 #Create Simulation object
 
 if args.size == 'full':
-    run = full_box_analysis.Analysis(args.config_file)
+    run = full_box_analysis.FullBox(args.config_file)
     if run.analysis == 'all':
         run.perp_analysis()
         run.time_analysis()
@@ -74,7 +74,7 @@ if args.size == 'full':
     elif run.analysis == 'film':
         run.make_film()
 elif args.size == 'middle':
-    run = middle_box_analysis.Analysis(args.config_file)
+    run = middle_box_analysis.MiddleBox(args.config_file)
     if run.analysis == 'all':
         run.perp_analysis()
         run.time_analysis()
