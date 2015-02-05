@@ -208,6 +208,7 @@ class Simulation(object):
         * Interpolates onto a regular time grid.
         * Zeros out BES scales.
         * Zeros out ZF scales.
+        * Calculates the real space field.
 
         Parameters
         ----------
@@ -272,6 +273,7 @@ class Simulation(object):
             self.zero_zf_scales()
 
         self.to_complex()
+        self.field_to_real_space()
 
     def read_config(self):
         """
@@ -311,6 +313,11 @@ class Simulation(object):
             form [lx, ly, kx, ky] all in normalized rhoref units.
         time_guess : int, 10
             Initial guess for the correlation time in normalized GS2 units.
+        box_size : array_like, [0.1,0.1]
+            When running correlation analysis in the middle of the full GS2
+            domain, this sets the approximate [radial, poloidal] size of this 
+            box in m. This variable is only used when using the 'middle' 
+            command line parameter.
         npeaks_fit : int, 5
             Number of peaks to fit when calculating the correlation time.
         species_index : int or None
@@ -328,7 +335,8 @@ class Simulation(object):
             Larmor radius of the reference species in *m*.
         pitch_angle : float
             Pitch angle of the magnetic field lines in *rad*.
-        r_maj : Major radius of the outboard midplane. Used when writing out 
+        r_maj : float, 0
+            Major radius of the outboard midplane. Used when writing out 
             the field to the NetCDF file. This is **not** the *rmaj* value from
             GS2.
         seaborn_context : str, 'talk'
@@ -353,7 +361,7 @@ class Simulation(object):
         self.vth = float(config_parse['normalization']['vth_ref'])
         self.rhoref = float(config_parse['normalization']['rho_ref'])
         self.pitch_angle = float(config_parse['normalization']['pitch_angle'])
-        self.rmaj = float(config_parse['normalization']['rmaj'])
+        self.rmaj = float(config_parse.get('normalization', 'rmaj', fallback=0))
         self.nref = float(config_parse.get('normalization', 'nref', fallback=1))
         self.tref = float(config_parse.get('normalization', 'tref', fallback=1))
 
@@ -425,9 +433,12 @@ class Simulation(object):
 
         self.npeaks_fit = int(config_parse.get('analysis',
                                                'npeaks_fit', fallback=5))
-
         self.time_guess = int(config_parse.get('analysis',
                                                'time_guess', fallback=10))
+
+        self.box_size = str(config_parse['analysis']['box_size'])
+        self.box_size = self.box_size[1:-1].split(',')
+        self.box_size = [float(s) for s in self.box_size]
 
         ###################
         # Output Namelist #
@@ -709,7 +720,6 @@ class Simulation(object):
             os.system("mkdir " + self.out_dir + '/time/corr_fns')
         os.system('rm ' + self.out_dir + '/time/corr_fns/*')
 
-        self.field_to_real_space()
         
         self.time_corr = np.empty([self.nt_slices, 2*self.time_slice-1, self.nx,
                                    2*self.ny-1], dtype=float)
@@ -936,8 +946,6 @@ class Simulation(object):
         if 'write_field' not in os.listdir(self.out_dir):
             os.system("mkdir " + self.out_dir + '/write_field')
 
-        self.field_to_real_space()
-        
         nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' + 
                                      self.in_field +'.cdf', 'w')
         nc_file.createDimension('r', self.nx)
@@ -973,8 +981,6 @@ class Simulation(object):
             os.system("mkdir " + self.out_dir + '/film/film_frames')
         os.system("rm " + self.out_dir + "/film/film_frames/" + self.in_field + 
                   "_spec_" + str(self.spec_idx) + "*.png")
-
-        self.field_to_real_space()
 
         self.field_max = np.max(self.field_real_space)
         self.field_min = np.min(self.field_real_space)

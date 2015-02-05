@@ -61,7 +61,48 @@ class MiddleBox(Simulation):
     Analysis done on this domain can no longer assume periodicity and so all
     analysis has to be done in real space, i.e. without taking advantage of
     Fourier space calculations, most importantly the Wiener-Khinchin theorem.
+
+    Attributes
+    ----------
+
+    r : array_like
+        Radial coordinate *x*, centered at the major radius *rmaj*.
+    z : array_like
+        Poloidal coordinate *z* centered at 0.
     """
+
+    def __init__(self, config_file):
+        """
+        Initialization consists of: 
+        
+        * Calling Simulation.__init__ to read config file, NetCDF file etc.
+        * Calculating radial and poloidal coordinates r, z.
+        * Using input parameter *box_size* to determine the index range to 
+          perform the correlation analysis on.
+        * Reduce extent of real space field using this index.
+        """
+        Simulation.__init__(self, config_file)
+
+        self.r = self.x[:] - self.x[-1]/2 + self.rmaj
+        self.z = self.y[:] - self.y[-1]/2 
+
+        r_min_idx, r_min = min(enumerate(abs(self.r - (self.box_size[0] + 
+                                                       self.rmaj))), 
+                               key=operator.itemgetter(1))
+        r_box_idx = r_min_idx-int(self.nx/2) + 1
+
+        z_min_idx, z_min = min(enumerate(abs(self.z - self.box_size[1])), 
+                               key=operator.itemgetter(1))
+        z_box_idx = z_min_idx-int(self.ny/2) + 1
+
+        self.r = self.r[int(self.nx/2)-r_box_idx:int(self.nx/2)+r_box_idx]
+        self.z = self.z[int(self.ny/2)-z_box_idx:int(self.ny/2)+z_box_idx]
+        self.field_real_space = self.field_real_space[
+                :,int(self.nx/2)-r_box_idx:int(self.nx/2)+r_box_idx,
+                int(self.ny/2)-z_box_idx:int(self.ny/2)+z_box_idx]
+        
+         
+
 
     def perp_analysis(self):
         """
@@ -83,7 +124,7 @@ class MiddleBox(Simulation):
         if 'perp' not in os.listdir(self.out_dir):
             os.system("mkdir " + self.out_dir + '/perp')
 
-        self.wk_2d()
+        self.calculate_perp_corr()
         self.perp_fit_params = np.empty([self.nt_slices, 4], dtype=float)
 
         for it in range(self.nt_slices):
@@ -97,5 +138,26 @@ class MiddleBox(Simulation):
         self.perp_analysis_summary()
 
         logging.info('Finished perpendicular correlation analysis.')
+
+    def calculate_perp_corr(self):
+        """
+        Calculates the perpendicular correlation function from the real space
+        field.
+        """
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
