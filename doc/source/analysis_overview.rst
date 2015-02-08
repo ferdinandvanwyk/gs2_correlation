@@ -4,6 +4,34 @@ Analysis Overview
 This page describes the different analysis types that can be performed using
 `gs2_correlation`, as well as additional useful features.
 
+Middle vs. Full
+---------------
+
+`gs2_correlation` has two different analysis modes depending on the `size`
+command line parameter: 'full' and 'middle'. Full analysis analyzes the whole
+GS2 output domain and uses algorithms which take advantage of fact that field
+is in Fourier space. 
+
+'Middle' analysis was added to perform a correlation analysis on the middle of 
+the GS2 domain. This process is more involved than it sounds since one cannot
+take advantage of Fourier space properties anymore. Hence fields are converted
+to real space first, only the middle part is extracted (with size determined by
+a configuration variable), and the same plotting and fitting functions are used
+as before (with minor variations).
+
+To accommodate these two modes, separate classes were created, however the user
+does not need to do anything besides specify whether they want to analyze the 
+full or middle part of the domain (along with the box size in the case of 
+'middle'). To find out more about the command line parameters, run the following
+command:
+
+.. code:: bash
+
+   $ python gs2_correlation/main.py -h
+
+This will show the various command line parameters as well as a short 
+description and their expected positions.
+
 Perpendicular Correlation
 -------------------------
 
