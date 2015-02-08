@@ -50,7 +50,7 @@ plt.rcParams.update({'figure.autolayout': True})
 import seaborn as sns
 
 # Local
-import gs2_correlation.fit as fit
+import gs2_correlation.fitting_functions as fit
 
 class Simulation(object):
     """
@@ -208,6 +208,7 @@ class Simulation(object):
         * Interpolates onto a regular time grid.
         * Zeros out BES scales.
         * Zeros out ZF scales.
+        * Calculates the real space field.
 
         Parameters
         ----------
@@ -254,10 +255,10 @@ class Simulation(object):
                              self.nkx)*self.rhoref
         self.dy = np.linspace(-2*np.pi/self.ky[1], 2*np.pi/self.ky[1],
                              self.ny - 1)*self.rhoref*np.tan(self.pitch_angle)
-        self.fit_dx = self.dx[self.nkx/2 - self.perp_fit_length :
-                      self.nkx/2 + self.perp_fit_length]
-        self.fit_dy = self.dy[(self.ny-1)/2 - self.perp_fit_length :
-                      (self.ny-1)/2 + self.perp_fit_length]
+        self.fit_dx = self.dx[int(self.nkx/2) - self.perp_fit_length :
+                      int(self.nkx/2) + self.perp_fit_length]
+        self.fit_dy = self.dy[int((self.ny-1)/2) - self.perp_fit_length :
+                      int((self.ny-1)/2) + self.perp_fit_length]
         self.fit_dx_mesh, self.fit_dy_mesh = np.meshgrid(self.fit_dx, self.fit_dy)
         self.fit_dx_mesh = np.transpose(self.fit_dx_mesh)
         self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
@@ -272,6 +273,7 @@ class Simulation(object):
             self.zero_zf_scales()
 
         self.to_complex()
+        self.field_to_real_space()
 
     def read_config(self):
         """
@@ -311,6 +313,11 @@ class Simulation(object):
             form [lx, ly, kx, ky] all in normalized rhoref units.
         time_guess : int, 10
             Initial guess for the correlation time in normalized GS2 units.
+        box_size : array_like, [0.1,0.1]
+            When running correlation analysis in the middle of the full GS2
+            domain, this sets the approximate [radial, poloidal] size of this 
+            box in m. This variable is only used when using the 'middle' 
+            command line parameter.
         npeaks_fit : int, 5
             Number of peaks to fit when calculating the correlation time.
         species_index : int or None
@@ -328,7 +335,8 @@ class Simulation(object):
             Larmor radius of the reference species in *m*.
         pitch_angle : float
             Pitch angle of the magnetic field lines in *rad*.
-        r_maj : Major radius of the outboard midplane. Used when writing out 
+        r_maj : float, 0
+            Major radius of the outboard midplane. Used when writing out 
             the field to the NetCDF file. This is **not** the *rmaj* value from
             GS2.
         seaborn_context : str, 'talk'
@@ -353,7 +361,7 @@ class Simulation(object):
         self.vth = float(config_parse['normalization']['vth_ref'])
         self.rhoref = float(config_parse['normalization']['rho_ref'])
         self.pitch_angle = float(config_parse['normalization']['pitch_angle'])
-        self.rmaj = float(config_parse['normalization']['rmaj'])
+        self.rmaj = float(config_parse.get('normalization', 'rmaj', fallback=0))
         self.nref = float(config_parse.get('normalization', 'nref', fallback=1))
         self.tref = float(config_parse.get('normalization', 'tref', fallback=1))
 
@@ -425,9 +433,13 @@ class Simulation(object):
 
         self.npeaks_fit = int(config_parse.get('analysis',
                                                'npeaks_fit', fallback=5))
-
         self.time_guess = int(config_parse.get('analysis',
                                                'time_guess', fallback=10))
+
+        self.box_size = str(config_parse.get('analysis',
+                                               'box_size', fallback='[0.1,0.1]'))
+        self.box_size = self.box_size[1:-1].split(',')
+        self.box_size = [float(s) for s in self.box_size]
 
         ###################
         # Output Namelist #
@@ -521,41 +533,6 @@ class Simulation(object):
         """
         self.field = self.field[:,:,:,0] + 1j*self.field[:,:,:,1]
 
-    def perp_analysis(self):
-        """
-        Performs a perpendicular correlation analysis on the field.
-
-        Notes
-        -----
-
-        * Uses a 2D Wiener-Khinchin theorem to calculate the correlation
-          function.
-        * Splits correlation function into time slices and fits each time
-          slice with a tilted Gaussian using the perp_fit function.
-        * The fit parameters for the previous time slice is used as the initial
-          guess for the next time slice.
-        """
-
-        logging.info('Start perpendicular correlation analysis...')
-
-        if 'perp' not in os.listdir(self.out_dir):
-            os.system("mkdir " + self.out_dir + '/perp')
-
-        self.wk_2d()
-        self.perp_fit_params = np.empty([self.nt_slices, 4], dtype=float)
-
-        for it in range(self.nt_slices):
-            self.perp_fit(it)
-            self.perp_guess = self.perp_fit_params[it,:]
-
-        np.savetxt(self.out_dir + '/perp/perp_fit_params.csv', (self.perp_fit_params),
-                   delimiter=',', fmt='%1.3f')
-
-        self.perp_plots()
-        self.perp_analysis_summary()
-
-        logging.info('Finished perpendicular correlation analysis.')
-
     def wk_2d(self):
         """
         Calculates perpendicular correlation function for each time step.
@@ -610,7 +587,6 @@ class Simulation(object):
         it : int
             This is the index of the time slice currently being fitted.
         """
-
         corr_fn = self.perp_corr[it*self.time_slice:(it+1)*self.time_slice,
                                  self.nx/2 - self.perp_fit_length :
                                  self.nx/2 + self.perp_fit_length,
@@ -638,12 +614,14 @@ class Simulation(object):
 
         sns.set_style('darkgrid', {'axes.axisbelow':False, 'legend.frameon': True})
         #Time averaged correlation
-        plt.clf()
-        corr_fn = self.perp_corr[:, self.nx/2 - self.perp_fit_length :
-                                    self.nx/2 + self.perp_fit_length,
-                                    (self.ny-1)/2 - self.perp_fit_length :
-                                    (self.ny-1)/2 + self.perp_fit_length]
+        corr_fn = self.perp_corr[:, int(self.nx/2) - self.perp_fit_length :
+                                    int(self.nx/2) + self.perp_fit_length,
+                                    int((self.ny-1)/2) - self.perp_fit_length :
+                                    int((self.ny-1)/2) + self.perp_fit_length]
+
         avg_corr = np.mean(corr_fn, axis=0) # Average over time
+
+        plt.clf()
         plt.contourf(self.fit_dx, self.fit_dy, np.transpose(avg_corr), 11,
                      levels=np.linspace(-1, 1, 11), cmap='coolwarm')
         plt.colorbar(ticks=np.linspace(-1, 1, 11))
@@ -744,7 +722,6 @@ class Simulation(object):
             os.system("mkdir " + self.out_dir + '/time/corr_fns')
         os.system('rm ' + self.out_dir + '/time/corr_fns/*')
 
-        self.field_to_real_space()
         
         self.time_corr = np.empty([self.nt_slices, 2*self.time_slice-1, self.nx,
                                    2*self.ny-1], dtype=float)
@@ -971,8 +948,6 @@ class Simulation(object):
         if 'write_field' not in os.listdir(self.out_dir):
             os.system("mkdir " + self.out_dir + '/write_field')
 
-        self.field_to_real_space()
-        
         nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' + 
                                      self.in_field +'.cdf', 'w')
         nc_file.createDimension('r', self.nx)
@@ -1008,8 +983,6 @@ class Simulation(object):
         os.system("rm " + self.out_dir + "/film/film_frames/" + self.in_field + 
                   "_spec_" + str(self.spec_idx) + "*.png")
 
-        self.field_to_real_space()
-
         self.field_max = np.max(self.field_real_space)
         self.field_min = np.min(self.field_real_space)
         for it in range(self.nt):
@@ -1040,8 +1013,6 @@ class Simulation(object):
         plt.contourf(self.x, self.y, np.transpose(self.field_real_space[it,:,:]),
                      levels=contours, cmap='coolwarm')
         plt.xlabel(r'$x (m)$')
-
-
         plt.ylabel(r'$y (m)$')
         plt.title(r'Time = %f $\mu s$'%((self.t[it]-self.t[0])*1e6))
         plt.colorbar()
