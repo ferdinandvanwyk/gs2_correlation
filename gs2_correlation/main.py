@@ -57,38 +57,22 @@ logging.info('')
 
 if args.size == 'full':
     run = full_box_analysis.FullBox(args.config_file)
-    if run.analysis == 'all':
-        run.perp_analysis()
-        run.time_analysis()
-        run.zf_analysis()
-        run.field_write()
-        run.make_film()
-    elif run.analysis == 'perp':
-        run.perp_analysis()
-    elif run.analysis == 'time':
-        run.time_analysis()
-    elif run.analysis == 'zf':
-        run.zf_analysis()
-    elif run.analysis == 'write_field':
-        run.write_field()
-    elif run.analysis == 'film':
-        run.make_film()
 elif args.size == 'middle':
     run = middle_box_analysis.MiddleBox(args.config_file)
-    if run.analysis == 'all':
-        run.perp_analysis()
-        run.time_analysis()
-        run.field_write()
-        run.make_film()
-    elif run.analysis == 'perp':
-        run.perp_analysis()
-    elif run.analysis == 'time':
-        run.time_analysis()
-    elif run.analysis == 'write_field':
-        run.write_field()
-    elif run.analysis == 'film':
-        run.make_film()
 
+if run.analysis == 'perp':
+    run.perp_analysis()
+elif run.analysis == 'time':
+    run.time_analysis()
+elif run.analysis == 'zf' and args.size == 'full':
+    run.zf_analysis()
+elif run.analysis == 'zf' and args.size == 'middle':
+    raise ValueError('Zonal flow analysis is not available when analyzing '
+                     'middle of GS2 domain only.')
+elif run.analysis == 'write_field':
+    run.write_field()
+elif run.analysis == 'film':
+    run.make_film()
 
 
 

@@ -255,10 +255,10 @@ class Simulation(object):
                              self.nkx)*self.rhoref
         self.dy = np.linspace(-2*np.pi/self.ky[1], 2*np.pi/self.ky[1],
                              self.ny - 1)*self.rhoref*np.tan(self.pitch_angle)
-        self.fit_dx = self.dx[self.nkx/2 - self.perp_fit_length :
-                      self.nkx/2 + self.perp_fit_length]
-        self.fit_dy = self.dy[(self.ny-1)/2 - self.perp_fit_length :
-                      (self.ny-1)/2 + self.perp_fit_length]
+        self.fit_dx = self.dx[int(self.nkx/2) - self.perp_fit_length :
+                      int(self.nkx/2) + self.perp_fit_length]
+        self.fit_dy = self.dy[int((self.ny-1)/2) - self.perp_fit_length :
+                      int((self.ny-1)/2) + self.perp_fit_length]
         self.fit_dx_mesh, self.fit_dy_mesh = np.meshgrid(self.fit_dx, self.fit_dy)
         self.fit_dx_mesh = np.transpose(self.fit_dx_mesh)
         self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
@@ -436,7 +436,8 @@ class Simulation(object):
         self.time_guess = int(config_parse.get('analysis',
                                                'time_guess', fallback=10))
 
-        self.box_size = str(config_parse['analysis']['box_size'])
+        self.box_size = str(config_parse.get('analysis',
+                                               'box_size', fallback='[0.1,0.1]'))
         self.box_size = self.box_size[1:-1].split(',')
         self.box_size = [float(s) for s in self.box_size]
 
@@ -586,7 +587,6 @@ class Simulation(object):
         it : int
             This is the index of the time slice currently being fitted.
         """
-
         corr_fn = self.perp_corr[it*self.time_slice:(it+1)*self.time_slice,
                                  self.nx/2 - self.perp_fit_length :
                                  self.nx/2 + self.perp_fit_length,
@@ -614,12 +614,14 @@ class Simulation(object):
 
         sns.set_style('darkgrid', {'axes.axisbelow':False, 'legend.frameon': True})
         #Time averaged correlation
-        plt.clf()
-        corr_fn = self.perp_corr[:, self.nx/2 - self.perp_fit_length :
-                                    self.nx/2 + self.perp_fit_length,
-                                    (self.ny-1)/2 - self.perp_fit_length :
-                                    (self.ny-1)/2 + self.perp_fit_length]
+        corr_fn = self.perp_corr[:, int(self.nx/2) - self.perp_fit_length :
+                                    int(self.nx/2) + self.perp_fit_length,
+                                    int((self.ny-1)/2) - self.perp_fit_length :
+                                    int((self.ny-1)/2) + self.perp_fit_length]
+
         avg_corr = np.mean(corr_fn, axis=0) # Average over time
+
+        plt.clf()
         plt.contourf(self.fit_dx, self.fit_dy, np.transpose(avg_corr), 11,
                      levels=np.linspace(-1, 1, 11), cmap='coolwarm')
         plt.colorbar(ticks=np.linspace(-1, 1, 11))
