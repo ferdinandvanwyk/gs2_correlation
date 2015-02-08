@@ -7,6 +7,8 @@ This page describes the different analysis types that can be performed using
 Perpendicular Correlation
 -------------------------
 
+.. image:: perp_corr.png
+
 In GS2, fields are written out as a function of kx and ky. This allows the use
 of the Wiener-Khinchin theorem in 2D to calculate the correlation function:
 
