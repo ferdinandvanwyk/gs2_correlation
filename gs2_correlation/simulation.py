@@ -347,6 +347,9 @@ class Simulation(object):
         film_contours : int, 30
             Number of contours to use when making films. More contours => bigger 
             files.
+        film_lim : array_like, None
+            This sets the min and max contour levels when making films. None 
+            means that the contour min and max are automatically calculated.
         """
         logging.info('Started read_config...')
 
@@ -450,6 +453,13 @@ class Simulation(object):
         self.film_fps = int(config_parse.get('output', 'film_fps', fallback=40))
         self.film_contours = int(config_parse.get('output', 'film_contours', 
                                                   fallback=30))
+        self.film_lim = str(config_parse.get('output', 'film_lim', 
+                                                  fallback='None'))
+        if self.film_lim == "None":
+            self.film_lim = None
+        else:
+            self.film_lim = self.film_lim[1:-1].split(',')
+            self.film_lim = [float(s) for s in self.film_lim]
 
         # Log the variables
         logging.info('The following values were read from ' + self.config_file)
@@ -1007,9 +1017,14 @@ class Simulation(object):
         """
         logging.info('Saving frame %d of %d'%(it,self.nt))
 
+        if self.film_lim == None:
+            contours = np.around(np.linspace(self.field_min, self.field_max, 
+                                             self.film_contours),7)
+        else:
+            contours = np.around(np.linspace(self.film_lim[0], self.film_lim[1], 
+                                             self.film_contours),7)
+
         plt.clf()
-        contours = np.around(np.linspace(self.field_min, self.field_max, 
-                                         self.film_contours),7)
         plt.contourf(self.x, self.y, np.transpose(self.field_real_space[it,:,:]),
                      levels=contours, cmap='coolwarm')
         plt.xlabel(r'$x (m)$')
