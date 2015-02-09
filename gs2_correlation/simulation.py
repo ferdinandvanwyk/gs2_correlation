@@ -949,33 +949,43 @@ class Simulation(object):
         Notes
         -----
 
-        * The radial coordinate is major radius, i.e. the major radius of the
-          flux tube is added onto the radial values from GS2.
-        * The poloidal coordinate is centered at 0.
+        * The radial and poloidal coordinates are centered at 0.
+        * The radial coordinate is interpolated if neccessary to ensure a
+          0.5cm resolution consistent with the BES.
         """
         logging.info("Starting write_field...")
         
         if 'write_field' not in os.listdir(self.out_dir):
             os.system("mkdir " + self.out_dir + '/write_field')
 
+        #interpolate radial coordinate to be approx 0.5cm
+        interp_fac = int(np.ceil(self.x[1]/0.005))
+        x_bes = np.linspace(min(self.x), max(self.x), interp_fac*self.nx)
+        field_real_space_interp = np.empty([self.nt, len(x_bes), self.ny], 
+                                           dtype=float)
+        for it in range(self.nt):
+            for iy in range(self.ny):
+                f = interp.interp1d(self.x, self.field_real_space[it,:,iy])
+                field_real_space_interp[it,:,iy] = f(x_bes)
+
         nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' + 
                                      self.in_field +'.cdf', 'w')
-        nc_file.createDimension('r', self.nx)
-        nc_file.createDimension('z', self.ny)
+        nc_file.createDimension('x', len(x_bes))
+        nc_file.createDimension('y', self.ny)
         nc_file.createDimension('t', self.nt)
         nc_file.createDimension('none', 1)
         nc_nref = nc_file.createVariable('nref','d', ('none',))
         nc_tref = nc_file.createVariable('tref','d', ('none',))
-        nc_x = nc_file.createVariable('r','d',('r',))
-        nc_y = nc_file.createVariable('z','d',('z',))
+        nc_x = nc_file.createVariable('x','d',('x',))
+        nc_y = nc_file.createVariable('y','d',('y',))
         nc_t = nc_file.createVariable('t','d',('t',))
-        nc_ntot = nc_file.createVariable('ntot','d',('t', 'r', 'z',))
+        nc_ntot = nc_file.createVariable('ntot','d',('t', 'x', 'y',))
         nc_nref[:] = self.nref
         nc_tref[:] = self.tref
-        nc_x[:] = self.x[:] - self.x[-1]/2 + self.rmaj
+        nc_x[:] = x_bes[:] - x_bes[-1]/2
         nc_y[:] = self.y[:] - self.y[-1]/2 
         nc_t[:] = self.t[:] - self.t[0]
-        nc_ntot[:,:,:] = self.field_real_space[:,:,:]
+        nc_ntot[:,:,:] = field_real_space_interp[:,:,:]
         nc_file.close()
         
         logging.info("Finished write_field...")
