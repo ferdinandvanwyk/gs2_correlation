@@ -489,6 +489,8 @@ class Simulation(object):
         self.t = self.ncfile.variables['t'][:]
 
         self.phi = np.array(self.ncfile.variables['phi_igomega_by_mode'][:])
+        self.temp = np.array(self.ncfile.variables['tperp_igomega_by_mode'][:])
+        self.dens = np.array(self.ncfile.variables['ntot_igomega_by_mode'][:])
 
         logging.info('Finished reading from NetCDf file.')
 
@@ -959,7 +961,7 @@ class Simulation(object):
             os.system("mkdir " + self.out_dir + '/write_field')
 
         #interpolate radial coordinate to be approx 0.5cm
-        interp_fac = int(np.ceil(self.x[1]/0.005))
+        interp_fac = int(np.ceil(self.x[2]/0.005))
         x_bes = np.linspace(min(self.x), max(self.x), interp_fac*self.nx)
         field_real_space_interp = np.empty([self.nt, len(x_bes), self.ny], 
                                            dtype=float)
@@ -1073,7 +1075,7 @@ class Simulation(object):
         contours = np.around(np.linspace(np.min(self.v_zf), np.max(self.v_zf), 
                                          30),2)
         plt.clf()
-        plt.contourf(self.x, self.t*1e6, self.v_zf, cmap='jet', levels=contours)
+        plt.contourf(self.x, self.t*1e6, self.v_zf, cmap='coolwarm', levels=contours)
         plt.title('$v_{ZF}(x, t))$')
         plt.colorbar()
         plt.xlabel(r'$ x (m)$')
@@ -1090,8 +1092,23 @@ class Simulation(object):
 
         logging.info('Finished zf_analysis.')
 
+    def local_heat_flux(self):
+        """
+        This function calculates the local heat flux in real space and makes
+        a film of it in time.
+
+        Notes
+        -----
+
+        * Q = (dn*T + n*dT)* V_{E,x}
+        * Need to read dn, dT and phi from NetCDF file
+        * Convert arrays to real space
+        * Multiply to give Q in real space as a function of time
+        """
+        logging.info('Starting local_heat_flux...')
 
 
+        logging.info('Finished local_heat_flux.')
         
         
         

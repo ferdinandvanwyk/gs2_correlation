@@ -95,6 +95,10 @@ class TestClass(object):
         assert ('zf_vs_x_t.pdf' in os.listdir('test/test_run/v/id_1/analysis/zf'))
         assert ('zf_mean_vs_x.pdf' in os.listdir('test/test_run/v/id_1/analysis/zf'))
             
+    def test_local_heat_flux(self, run):
+        run.local_heat_flux()
+        assert ('q_vs_x_and_y_spec_0_0000.png' in os.listdir('test/test_run/v/id_1/analysis/heat_flux/film_frames'))
+        assert ('q_vs_x_and_y_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/heat_flux/'))
 
 
 
