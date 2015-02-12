@@ -72,7 +72,7 @@ class Simulation(object):
     in_field : str
         Name of the field to be read in from NetCDF file.
     analysis : str
-        Type of analysis to be done. Options are 'all', 'perp', 'time', 'zf',
+        Type of analysis to be done. Options are 'all', 'perp', 'time', 
         'write_field'.
     out_dir : str
         Output directory for analysis: "analysis".
@@ -123,15 +123,6 @@ class Simulation(object):
     field : array_like
         Field read in from the NetCDF file. Automatically converted to a complex
         array.
-    phi_zf : array_like
-        Electrostatic potential of the zonal component read in from the NetCDF 
-        file. This is used to calculate the ZF velocity. The variable that is 
-        read in is 'phi_igomega_by_mode', which is phi written out on a plane at 
-        theta=igomega.
-    phi : array_like
-        Electrostatic potential read in from the NetCDF. The variable that is 
-        read in is 'phi_igomega_by_mode', which is phi written out on a plane at 
-        theta=igomega.
     field_real_space : array_like
         Field in real space coordinates (x,y)
     perp_corr : array_like
@@ -292,7 +283,7 @@ class Simulation(object):
         field : str
             Name of the field to be read in from NetCDF file.
         analysis : str, 'all'
-            Type of analysis to be done. Options are 'all', 'perp', 'time', 'zf',
+            Type of analysis to be done. Options are 'all', 'perp', 'time',
             'write_field', 'film'.
         out_dir : str, 'analysis'
             Output directory for analysis.
@@ -392,9 +383,9 @@ class Simulation(object):
 
         self.analysis = config_parse.get('analysis', 'analysis',
                                          fallback='all')
-        if self.analysis not in ['all', 'perp', 'time', 'zf', 'write_field', 
+        if self.analysis not in ['all', 'perp', 'time', 'write_field', 
                                  'film']:
-            raise ValueError('Analysis must be one of (perp, time, zf, '
+            raise ValueError('Analysis must be one of (perp, time, '
                              'write_field, make_film)')
 
         self.out_dir = str(config_parse.get('analysis', 'out_dir',
@@ -758,6 +749,8 @@ class Simulation(object):
             self.field_real_space[it,:,:] = np.roll(self.field_real_space[it,:,:],
                                                     int(self.nx/2), axis=0)
 
+        self.field_real_space = self.field_real_space*self.nx*self.ny
+
     def calculate_time_corr(self, it):
         """
         Calculate the time correlation for a given time window at each x.
@@ -1045,70 +1038,6 @@ class Simulation(object):
         plt.colorbar()
         plt.savefig(self.out_dir + "/film/film_frames/" + self.in_field + 
                     "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=110)
-
-    def zf_analysis(self):
-        """
-        This function uses phi to calculate the zonal flow velocity v_zf(x,t).
-
-        Two plots are produced: a 2D plot of v_zf vs x and t, and the time
-        averaged v_zf as a function of radius.
-
-        The formula for the ZF velocity is:
-
-        v_zf = Re(IFT[phi(ky=0)*kx])*nx
-        """
-        logging.info('Starting zf_analysis...')
-
-        if 'zf' not in os.listdir(self.out_dir):
-            os.system("mkdir " + self.out_dir + '/zf')
-
-        self.phi_zf = self.phi[:,0,:,0] + 1j*self.phi[:,0,:,1] 
-
-        # Need to multiply by nx since ifft contains 1/nx implicitly but 
-        # spectral->real for GS2 variables require no factor. Finally, zf_vel is in 
-        # units of (1/kxfac vth) since technically: zf_vel = kxfac*IFT[(kx*phi_imag)] 
-        # however kxfac calculation is nontrivial.
-        self.v_zf = np.empty([self.nt,self.nx],dtype=float)
-        for it in range(self.nt):
-            self.v_zf[it,:] = np.fft.ifft(self.phi_zf[it,:]*self.kx).imag*self.nx
-
-        contours = np.around(np.linspace(np.min(self.v_zf), np.max(self.v_zf), 
-                                         30),2)
-        plt.clf()
-        plt.contourf(self.x, self.t*1e6, self.v_zf, cmap='coolwarm', levels=contours)
-        plt.title('$v_{ZF}(x, t))$')
-        plt.colorbar()
-        plt.xlabel(r'$ x (m)$')
-        plt.ylabel(r'$t (\mu s)$')
-        plt.savefig(self.out_dir + '/zf/zf_vs_x_t.pdf')
-
-        # Mean ZF vs x
-        plt.clf()
-        plt.plot(self.x, np.mean(self.v_zf, axis=0))
-        plt.title('$v_{ZFi, mean}(x))$')
-        plt.xlabel(r'$ x (m)$')
-        plt.ylabel(r'$v_{ZF} (v_{th,i}/kxfac)$')
-        plt.savefig(self.out_dir + '/zf/zf_mean_vs_x.pdf')
-
-        logging.info('Finished zf_analysis.')
-
-    def local_heat_flux(self):
-        """
-        This function calculates the local heat flux in real space and makes
-        a film of it in time.
-
-        Notes
-        -----
-
-        * Q = (dn*T + n*dT)* V_{E,x}
-        * Need to read dn, dT and phi from NetCDF file
-        * Convert arrays to real space
-        * Multiply to give Q in real space as a function of time
-        """
-        logging.info('Starting local_heat_flux...')
-
-
-        logging.info('Finished local_heat_flux.')
         
         
         
