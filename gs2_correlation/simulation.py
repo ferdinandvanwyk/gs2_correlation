@@ -309,6 +309,10 @@ class Simulation(object):
             domain, this sets the approximate [radial, poloidal] size of this 
             box in m. This variable is only used when using the 'middle' 
             command line parameter.
+        time_range : array_like, [0,-1]
+            Time range for which analysis is done. Default is entire range. -1
+            for the final time step is interpreted as up to the final time step,
+            inclusively.
         npeaks_fit : int, 5
             Number of peaks to fit when calculating the correlation time.
         species_index : int or None
@@ -435,6 +439,11 @@ class Simulation(object):
         self.box_size = self.box_size[1:-1].split(',')
         self.box_size = [float(s) for s in self.box_size]
 
+        self.time_range = str(config_parse.get('analysis',
+                                               'time_range', fallback='[0,-1]'))
+        self.time_range = self.time_range[1:-1].split(',')
+        self.time_range = [float(s) for s in self.time_range]
+
         ###################
         # Output Namelist #
         ###################
@@ -470,14 +479,21 @@ class Simulation(object):
 
         # NetCDF order is [t, species, ky, kx, theta, r]
         # ncfile.variable returns netcdf object - convert to array
-        self.field = np.array(self.ncfile.variables[self.in_field]
-                                        [:,self.spec_idx,:,:,self.theta_idx,:])
+        if self.time_range[1] == -1:
+            self.field = np.array(self.ncfile.variables[self.in_field]
+                                            [self.time_range[0]:,self.spec_idx,:,:,self.theta_idx,:])
+            self.t = self.ncfile.variables['t'][self.time_range[0]:]
+        else:
+            self.field = np.array(self.ncfile.variables[self.in_field]
+                                            [self.time_range[0]:self.time_range[1],self.spec_idx,:,:,self.theta_idx,:])
+            self.t = self.ncfile.variables['t'][self.time_range[0]:self.time_range[1]]
+
+
         self.field = np.squeeze(self.field)
         self.field = np.swapaxes(self.field, 1, 2)
 
         self.kx = self.ncfile.variables['kx'][:]
         self.ky = self.ncfile.variables['ky'][:]
-        self.t = self.ncfile.variables['t'][:]
 
         logging.info('Finished reading from NetCDf file.')
 
