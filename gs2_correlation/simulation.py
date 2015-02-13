@@ -479,10 +479,6 @@ class Simulation(object):
         self.ky = self.ncfile.variables['ky'][:]
         self.t = self.ncfile.variables['t'][:]
 
-        self.phi = np.array(self.ncfile.variables['phi_igomega_by_mode'][:])
-        self.temp = np.array(self.ncfile.variables['tperp_igomega_by_mode'][:])
-        self.dens = np.array(self.ncfile.variables['ntot_igomega_by_mode'][:])
-
         logging.info('Finished reading from NetCDf file.')
 
     def interpolate(self):
