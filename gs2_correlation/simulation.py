@@ -481,19 +481,22 @@ class Simulation(object):
         # ncfile.variable returns netcdf object - convert to array
         if self.time_range[1] == -1:
             self.field = np.array(self.ncfile.variables[self.in_field]
-                                            [self.time_range[0]:,self.spec_idx,:,:,self.theta_idx,:])
-            self.t = self.ncfile.variables['t'][self.time_range[0]:]
+                                            [self.time_range[0]:,
+                                             self.spec_idx,:,:,self.theta_idx,:])
+            self.t = np.array(self.ncfile.variables['t'][self.time_range[0]:])
         else:
             self.field = np.array(self.ncfile.variables[self.in_field]
-                                            [self.time_range[0]:self.time_range[1],self.spec_idx,:,:,self.theta_idx,:])
-            self.t = self.ncfile.variables['t'][self.time_range[0]:self.time_range[1]]
+                                            [self.time_range[0]:self.time_range[1],
+                                             self.spec_idx,:,:,self.theta_idx,:])
+            self.t = np.array(self.ncfile.variables['t'][self.time_range[0]:
+                                                         self.time_range[1]])
 
 
         self.field = np.squeeze(self.field)
         self.field = np.swapaxes(self.field, 1, 2)
 
-        self.kx = self.ncfile.variables['kx'][:]
-        self.ky = self.ncfile.variables['ky'][:]
+        self.kx = np.array(self.ncfile.variables['kx'][:])
+        self.ky = np.array(self.ncfile.variables['ky'][:])
 
         logging.info('Finished reading from NetCDf file.')
 

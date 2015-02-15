@@ -29,7 +29,7 @@ def field_to_real_space(field):
         field_real_space[it,:,:] = np.roll(field_real_space[it,:,:],
                                                 int(nx/2), axis=0)
 
-    return field_real_space
+    return field_real_space*nx*ny/2
 
 # Normalization parameters
 # Outer scale in m
@@ -107,14 +107,13 @@ plt.ylabel(r'$v_{ZF} (v_{th,i}/kxfac)$')
 plt.savefig('analysis/misc/zf_mean_vs_x.pdf')
 
 # Local Heat Flux 
-v_exb = field_to_real_space(-ky*phi)*ny
+v_exb = field_to_real_space(-ky*phi)
 
 dens = field_to_real_space(dens)
 temp = field_to_real_space(temp)
 
 q = ((temp + dens)*v_exb).real
 
-print(temp[0,:,:], dens[0,:,:])
 plt.clf()
 plt.contourf(q[0,:,:], cmap='coolwarm')
 plt.show()
