@@ -29,7 +29,7 @@ def field_to_real_space(field):
         field_real_space[it,:,:] = np.roll(field_real_space[it,:,:],
                                                 int(nx/2), axis=0)
 
-    return field_real_space*nx*ny/2
+    return field_real_space*nx*ny*rho_star/2
 
 # Normalization parameters
 # Outer scale in m
@@ -38,6 +38,8 @@ amin = 0.58044
 vth = 1.4587e+05
 # Larmor radius of reference species in m
 rhoref = 6.0791e-03
+# Expansion parameter
+rho_star = rhoref/amin
 # Angle between magnetic field lines and the horizontal in radians
 pitch_angle = 0.6001
 # Major radius at the outboard midplane
