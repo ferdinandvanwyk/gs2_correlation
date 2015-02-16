@@ -29,7 +29,7 @@ def field_to_real_space(field):
         field_real_space[it,:,:] = np.roll(field_real_space[it,:,:],
                                                 int(nx/2), axis=0)
 
-    return field_real_space*nx*ny/2
+    return field_real_space
 
 # Normalization parameters
 # Outer scale in m
@@ -112,10 +112,16 @@ v_exb = field_to_real_space(-ky*phi)
 dens = field_to_real_space(dens)
 temp = field_to_real_space(temp)
 
-q = ((temp + dens)*v_exb).real
+q = ((nref*temp*tref + tref*dens*nref)*v_exb).real
 
 plt.clf()
-plt.contourf(q[0,:,:], cmap='coolwarm')
+plt.contourf(np.transpose(dens[0,:,:]), cmap='coolwarm', levels=np.linspace(np.min(dens[0,:,:]), np.max(dens[0,:,:]), 30))
+plt.colorbar()
+plt.show()
+
+plt.clf()
+plt.contourf(np.transpose(q[0,:,:]), cmap='coolwarm', levels=np.linspace(np.min(q[0,:,:]), np.max(q[0,:,:]), 30))
+plt.colorbar()
 plt.show()
 
 
