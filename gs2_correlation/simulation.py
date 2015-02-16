@@ -110,6 +110,8 @@ class Simulation(object):
         Thermal velocity of the reference species in *m/s*
     rhoref : float
         Larmor radius of the reference species in *m*.
+    rho_star : float
+        The expansion parameter defined as rho_ref/amin.
     pitch_angle : float
         Pitch angle of the magnetic field lines in *rad*.
     seaborn_context : str
@@ -225,6 +227,8 @@ class Simulation(object):
 
         # Set plot options
         sns.set_context(self.seaborn_context)
+
+        self.rho_star = self.rhoref/self.amin
 
         self.read_netcdf()
 
@@ -756,6 +760,14 @@ class Simulation(object):
     def field_to_real_space(self):
         """
         Converts field from (kx, ky) to (x, y) and saves as new array attribute.
+
+        Notes
+        -----
+
+        * Since python defines x = IFFT[FFT(x)] need to undo the implicit 
+          normalization by multiplying by the size of the arrays.
+        * GS2 fluctuations are O(rho_star) and must be multiplied by rho_star
+          to get their true values.
         """
 
         self.field_real_space = np.empty([self.nt,self.nx,self.ny],dtype=float)
@@ -765,6 +777,7 @@ class Simulation(object):
                                                     int(self.nx/2), axis=0)
 
         self.field_real_space = self.field_real_space*self.nx*self.ny/2
+        self.field_real_space = self.field_real_space*self.rho_star
 
     def calculate_time_corr(self, it):
         """
