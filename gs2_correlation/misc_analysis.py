@@ -52,9 +52,9 @@ tref = 2.2054e+02
 # Read NetCDF
 in_file = sys.argv[1]
 ncfile = netcdf.netcdf_file(in_file, 'r')
-kx = ncfile.variables['kx'][:]
-ky = ncfile.variables['ky'][:]
-t = ncfile.variables['t'][:]
+kx = np.array(ncfile.variables['kx'][:])
+ky = np.array(ncfile.variables['ky'][:])
+t = np.array(ncfile.variables['t'][:])
 phi = np.array(ncfile.variables['phi_igomega_by_mode'][:])
 phi = np.swapaxes(phi, 1, 2)
 phi = phi[:,:,:,0] + 1j*phi[:,:,:,1] 
@@ -116,10 +116,6 @@ temp = field_to_real_space(temp)
 
 q = ((nref*temp*tref + tref*dens*nref)*v_exb).real
 
-plt.clf()
-plt.contourf(np.transpose(dens[0,:,:]), cmap='coolwarm', levels=np.linspace(np.min(dens[0,:,:]), np.max(dens[0,:,:]), 30))
-plt.colorbar()
-plt.show()
 
 plt.clf()
 plt.contourf(np.transpose(q[0,:,:]), cmap='coolwarm', levels=np.linspace(np.min(q[0,:,:]), np.max(q[0,:,:]), 30))

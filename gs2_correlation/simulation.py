@@ -267,7 +267,8 @@ class Simulation(object):
         if self.zero_zf_scales_bool:
             self.zero_zf_scales()
 
-        self.to_complex()
+        self.field_to_complex()
+        self.fourier_correction()
         self.field_to_real_space()
 
     def read_config(self):
@@ -504,6 +505,25 @@ class Simulation(object):
 
         logging.info('Finished reading from NetCDf file.')
 
+    def fourier_correction(self):
+        """
+        Correction to GS2s Fourier components to regular Fourier components.
+
+        Notes
+        -----
+
+        GS2 fourier components are NOT simple fourier components obtained from 
+        regular FFT functions. Due to GS2's legacy as a linear code, instead
+        of just getting fourier components g_k the output is:
+
+        G_k = {g_k for ky = 0, 2g_k for ky > 0}
+
+        Therfore converting to regular fourier components simply means dividing
+        all non-zonal components by 2.
+        """
+        
+        self.field[:,:,1:] = self.field[:,:,1:]/2
+
     def interpolate(self):
         """
         Interpolates in time onto a regular grid
@@ -543,7 +563,7 @@ class Simulation(object):
         """
         self.field[:,:,0,:] = 0.0
 
-    def to_complex(self):
+    def field_to_complex(self):
         """
         Converts field to a complex array.
 
