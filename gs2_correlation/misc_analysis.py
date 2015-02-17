@@ -31,6 +31,27 @@ def field_to_real_space(field):
 
     return field_real_space*nx*ny*rho_star/2
 
+def plot_heat_flux(it):
+    """
+    Plots real space field and saves as a file indexed by time index.
+
+    Parameters
+    ----------
+    it : int
+        Time index to plot and save.
+    """
+    print('Saving frame %d of %d'%(it,nt))
+
+    contours = np.around(np.linspace(-1,1,41),5)
+
+    plt.clf()
+    plt.contourf(x, y, np.transpose(q[it,:,:]),levels=contours, cmap='coolwarm')
+    plt.xlabel(r'$x (m)$')
+    plt.ylabel(r'$y (m)$')
+    plt.title(r'$Q_{ion}$ - Time = %f $\mu s$'%((t[it]-t[0])*1e6))
+    plt.colorbar()
+    plt.savefig("analysis/misc/film_frames/q_vs_x_and_y_%04d.png"%it, dpi=110)
+
 # Normalization parameters
 # Outer scale in m
 amin = 0.58044
@@ -116,12 +137,17 @@ temp = field_to_real_space(temp)
 
 q = ((nref*temp*tref + tref*dens*nref)*v_exb).real
 
+# Make film
 
-plt.clf()
-plt.contourf(np.transpose(q[0,:,:]), cmap='coolwarm', levels=np.linspace(np.min(q[0,:,:]), np.max(q[0,:,:]), 30))
-plt.colorbar()
-plt.show()
+if 'film_frames' not in os.listdir('analysis/misc/'):
+    os.system('mkdir analysis/misc/film_frames')
+os.system("rm analysis/misc/film_frames/*.png")
 
+q = q/np.max(q)
+for it in range(nt):
+    plot_heat_flux(it)
+
+os.system("avconv -threads 2 -y -f image2 -r 10 -i 'analysis/misc/film_frames/q_vs_x_and_y_%04d.png' analysis/misc/q_vs_x_and_y.mp4")
 
 
 
