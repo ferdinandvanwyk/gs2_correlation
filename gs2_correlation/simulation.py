@@ -796,7 +796,7 @@ class Simulation(object):
             self.field_real_space[it,:,:] = np.roll(self.field_real_space[it,:,:],
                                                     int(self.nx/2), axis=0)
 
-        self.field_real_space = self.field_real_space*self.nx*self.ny/2
+        self.field_real_space = self.field_real_space*self.nx*self.ny
         self.field_real_space = self.field_real_space*self.rho_star
 
     def calculate_time_corr(self, it):

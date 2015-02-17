@@ -63,7 +63,7 @@ class TestClass(object):
     def test_zf_bes(self, run):
         assert (run.field[:, :, 0] == 0).all()
 
-    def test_to_complex(self, run):
+    def test_field_to_complex(self, run):
         assert np.iscomplexobj(run.field) == True 
 
     def test_wk_2d(self, run):

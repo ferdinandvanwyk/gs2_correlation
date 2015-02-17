@@ -29,7 +29,7 @@ def field_to_real_space(field):
         field_real_space[it,:,:] = np.roll(field_real_space[it,:,:],
                                                 int(nx/2), axis=0)
 
-    return field_real_space*nx*ny*rho_star/2
+    return field_real_space*nx*ny*rho_star
 
 def plot_heat_flux(it):
     """
