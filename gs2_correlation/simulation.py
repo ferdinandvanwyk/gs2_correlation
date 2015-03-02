@@ -1078,14 +1078,22 @@ class Simulation(object):
                                              self.film_contours),7)
 
         plt.clf()
-        plt.contourf(self.x, self.y, np.transpose(self.field_real_space[it,:,:]),
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+        ax = plt.subplot(111)
+        im = ax.contourf(self.x, self.y, np.transpose(self.field_real_space[it,:,:]),
                      levels=contours, cmap='coolwarm')
+        ax.set_aspect('equal')
         plt.xlabel(r'$x (m)$')
         plt.ylabel(r'$y (m)$')
         plt.title(r'Time = %f $\mu s$'%((self.t[it]-self.t[0])*1e6))
-        plt.colorbar()
+
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+
+        plt.colorbar(im, cax=cax)
         plt.savefig(self.out_dir + "/film/film_frames/" + self.in_field + 
-                    "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=110)
+                    "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=112,
+                    bbox_inches='tight')
         
         
         
