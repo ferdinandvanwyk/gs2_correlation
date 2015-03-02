@@ -860,45 +860,64 @@ class Simulation(object):
             if (fit.strictly_increasing(max_index[ix,:]) == True or 
                 fit.strictly_increasing(max_index[ix,::-1]) == True):
                 if max_index[ix, self.npeaks_fit-1] > max_index[ix, 0]:
-                    self.corr_time[it, ix], pcov = opt.curve_fit(
-                                                       fit.decaying_exp, 
-                                                       (self.dt[max_index[ix,:]]), 
-                                                       peaks[ix,:].ravel(), 
-                                                       p0=self.time_guess)
-                    self.time_plot(it, ix, max_index, peaks, 'decaying')
-                    logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
-                                 "with decaying exponential. tau = " 
-                                 + str(self.corr_time[it,ix]) + " s\n")
+                    try:
+                        self.corr_time[it, ix], pcov = opt.curve_fit(
+                                                           fit.decaying_exp, 
+                                                           (self.dt[max_index[ix,:]]), 
+                                                           peaks[ix,:].ravel(), 
+                                                           p0=self.time_guess)
+                        self.time_plot(it, ix, max_index, peaks, 'decaying')
+                        logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
+                                     "with decaying exponential. tau = " 
+                                     + str(self.corr_time[it,ix]) + " s\n")
+                    except RuntimeError:
+                        logging.info("(" + str(it) + "," + str(ix) + ") " 
+                                "RuntimeError - max fitting iterations reached, "
+                                "skipping this case with tau = 1\n")
+                        self.corr_time[it, ix] = 1
                 else:
-                    self.corr_time[it, ix], pcov = opt.curve_fit(
-                                                       fit.growing_exp, 
-                                                       (self.dt[max_index[ix,:]]), 
-                                                       peaks[ix,:].ravel(), 
-                                                       p0=self.time_guess)
-                    self.time_plot(it, ix, max_index, peaks, 'growing')
-                    logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
-                                 "with growing exponential. tau = " 
-                                 + str(self.corr_time[it,ix]) + " s\n")
+                    try:
+                        self.corr_time[it, ix], pcov = opt.curve_fit(
+                                                           fit.growing_exp, 
+                                                           (self.dt[max_index[ix,:]]), 
+                                                           peaks[ix,:].ravel(), 
+                                                           p0=self.time_guess)
+                        self.time_plot(it, ix, max_index, peaks, 'growing')
+                        logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
+                                     "with growing exponential. tau = " 
+                                     + str(self.corr_time[it,ix]) + " s\n")
+                    except RuntimeError:
+                        logging.info("(" + str(it) + "," + str(ix) + ") "
+                                "RuntimeError - max fitting iterations reached, "
+                                "skipping this case with tau = 1\n")
+                        self.corr_time[it, ix] = 1
             else:
-                # If abs(max_index) is not monotonically increasing, this 
-                # usually means that there is no flow and that the above method
-                # cannot be used to calculate the correlation time. Try fitting
-                # a decaying oscillating exponential to the central peak.
-                self.time_corr[it,:,ix,mid_idx] = self.time_corr[it,:,ix,mid_idx]/ \
-                                                  max(self.time_corr[it,:,ix,mid_idx])
-                init_guess = (self.time_guess, 1.0)
-                tau_and_omega, pcov = opt.curve_fit(
-                                          fit.osc_exp, 
-                                          (self.dt), 
-                                          (self.time_corr[it,:,ix,mid_idx]).ravel(), 
-                                          p0=init_guess)
-                self.corr_time[it,ix] = tau_and_omega[0]
-                self.time_plot(it, ix, max_index, peaks, 'oscillating', 
-                               omega=tau_and_omega[1])
-                logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
-                             "with an oscillating "
-                             "Gaussian to the central peak. (tau, omega) = " 
-                             + str(tau_and_omega) + "\n")
+                try:
+                    # If abs(max_index) is not monotonically increasing, this 
+                    # usually means that there is no flow and that the above method
+                    # cannot be used to calculate the correlation time. Try fitting
+                    # a decaying oscillating exponential to the central peak.
+                    self.time_corr[it,:,ix,mid_idx] = self.time_corr[it,:,ix,mid_idx]/ \
+                                                      max(self.time_corr[it,:,ix,mid_idx])
+                    init_guess = (self.time_guess, 1.0)
+                    tau_and_omega, pcov = opt.curve_fit(
+                                              fit.osc_exp, 
+                                              (self.dt), 
+                                              (self.time_corr[it,:,ix,mid_idx]).ravel(), 
+                                              p0=init_guess)
+                    self.corr_time[it,ix] = tau_and_omega[0]
+                    self.time_plot(it, ix, max_index, peaks, 'oscillating', 
+                                   omega=tau_and_omega[1])
+                    logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
+                                 "with an oscillating "
+                                 "Gaussian to the central peak. (tau, omega) = " 
+                                 + str(tau_and_omega) + "\n")
+                except RuntimeError:
+                    logging.info("(" + str(it) + "," + str(ix) + ") "
+                            "RuntimeError - max fitting iterations reached, "
+                            "skipping this case with (tau, omega) = 1\n")
+                    self.corr_time[it, ix] = 1
+
 
     def time_plot(self, it, ix, max_index, peaks, plot_type, **kwargs):
         """
