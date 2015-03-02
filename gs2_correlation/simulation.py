@@ -74,8 +74,8 @@ class Simulation(object):
     analysis : str
         Type of analysis to be done. Options are 'all', 'perp', 'time', 
         'write_field'.
-    out_dir : str
-        Output directory for analysis: "analysis".
+    out_dir : str, 'analysis'
+        Output directory for analysis.
     interpolate_bool : bool
         Interpolate in time onto a regular grid. Default = True. Specify as
         interpolate in configuration file.
