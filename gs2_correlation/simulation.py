@@ -873,8 +873,8 @@ class Simulation(object):
                     except RuntimeError:
                         logging.info("(" + str(it) + "," + str(ix) + ") " 
                                 "RuntimeError - max fitting iterations reached, "
-                                "skipping this case with tau = 1\n")
-                        self.corr_time[it, ix] = 1
+                                "skipping this case with tau = NaN\n")
+                        self.corr_time[it, ix] = np.nan
                 else:
                     try:
                         self.corr_time[it, ix], pcov = opt.curve_fit(
@@ -889,8 +889,8 @@ class Simulation(object):
                     except RuntimeError:
                         logging.info("(" + str(it) + "," + str(ix) + ") "
                                 "RuntimeError - max fitting iterations reached, "
-                                "skipping this case with tau = 1\n")
-                        self.corr_time[it, ix] = 1
+                                "skipping this case with tau = NaN\n")
+                        self.corr_time[it, ix] = np.nan
             else:
                 try:
                     # If abs(max_index) is not monotonically increasing, this 
@@ -915,8 +915,8 @@ class Simulation(object):
                 except RuntimeError:
                     logging.info("(" + str(it) + "," + str(ix) + ") "
                             "RuntimeError - max fitting iterations reached, "
-                            "skipping this case with (tau, omega) = 1\n")
-                    self.corr_time[it, ix] = 1
+                            "skipping this case with (tau, omega) = NaN\n")
+                    self.corr_time[it, ix] = np.nan
 
 
     def time_plot(self, it, ix, max_index, peaks, plot_type, **kwargs):
@@ -989,16 +989,16 @@ class Simulation(object):
 
         # Plot corr_time as a function of radius, average over time window
         plt.clf()
-        plt.plot(self.x, np.mean(self.corr_time*1e6, axis=0))
+        plt.plot(self.x, np.nanmean(self.corr_time*1e6, axis=0))
         plt.ylim(ymin=0)
         plt.xlabel("Radius (m)")
         plt.ylabel(r'Correlations Time $\tau_c$ ($\mu$ s)')
         plt.savefig(self.out_dir + '/time/corr_time.pdf')
 
         summary_file = open(self.out_dir + '/time/time_fit_summary.txt', 'w')
-        summary_file.write('tau_c = ' + str(np.mean(self.corr_time)*1e6)
+        summary_file.write('tau_c = ' + str(np.nanmean(self.corr_time)*1e6)
                            + " mu s\n")
-        summary_file.write('std(tau_c) = ' + str(np.std(np.mean(self.corr_time, axis=0))*1e6)
+        summary_file.write('std(tau_c) = ' + str(np.std(np.nanmean(self.corr_time, axis=0))*1e6)
                            + " mu s\n")
         summary_file.close()
 
