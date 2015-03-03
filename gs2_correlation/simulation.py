@@ -989,7 +989,8 @@ class Simulation(object):
 
         # Plot corr_time as a function of radius, average over time window
         plt.clf()
-        plt.plot(self.x, np.nanmean(self.corr_time*1e6, axis=0))
+        t_error = np.std(self.corr_time*1e6, axis=0)
+        plt.errorbar(self.x, np.nanmean(self.corr_time*1e6, axis=0), yerr=t_error)
         plt.ylim(ymin=0)
         plt.xlabel("Radius (m)")
         plt.ylabel(r'Correlations Time $\tau_c$ ($\mu$ s)')
@@ -998,7 +999,7 @@ class Simulation(object):
         summary_file = open(self.out_dir + '/time/time_fit_summary.txt', 'w')
         summary_file.write('tau_c = ' + str(np.nanmean(self.corr_time)*1e6)
                            + " mu s\n")
-        summary_file.write('std(tau_c) = ' + str(np.std(np.nanmean(self.corr_time, axis=0))*1e6)
+        summary_file.write('std(tau_c) = ' + str(np.nanstd(self.corr_time)*1e6)
                            + " mu s\n")
         summary_file.close()
 
