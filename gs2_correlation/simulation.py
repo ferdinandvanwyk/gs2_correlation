@@ -542,7 +542,7 @@ class Simulation(object):
         is interpolated into a regular grid. This is required in order to do
         FFTs in time. Interpolation is done by default if not specified.
         """
-        logging.info('Started interpolating onto a regular grid...')
+        logging.info('Started interpolating onto a regular time grid...')
 
         t_reg = np.linspace(min(self.t), max(self.t), self.nt)
         for i in range(len(self.kx)):
@@ -552,7 +552,7 @@ class Simulation(object):
                     self.field[:, i, j, k] = f(t_reg)
         self.t = t_reg
 
-        logging.info('Finished interpolating onto a regular grid.')
+        logging.info('Finished interpolating onto a regular time grid.')
 
     def zero_bes_scales(self):
         """
