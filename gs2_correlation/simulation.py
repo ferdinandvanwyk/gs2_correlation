@@ -989,7 +989,7 @@ class Simulation(object):
 
         # Plot corr_time as a function of radius, average over time window
         plt.clf()
-        t_error = np.std(self.corr_time*1e6, axis=0)
+        t_error = np.nanstd(self.corr_time*1e6, axis=0)
         plt.errorbar(self.x, np.nanmean(self.corr_time*1e6, axis=0), yerr=t_error)
         plt.ylim(ymin=0)
         plt.xlabel("Radius (m)")
