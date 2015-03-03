@@ -1031,7 +1031,6 @@ class Simulation(object):
         if 'write_field' not in os.listdir(self.out_dir):
             os.system("mkdir " + self.out_dir + '/write_field')
 
-        print(self.write_field_interp_x)
         if self.write_field_interp_x:
             #interpolate radial coordinate to be approx 0.5cm
             interp_fac = int(np.ceil(self.x[1]/0.005))
