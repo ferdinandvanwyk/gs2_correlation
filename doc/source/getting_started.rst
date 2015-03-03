@@ -5,7 +5,9 @@ Python Version Support
 ----------------------
 
 At the moment, `gs2_correlation` requires at least Python 3.4. No support for 
-previous versions is planned due to backwards incompatibility.
+previous versions is planned due to backwards incompatibility, however getting
+it to run under Python 2 shouldn't be a problem due to the use of very standard
+and otherwise well supported libraries.
 
 Install Dependencies
 --------------------
@@ -17,6 +19,14 @@ running:
 
     $ pip install -r requirements.txt
 
+Since this project is structured as a PIP package, it also needs to be installed
+using the following command (in the package root directory):
+
+.. code:: bash
+
+    $ pip install -e .
+
+
 Running Tests
 -------------
 
@@ -25,7 +35,6 @@ run the tests, run the following in the package root directory:
 
 .. code:: bash
 
-    $ pip install -e .
     $ py.test
 
 As an additional testing phase, the continuous integration (CI) framework Travis_
