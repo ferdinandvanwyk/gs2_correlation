@@ -187,6 +187,9 @@ class Simulation(object):
         Maximum value of the real space field.
     field_min : float
         Minimum value of the real space field.
+    write_field_interp_x : bool, True
+        Determines whether the radial coordinate is interpolated to match
+        the BES resolution when writing to a NetCDF file.
     """
 
     def __init__(self, config_file):
@@ -350,6 +353,9 @@ class Simulation(object):
         film_lim : array_like, None
             This sets the min and max contour levels when making films. None 
             means that the contour min and max are automatically calculated.
+        write_field_interp_x : bool, True
+            Determines whether the radial coordinate is interpolated to match
+            the BES resolution when writing to a NetCDF file.
         """
         logging.info('Started read_config...')
 
@@ -465,6 +471,10 @@ class Simulation(object):
         else:
             self.film_lim = self.film_lim[1:-1].split(',')
             self.film_lim = [float(s) for s in self.film_lim]
+
+        self.write_field_interp_x = config_parse.getboolean('output', 
+                                                         'write_field_interp_x',
+                                                         fallback=True)
 
         # Log the variables
         logging.info('The following values were read from ' + self.config_file)
@@ -1021,19 +1031,25 @@ class Simulation(object):
         if 'write_field' not in os.listdir(self.out_dir):
             os.system("mkdir " + self.out_dir + '/write_field')
 
-        #interpolate radial coordinate to be approx 0.5cm
-        interp_fac = int(np.ceil(self.x[2]/0.005))
-        x_bes = np.linspace(min(self.x), max(self.x), interp_fac*self.nx)
-        field_real_space_interp = np.empty([self.nt, len(x_bes), self.ny], 
-                                           dtype=float)
-        for it in range(self.nt):
-            for iy in range(self.ny):
-                f = interp.interp1d(self.x, self.field_real_space[it,:,iy])
-                field_real_space_interp[it,:,iy] = f(x_bes)
+        print(self.write_field_interp_x)
+        if self.write_field_interp_x:
+            #interpolate radial coordinate to be approx 0.5cm
+            interp_fac = int(np.ceil(self.x[1]/0.005))
+            x_nc = np.linspace(min(self.x), max(self.x), interp_fac*self.nx)
+            field_real_space_nc = np.empty([self.nt, len(x_nc), self.ny], 
+                                               dtype=float)
+            for it in range(self.nt):
+                for iy in range(self.ny):
+                    f = interp.interp1d(self.x, self.field_real_space[it,:,iy])
+                    field_real_space_nc[it,:,iy] = f(x_nc)
+        else:
+            x_nc = self.x
+            field_real_space_nc = self.field_real_space
+
 
         nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' + 
                                      self.in_field +'.cdf', 'w')
-        nc_file.createDimension('x', len(x_bes))
+        nc_file.createDimension('x', len(x_nc))
         nc_file.createDimension('y', self.ny)
         nc_file.createDimension('t', self.nt)
         nc_file.createDimension('none', 1)
@@ -1045,10 +1061,10 @@ class Simulation(object):
         nc_ntot = nc_file.createVariable('ntot','d',('t', 'x', 'y',))
         nc_nref[:] = self.nref
         nc_tref[:] = self.tref
-        nc_x[:] = x_bes[:] - x_bes[-1]/2
+        nc_x[:] = x_nc[:] - x_nc[-1]/2
         nc_y[:] = self.y[:] - self.y[-1]/2 
         nc_t[:] = self.t[:] - self.t[0]
-        nc_ntot[:,:,:] = field_real_space_interp[:,:,:]
+        nc_ntot[:,:,:] = field_real_space_nc[:,:,:]
         nc_file.close()
         
         logging.info("Finished write_field...")
