@@ -48,6 +48,7 @@ import scipy.signal as sig
 import matplotlib.pyplot as plt
 plt.rcParams.update({'figure.autolayout': True})
 import seaborn as sns
+from Pillow import Image
 
 # Local
 import gs2_correlation.fitting_functions as fit
@@ -1071,6 +1072,9 @@ class Simulation(object):
     def make_film(self):
         """
         Creates film from real space field time frames.
+
+        Image cropping using Pillow may be necessary to ensure width and height
+        of images are even.
         """
         logging.info("Starting make_film...")
 
@@ -1086,13 +1090,18 @@ class Simulation(object):
         for it in range(self.nt):
             self.plot_real_space_field(it)
 
+        im = Image.open(self.out_dir + "/film/film_frames/" + self.in_field + 
+                  "_spec_" + str(self.spec_idx) + "_0000.png ")
+        if im.size[0] % 2 != 0 or im.size[1] % 2 != 0:
+            self.crop_images() 
+
         os.system("avconv -threads 2 -y -f image2 -r " + str(self.film_fps) + 
                   " -i '" + self.out_dir + "/film/film_frames/" + self.in_field + 
                   "_spec_" + str(self.spec_idx) + "_%04d.png' " + 
                   self.out_dir +"/film/" + self.in_field + "_spec_" + 
                   str(self.spec_idx) +".mp4")
 
-        logging.info("Finished make_film...")
+        logging.info("Finished make_film.")
 
     def plot_real_space_field(self, it):
         """
@@ -1127,8 +1136,36 @@ class Simulation(object):
 
         plt.colorbar(im, cax=cax)
         plt.savefig(self.out_dir + "/film/film_frames/" + self.in_field + 
-                    "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=112,
+                    "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=113,
                     bbox_inches='tight')
+
+    def crop_images(self):
+        """
+        Ensures that PNG files have height and width that are even. 
+        
+        This owes to a quirk of avconv and libx264 that requires this. At the 
+        moment there is no easy way to specifically set the pixel count using 
+        Matplotlib and this is not desirable anyway since plots can be almost 
+        any size and aspect ratio depending on the data. The other solution 
+        found online is to use the `-vf` flag for avconv to control the output
+        size but this does not seem to work. The most reliable solution 
+        therefore is to use Pillow to load and crop images.
+        """
+        logging.info("Cropping film images...")
+
+        for it in range(self.nt):
+            print(it)
+            im = Image.open(self.out_dir + "/film/film_frames/" + self.in_field + 
+                    "_spec_" + str(self.spec_idx) + "_%04d.png"%it)
+            im_crop = im.crop((0, 0, int(im.size[0]/2)*2, int(im.size[1]/2)*2))
+            im_crop.save(self.out_dir + "/film/film_frames/" + self.in_field + 
+                    "_spec_" + str(self.spec_idx) + "_%04d.png"%it)
+
+
+        logging.info("Finished cropping film images.")
+
+
+        
         
         
         

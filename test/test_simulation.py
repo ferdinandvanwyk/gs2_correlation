@@ -6,6 +6,7 @@ import pytest
 import numpy as np
 import matplotlib
 matplotlib.use('Agg') # specifically for Travis CI to avoid backend errors
+from PIL import Image
 
 # Local
 from gs2_correlation.simulation import Simulation
@@ -89,6 +90,11 @@ class TestClass(object):
         run.make_film()
         assert ('ntot_igomega_by_mode_spec_0_0000.png' in os.listdir('test/test_run/v/id_1/analysis/film/film_frames'))
         assert ('ntot_igomega_by_mode_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/film/'))
+        
+        im = Image.open('test/test_run/v/id_1/analysis/film/film_frames/ntot_igomega_by_mode_spec_0_0000.png')
+        size = im.size
+        assert size[0] % 2 == 0
+        assert size[1] % 2 == 0
 
 
 
