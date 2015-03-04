@@ -48,7 +48,8 @@ import scipy.signal as sig
 import matplotlib.pyplot as plt
 plt.rcParams.update({'figure.autolayout': True})
 import seaborn as sns
-from Pillow import Image
+from PIL import Image
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Local
 import gs2_correlation.fitting_functions as fit
@@ -1091,7 +1092,7 @@ class Simulation(object):
             self.plot_real_space_field(it)
 
         im = Image.open(self.out_dir + "/film/film_frames/" + self.in_field + 
-                  "_spec_" + str(self.spec_idx) + "_0000.png ")
+                  "_spec_" + str(self.spec_idx) + "_0000.png")
         if im.size[0] % 2 != 0 or im.size[1] % 2 != 0:
             self.crop_images() 
 
@@ -1122,7 +1123,6 @@ class Simulation(object):
                                              self.film_contours),7)
 
         plt.clf()
-        from mpl_toolkits.axes_grid1 import make_axes_locatable
         ax = plt.subplot(111)
         im = ax.contourf(self.x, self.y, np.transpose(self.field_real_space[it,:,:]),
                      levels=contours, cmap='coolwarm')
@@ -1136,7 +1136,7 @@ class Simulation(object):
 
         plt.colorbar(im, cax=cax)
         plt.savefig(self.out_dir + "/film/film_frames/" + self.in_field + 
-                    "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=113,
+                    "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=110,
                     bbox_inches='tight')
 
     def crop_images(self):
@@ -1154,13 +1154,11 @@ class Simulation(object):
         logging.info("Cropping film images...")
 
         for it in range(self.nt):
-            print(it)
             im = Image.open(self.out_dir + "/film/film_frames/" + self.in_field + 
                     "_spec_" + str(self.spec_idx) + "_%04d.png"%it)
             im_crop = im.crop((0, 0, int(im.size[0]/2)*2, int(im.size[1]/2)*2))
             im_crop.save(self.out_dir + "/film/film_frames/" + self.in_field + 
                     "_spec_" + str(self.spec_idx) + "_%04d.png"%it)
-
 
         logging.info("Finished cropping film images.")
 
