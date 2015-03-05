@@ -438,8 +438,12 @@ class Simulation(object):
         self.perp_guess = str(config_parse['analysis']['perp_guess'])
         self.perp_guess = self.perp_guess[1:-1].split(',')
         self.perp_guess = [float(s) for s in self.perp_guess]
-        self.perp_guess = self.perp_guess * np.array([self.rhoref, self.rhoref,
-                                             1/self.rhoref, 1/self.rhoref])
+        if len(self.perp_guess) == 4:
+            self.perp_guess = self.perp_guess * np.array([self.rhoref, self.rhoref,
+                                                 1/self.rhoref, 1/self.rhoref])
+        elif len(self.perp_guess) == 3:
+            self.perp_guess = self.perp_guess * np.array([self.rhoref, self.rhoref,
+                                                 1/self.rhoref])
         self.perp_guess = list(self.perp_guess)
 
         self.npeaks_fit = int(config_parse.get('analysis',
@@ -631,7 +635,7 @@ class Simulation(object):
 
         logging.info("Finished 2D WK theorem.")
 
-    def perp_fit(self, it):
+    def perp_corr_fit(self, it):
         """
         Fits tilted Gaussian to perpendicular correlation function.
 
@@ -640,6 +644,16 @@ class Simulation(object):
 
         it : int
             This is the index of the time slice currently being fitted.
+
+        Notes
+        -----
+
+        Have option of fixing ky or not. This is controlled based on whether
+        the perp_guess configuration parameter has 3 or 4 values:
+
+        * perp_guess = (lx, ly, kx, ky) - use tilted_gauss
+        * perp_guess = (lx, ly, kx) - use tilted_gauss_ky_fixed and set 
+          ky = 2*pi/ly 
         """
         corr_fn = self.perp_corr[it*self.time_slice:(it+1)*self.time_slice,
                                  self.nx/2 - self.perp_fit_length :
@@ -650,11 +664,22 @@ class Simulation(object):
         # Average corr_fn over time
         avg_corr = np.mean(corr_fn, axis=0)
 
-        popt, pcov = opt.curve_fit(fit.tilted_gauss, (self.fit_dx_mesh,
-                                                      self.fit_dy_mesh),
-                                   avg_corr.ravel(), p0=self.perp_guess)
+        if len(self.perp_guess) == 4:
+            popt, pcov = opt.curve_fit(fit.tilted_gauss, (self.fit_dx_mesh,
+                                                          self.fit_dy_mesh),
+                                       avg_corr.ravel(), p0=self.perp_guess)
+            
+            self.perp_fit_params[it, :] = popt
 
-        self.perp_fit_params[it, :] = popt
+        elif len(self.perp_guess) == 3:
+            popt, pcov = opt.curve_fit(fit.tilted_gauss_ky_fixed, 
+                                                            (self.fit_dx_mesh,
+                                                             self.fit_dy_mesh),
+                                       avg_corr.ravel(), p0=self.perp_guess)
+
+            self.perp_fit_params[it, :] = np.append(popt, 2*np.pi/popt[1])
+
+        self.perp_guess = popt
 
     def perp_plots(self):
         """

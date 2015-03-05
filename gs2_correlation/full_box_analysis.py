@@ -82,8 +82,7 @@ class FullBox(Simulation):
         self.perp_fit_params = np.empty([self.nt_slices, 4], dtype=float)
 
         for it in range(self.nt_slices):
-            self.perp_fit(it)
-            self.perp_guess = self.perp_fit_params[it,:]
+            self.perp_corr_fit(it)
 
         np.savetxt(self.out_dir + '/perp/perp_fit_params.csv', (self.perp_fit_params),
                    delimiter=',', fmt='%1.3f')

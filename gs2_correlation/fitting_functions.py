@@ -45,6 +45,15 @@ def tilted_gauss(xdata_tuple, lx, ly, kx, ky):
     # fitting function only works on 1D data, reshape later to plot
     return fit_fn.ravel()
 
+#Model function to be fitted to data, as defined in Anthony's papers
+def tilted_gauss_ky_fixed(xdata_tuple, lx, ly, kx):
+    (x,y) = xdata_tuple
+    exp_term = np.exp(- (x/lx)**2 - (y/ly)**2 )
+    cos_term = np.cos(kx*x + (2*np.pi/ly)*y)
+    fit_fn =  exp_term*cos_term
+    # fitting function only works on 1D data, reshape later to plot
+    return fit_fn.ravel()
+
 #Decaying exponential for time correlation with positive flow
 def decaying_exp(t, tau_c):
     exp_fn = np.exp(- abs(t) / tau_c)

@@ -147,8 +147,7 @@ class MiddleBox(Simulation):
         self.perp_fit_params = np.empty([self.nt_slices, 4], dtype=float)
 
         for it in range(self.nt_slices):
-            self.perp_fit(it)
-            self.perp_guess = self.perp_fit_params[it,:]
+            self.perp_corr_fit(it)
 
         np.savetxt(self.out_dir + '/perp/perp_fit_params.csv', (self.perp_fit_params),
                    delimiter=',', fmt='%1.3f')
@@ -178,7 +177,7 @@ class MiddleBox(Simulation):
         logging.info("Findished calculating perpendicular correlation " 
                       "function...")
 
-    def perp_fit(self, it):
+    def perp_corr_fit(self, it):
         """
         Fits tilted Gaussian to perpendicular correlation function.
 
@@ -193,11 +192,22 @@ class MiddleBox(Simulation):
         # Average corr_fn over time
         avg_corr = np.mean(self.perp_corr, axis=0)
 
-        popt, pcov = opt.curve_fit(fit.tilted_gauss, (self.fit_dx_mesh,
-                                                      self.fit_dy_mesh),
-                                   avg_corr.ravel(), p0=self.perp_guess)
+        if len(self.perp_guess) == 4:
+            popt, pcov = opt.curve_fit(fit.tilted_gauss, (self.fit_dx_mesh,
+                                                          self.fit_dy_mesh),
+                                       avg_corr.ravel(), p0=self.perp_guess)
 
-        self.perp_fit_params[it, :] = popt
+            self.perp_fit_params[it, :] = popt
+
+        elif len(self.perp_guess) == 3:
+            popt, pcov = opt.curve_fit(fit.tilted_gauss_ky_fixed, 
+                                                            (self.fit_dx_mesh,
+                                                             self.fit_dy_mesh),
+                                       avg_corr.ravel(), p0=self.perp_guess)
+
+            self.perp_fit_params[it, :] = np.append(popt, 2*np.pi/popt[1])
+
+        self.perp_guess = popt
 
     def perp_plots(self):
         """
