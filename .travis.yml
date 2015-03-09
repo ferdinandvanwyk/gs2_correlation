@@ -16,6 +16,8 @@ before_install:
     - hash -r
     - conda config --set always_yes yes --set changeps1 no
     - conda update -q conda
+# Debugging
+    - conda info -a
 # command to install dependencies
 install: 
     - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib pandas statsmodels
