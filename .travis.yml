@@ -7,8 +7,9 @@ before_install:
     - sudo apt-get install -y libhdf5-serial-dev netcdf-bin libnetcdf-dev 
     - sudo apt-get install -y libfreetype6-dev libpng-dev
     - sudo apt-get install -y ffmpeg libav-tools
+    - pip install -U pip
 # Use Miniconda for faster building
-    - wget http://repo.continuum.io/miniconda/Miniconda3-3.4.2-Linux-x86_64.sh -O miniconda.sh
+    - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
     - chmod +x miniconda.sh
     - ./miniconda.sh -b
     - export PATH=/home/travis/miniconda/bin:$PATH
@@ -17,7 +18,6 @@ before_install:
     - conda update -q conda
 # command to install dependencies
 install: 
-    - pip install -U pip
     - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib pandas statsmodels
     - source activate test-environment
     #- travis_wait pip install -r requirements.txt
