@@ -16,6 +16,7 @@ before_install:
 # command to install dependencies
 install: 
     - conda install --yes python=$TRAVIS_PYTHON_VERSION atlas numpy scipy matplotlib pandas statsmodels
+    - pip install --upgrade pip
     - pip install -r requirements.txt
     - pip install -e .
 # command to run tests
