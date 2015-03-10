@@ -4,7 +4,6 @@ python:
 before_install:
     - sudo apt-get update -qq
     - sudo apt-get install -y gfortran liblapack-dev
-    - sudo apt-get install -y python-numpy python-scipy
     - sudo apt-get install -y libhdf5-serial-dev netcdf-bin libnetcdf-dev 
     - sudo apt-get install -y libfreetype6-dev libpng-dev
     - sudo apt-get install -y ffmpeg libav-tools
@@ -17,12 +16,9 @@ before_install:
     - hash -r
     - conda config --set always_yes yes --set changeps1 no
     - conda update -q conda
-# Debugging
-    - conda info -a
 # command to install dependencies
 install: 
-    - conda create --yes -n env_name python=$TRAVIS_PYTHON_VERSION pip numpy scipy matplotlib Pillow seaborn
-    - source activate env_name
+    - conda install --yes python=$TRAVIS_PYTHON_VERSION pip numpy scipy matplotlib Pillow seaborn
     - pip install pytest  # not yet available for py3 in anaconda 
     - pip install -e .
 # command to run tests
