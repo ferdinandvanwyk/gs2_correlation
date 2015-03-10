@@ -1,2 +1,5 @@
 [run]
 source = gs2_correlation
+[report]
+    */python?.?/*
+    *__init__*
