@@ -1084,13 +1084,14 @@ class Simulation(object):
         nc_x = nc_file.createVariable('x','d',('x',))
         nc_y = nc_file.createVariable('y','d',('y',))
         nc_t = nc_file.createVariable('t','d',('t',))
-        nc_ntot = nc_file.createVariable('ntot','d',('t', 'x', 'y',))
+        nc_field = nc_file.createVariable(self.in_field[:self.in_field.find('_')],
+                                          'd',('t', 'x', 'y',))
         nc_nref[:] = self.nref
         nc_tref[:] = self.tref
         nc_x[:] = x_nc[:] - x_nc[-1]/2
         nc_y[:] = self.y[:] - self.y[-1]/2 
         nc_t[:] = self.t[:] - self.t[0]
-        nc_ntot[:,:,:] = field_real_space_nc[:,:,:]
+        nc_field[:,:,:] = field_real_space_nc[:,:,:]
         nc_file.close()
         
         logging.info("Finished write_field...")
