@@ -30,4 +30,4 @@ install:
 script: 
     - py.test --cov gs2_correlation
 after_success:
-    - coveralls
+    - coveralls --verbose
