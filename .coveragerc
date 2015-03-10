@@ -1,5 +1,6 @@
 [run]
 source = gs2_correlation
 [report]
+omit = 
     */python?.?/*
     *__init__*
