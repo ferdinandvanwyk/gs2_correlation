@@ -21,7 +21,7 @@ before_install:
     - conda info -a
 # command to install dependencies
 install: 
-    - conda create --yes -n env_name python=$TRAVIS_PYTHON_VERSION pip numpy matplotlib nose
+    - conda create --yes -n env_name python=$TRAVIS_PYTHON_VERSION pip numpy scipy matplotlib Pillow
     - source activate env_name
     - pip install pytest  # not yet available for py3 in anaconda 
     - pip install -e .
