@@ -21,9 +21,11 @@ before_install:
     - conda info -a
 # command to install dependencies
 install: 
-    - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION atlas numpy scipy matplotlib pandas statsmodels
+    - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION     
     - source activate test-environment
     #- travis_wait pip install -r requirements.txt
+    - pip install setuptools
+    - conda install --yes atlas numpy scipy matplotlib pandas statsmodels
     - pip install -e .
 # command to run tests
 script: 
