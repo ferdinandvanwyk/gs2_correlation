@@ -24,7 +24,7 @@ before_install:
 install: 
     - conda install --yes python=$TRAVIS_PYTHON_VERSION pip numpy scipy matplotlib Pillow seaborn
     - pip install pytest  # not yet available for py3 in anaconda 
-    - pip install python-coveralls pytest-cov coverage coveralls
+    - pip install pytest-cov coverage coveralls
     - pip install -e .
 # command to run tests
 script: 
