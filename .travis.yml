@@ -26,6 +26,7 @@ install:
     #- travis_wait pip install -r requirements.txt
     - pip install setuptools
     - conda install --yes atlas numpy scipy matplotlib pandas statsmodels
+    - python setup.py install
     - pip install -e .
 # command to run tests
 script: 
