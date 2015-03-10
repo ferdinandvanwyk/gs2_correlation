@@ -1,6 +1,10 @@
 language: python
 python:
   - "3.4"
+notifications:
+    email: 
+        on_success: change
+        on_failure: change
 before_install:
     - sudo apt-get update -qq
     - sudo apt-get install -y gfortran liblapack-dev
@@ -20,9 +24,10 @@ before_install:
 install: 
     - conda install --yes python=$TRAVIS_PYTHON_VERSION pip numpy scipy matplotlib Pillow seaborn
     - pip install pytest  # not yet available for py3 in anaconda 
+    - pip install pytest-cov coverage coveralls
     - pip install -e .
 # command to run tests
 script: 
-    - py.test
-#after_success:
-#    - coveralls
+    - py.test --cov gs2_correlation
+after_success:
+    - coveralls

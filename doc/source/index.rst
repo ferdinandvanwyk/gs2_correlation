@@ -11,6 +11,8 @@ Welcome to gs2_correlation's documentation!
 .. image:: https://readthedocs.org/projects/gs2-correlation/badge/?version=latest
    :target: https://readthedocs.org/projects/gs2-correlation/?badge=latest
    :alt: Documentation Status
+.. image:: https://coveralls.io/repos/ferdinandvwyk/gs2_correlation/badge.svg 
+   :target: https://coveralls.io/r/ferdinandvwyk/gs2_correlation
 
 gs2_correlation is python package to perform a full correlation analysis of GS2 
 fluctuations. This includes spatial (both radial and poloidal), and temporal 
