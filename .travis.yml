@@ -20,11 +20,10 @@ before_install:
 install: 
     - conda install --yes python=$TRAVIS_PYTHON_VERSION pip numpy scipy matplotlib Pillow seaborn
     - pip install pytest  # not yet available for py3 in anaconda 
-    - pip install coveralls
+    - pip install python-coveralls pytest-cov
     - pip install -e .
 # command to run tests
 script: 
-    - py.test
-    - coverage run --source=gs2_correlation setup.py test
+    - py.test --cov gs2_correlation
 after_success:
     - coveralls
