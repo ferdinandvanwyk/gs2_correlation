@@ -45,6 +45,7 @@ from scipy.io import netcdf
 import scipy.interpolate as interp
 import scipy.optimize as opt
 import scipy.signal as sig
+import matplotlib
 import matplotlib.pyplot as plt
 plt.rcParams.update({'figure.autolayout': True})
 import seaborn as sns

@@ -26,7 +26,6 @@ using the following command (in the package root directory):
 
     $ pip install -e .
 
-
 Running Tests
 -------------
 
