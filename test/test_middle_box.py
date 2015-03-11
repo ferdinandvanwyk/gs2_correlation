@@ -33,3 +33,7 @@ class TestClass(object):
         assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
         assert ('perp_fit_summary.txt' in os.listdir('test/test_run/v/id_1/analysis/perp'))
 
+    def test_calculate_perp_corr(self, run):
+        run.calculate_perp_corr()
+        assert run.perp_corr.shape == (run.nt, 2*run.nx-1, 2*run.ny-1)
+

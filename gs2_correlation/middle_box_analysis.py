@@ -115,8 +115,8 @@ class MiddleBox(Simulation):
 
         self.x = np.linspace(0, self.r[-1] - self.r[0], self.nx)
         self.y = np.linspace(0, 2*self.z[-1], self.ny)
-        self.dx = np.linspace(-self.x[-1], self.x[-1], self.nx)
-        self.dy = np.linspace(-self.y[-1], self.y[-1], self.ny)
+        self.dx = np.linspace(-self.x[-1], self.x[-1], 2*self.nx-1)
+        self.dy = np.linspace(-self.y[-1], self.y[-1], 2*self.ny-1)
         self.fit_dx = self.dx
         self.fit_dy = self.dy
         self.fit_dx_mesh, self.fit_dy_mesh = np.meshgrid(self.fit_dx, self.fit_dy)
@@ -164,13 +164,11 @@ class MiddleBox(Simulation):
         """
         logging.info("Calculating perpendicular correlation function...")
 
-        nr = len(self.r)
-        nz = len(self.z)
-        self.perp_corr = np.empty([self.nt, nr, nz], dtype=float)
+        self.perp_corr = np.empty([self.nt, 2*self.nx-1, 2*self.ny-1], dtype=float)
         for it in range(self.nt):
             self.perp_corr[it,:,:] = sig.fftconvolve(self.field_real_space[it,:,:], 
                                                      self.field_real_space[it,::-1,::-1],
-                                                     mode='same')
+                                                     mode='full')
             self.perp_corr[it,:,:] = (self.perp_corr[it,:,:] /  
                                         np.max(self.perp_corr[it,:,:]))
 
