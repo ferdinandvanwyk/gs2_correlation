@@ -43,10 +43,25 @@ class TestClass(object):
         assert (type(run.spec_idx) == int or type(run.spec_idx) == type(None))
         assert (type(run.theta_idx) == int or type(run.theta_idx) == 
                                                type(None))
+        assert type(run.npeaks_fit) == int
+        assert type(run.time_guess) == int
+        assert type(run.box_size) == list
+        assert type(run.time_range) == list
+
         assert type(run.amin) == float
         assert type(run.vth) == float
         assert type(run.rhoref) == float
         assert type(run.pitch_angle) == float
+        assert type(run.rmaj) == float
+        assert type(run.nref) == float
+        assert type(run.tref) == float
+
+        assert type(run.seaborn_context) == str
+        assert type(run.film_fps) == int
+        assert type(run.film_contours) == int
+        assert (type(run.film_lim) == list or type(run.film_lim) == 
+                                               type(None))
+        assert type(run.write_field_interp_x) == bool
 
     def test_read_netcdf(self, run):
         field_shape = run.field.shape
@@ -70,6 +85,28 @@ class TestClass(object):
     def test_wk_2d(self, run):
         run.wk_2d()
         assert run.perp_corr.shape == (run.nt, run.nkx, run.ny-1)
+
+    def test_field_to_real_space(self, run):
+        run.field_to_real_space()
+        assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
+
+    def domain_reduce(self, run):
+        run.box_size = [0.1, 0.1]
+        original_max_x = run.x[-1]
+        original_max_y = run.y[-1]
+        run.domain_reduce()
+        assert run.x[-1] <= original_max_x
+        assert run.y[-1] <= original_max_y
+
+    def test_perp_analysis(self, run):
+        run.perp_analysis()
+        assert run.perp_fit_params.shape == (5,4)
+        assert ('perp_fit_params.csv' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert ('time_avg_correlation.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert ('perp_corr_fit.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert ('perp_fit_comparison.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert ('perp_fit_summary.txt' in os.listdir('test/test_run/v/id_1/analysis/perp'))
     
     def test_time_analysis(self, run):
         run.time_analysis()
