@@ -724,50 +724,6 @@ class Simulation(object):
 
         logging.info('Finished perpendicular correlation analysis.')
 
-    def wk_2d(self):
-        """
-        Calculates perpendicular correlation function for each time step.
-
-        Using the Wiener-Khinchin theorem, the 2D perpendicular correlation
-        function os calculated for each time step. The zeros are then shifted
-        to the centre of the domain and the correlation function is normalized.
-        The result is saved as a new Simulation attribute: perp_corr.
-
-        Notes
-        -----
-        The Wiener-Khinchin theorem states the following:
-
-        .. math:: C(\Delta x, \Delta y) = IFFT2[|f(k_x, k_y)|^2]
-
-        where C is the correlation function, *f* is the field, and IFFT2 is the
-        2D inverse Fourier transform.
-
-        The normalization required to be consistent with GS2 and `numpy` FFT
-        packages is:
-
-        C_norm = C * nkx * ny / 2
-
-        Since GS2 normalizes going from real to spectral space, no additional
-        factors are necessary when going from spectral to real. However, `numpy`
-        FFT packages contain an implicit normalization in the inverse routines
-        such that ifft(fft(x)) = x, so we multiply to removethese implicit
-        factors.
-        """
-
-        logging.info("Performing 2D WK theorem on field...")
-
-        # ny-1 below since to ensure odd number of y points and that zero is in
-        # the middle of the y domain.
-        self.perp_corr = np.empty([self.nt, self.nx, self.ny-1], dtype=float)
-        for it in range(self.nt):
-            sq = np.abs(self.field[it,:,:])**2
-            self.perp_corr[it,:,:] = np.fft.irfft2(sq, s=[self.nx, self.ny-1])
-            self.perp_corr[it,:,:] = np.fft.fftshift(self.perp_corr[it,:,:])
-            self.perp_corr[it,:,:] = (self.perp_corr[it,:,:] /
-                                      np.max(self.perp_corr[it,:,:]))
-
-        logging.info("Finished 2D WK theorem.")
-
     def calculate_perp_corr(self):
         """
         Calculates the perpendicular correlation function from the real space
