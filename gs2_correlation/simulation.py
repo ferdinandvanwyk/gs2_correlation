@@ -256,8 +256,8 @@ class Simulation(object):
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rhoref
         self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rhoref \
                              *np.tan(self.pitch_angle)
-        self.dx = np.linspace(-2*np.pi/self.kx[1], 2*np.pi/self.kx[1],
-                             self.nkx)*self.rhoref
+        self.dx = np.linspace(-2*np.pi/self.kx[1], np.pi/self.kx[1],
+                             self.nx-1)*self.rhoref
         self.dy = np.linspace(-2*np.pi/self.ky[1], 2*np.pi/self.ky[1],
                              self.ny - 1)*self.rhoref*np.tan(self.pitch_angle)
         self.fit_dx = self.dx[int(self.nkx/2) - self.perp_fit_length :

@@ -72,6 +72,58 @@ class MiddleBox(Simulation):
     """
 
     def __init__(self, config_file):
+        """
+        Initialization consists of: 
+        
+        * Calling Simulation.__init__ to read config file, NetCDF file etc.
+        * Calculating radial and poloidal coordinates r, z.
+        * Using input parameter *box_size* to determine the index range to 
+          perform the correlation analysis on.
+        * Reduce extent of real space field using this index.
+        * Recalculate some real space arrays such as x, y, dx, dy, etc.
+        """
+        Simulation.__init__(self, config_file)
+
+        self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rhoref
+        self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny-1)*self.rhoref \
+                             *np.tan(self.pitch_angle)
+        
+        # Calculate coords r, z
+        self.r = self.x[:] - self.x[-1]/2 + self.rmaj
+        self.z = self.y[:] - self.y[-1]/2 
+
+        # Find index range
+        r_min_idx, r_min = min(enumerate(abs(self.r - (self.box_size[0] + 
+                                                       self.rmaj))), 
+                               key=operator.itemgetter(1))
+        r_box_idx = r_min_idx-int(self.nx/2) + 1
+
+        z_min_idx, z_min = min(enumerate(abs(self.z - self.box_size[1])), 
+                               key=operator.itemgetter(1))
+        z_box_idx = z_min_idx-int(self.ny/2) + 1
+
+        # Reduce extent
+        self.r = self.r[int(self.nx/2)-r_box_idx+1:int(self.nx/2)+r_box_idx]
+        self.z = self.z[int(self.ny/2)-z_box_idx+1:int(self.ny/2)+z_box_idx]
+        self.field_real_space = self.field_real_space[
+                :,int(self.nx/2)-r_box_idx+1:int(self.nx/2)+r_box_idx,
+                int(self.ny/2)-z_box_idx+1:int(self.ny/2)+z_box_idx]
+
+        # Recalculate real space arrays
+        self.nx = len(self.r)
+        self.ny = len(self.z)
+
+        self.x = np.linspace(0, self.r[-1] - self.r[0], self.nx)
+        self.y = np.linspace(0, 2*self.z[-1], self.ny)
+        self.dx = np.linspace(-self.x[-1], self.x[-1], 2*self.nx-1)
+        self.dy = np.linspace(-self.y[-1], self.y[-1], 2*self.ny-1)
+        self.fit_dx = self.dx
+        self.fit_dy = self.dy
+        self.fit_dx_mesh, self.fit_dy_mesh = np.meshgrid(self.fit_dx, self.fit_dy)
+        self.fit_dx_mesh = np.transpose(self.fit_dx_mesh)
+        self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
+
+>>>>>>> master
     def perp_analysis(self):
         """
         Performs a perpendicular correlation analysis on the field.
@@ -113,11 +165,11 @@ class MiddleBox(Simulation):
         """
         logging.info("Calculating perpendicular correlation function...")
 
-        self.perp_corr = np.empty([self.nt, self.nx, self.ny-1], dtype=float)
+        self.perp_corr = np.empty([self.nt, 2*self.nx-1, 2*self.ny-1], dtype=float)
         for it in range(self.nt):
             self.perp_corr[it,:,:] = sig.fftconvolve(self.field_real_space[it,:,:], 
                                                      self.field_real_space[it,::-1,::-1],
-                                                     mode='same')
+                                                     mode='full')
             self.perp_corr[it,:,:] = (self.perp_corr[it,:,:] /  
                                         np.max(self.perp_corr[it,:,:]))
 
