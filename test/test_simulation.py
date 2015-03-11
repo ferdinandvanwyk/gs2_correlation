@@ -29,6 +29,7 @@ class TestClass(object):
 
     def test_read(self, run):
         run.read_config()
+        assert type(run.domain) == str
         assert type(run.in_file) == str
         assert type(run.file_ext) == str
         assert type(run.in_field) == str
@@ -107,6 +108,10 @@ class TestClass(object):
         assert ('perp_fit_comparison.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
         assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
         assert ('perp_fit_summary.txt' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+
+    def test_calculate_perp_corr(self, run):
+        run.calculate_perp_corr()
+        assert run.perp_corr.shape == (run.nt, 2*run.nx-1, 2*run.ny-1)
     
     def test_time_analysis(self, run):
         run.time_analysis()

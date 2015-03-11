@@ -37,10 +37,6 @@ run the tests, run the following in the package root directory:
 
     $ py.test
 
-As an additional testing phase, the continuous integration (CI) framework Travis_
-to build and run the tests upon every push to the GitHub repository. The current 
-build status is shown by the ``build`` badge at the top of the main page.
-
 Documentation
 -------------
 
@@ -64,6 +60,23 @@ built:
    $ cd build/latex
    $ make
 
+Continuous Integration and Testing
+----------------------------------
+
+`gs2_correlation` utilizes the Travis_ continuous integration (CI) framework
+to build and run the tests upon every push to the GitHub repository. The current 
+build status is shown by the ``build`` badge at the top of the main page and 
+build history can be found by clicking on the badge or the following link: 
+
+https://travis-ci.org/ferdinandvwyk/gs2_correlation
+
+As well as this, source code test coverage is measured and reported using 
+Coveralls_. The Coveralls page for this project can found by clicking on the 
+``coverage`` badge or by the following link:
+
+https://coveralls.io/r/ferdinandvwyk/gs2_correlation
+
 .. _Read the Docs: https://readthedocs.org/ 
 .. _gs2-correlation.rtfd.org : http://gs2-correlation.rtfd.org
 .. _Travis: https://travis-ci.org/
+.. _Coveralls: https://coveralls.io/

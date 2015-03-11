@@ -4,33 +4,42 @@ Analysis Overview
 This page describes the different analysis types that can be performed using
 `gs2_correlation`, as well as additional useful features.
 
-Middle vs. Full
----------------
+Command Line Parameters
+-----------------------
 
-`gs2_correlation` has two different analysis modes depending on the `size`
-command line parameter: 'full' and 'middle'. Full analysis analyzes the whole
-GS2 output domain and uses algorithms which take advantage of fact that field
-is in Fourier space. 
-
-'Middle' analysis was added to perform a correlation analysis on the middle of 
-the GS2 domain. This process is more involved than it sounds since one cannot
-take advantage of Fourier space properties anymore. Hence fields are converted
-to real space first, only the middle part is extracted (with size determined by
-a configuration variable), and the same plotting and fitting functions are used
-as before (with minor variations).
-
-To accommodate these two modes, separate classes were created, however the user
-does not need to do anything besides specify whether they want to analyze the 
-full or middle part of the domain (along with the box size in the case of 
-'middle'). To find out more about the command line parameters, run the following
-command:
+At the moment `gs2_correlation` has only one command line parameter: the 
+location of the configuration file. However, information on command line 
+parameters can be found using the command:
 
 .. code:: bash
 
    $ python gs2_correlation/main.py -h
 
-This will show the various command line parameters as well as a short 
-description and their expected positions.
+An example configuration file is included in the project and is located in
+'gs2_correlation/config_example.ini'. 
+
+Middle vs. Full
+---------------
+
+`gs2_correlation` has two different analysis modes depending on the `domain` 
+configuration parameter. 
+
+The default value is 'full' which analyzes the entire GS2 domain as expected.
+One issue with doing this is that the fitting may not go smoothly usually due
+to not converging. The `perp_fit_length` configuration parameter was added to 
+reduce the number of points used for fitting. It is an integer index which 
+determines how many points either side of the zero-offset (`dx` = 0, `dy` = 0) 
+position to try and fit with a tilted Gaussian. The right value will depend on
+the size of the correlation function and the spatial resolution, and can be 
+checked with visual inspection of the 'perp_fit_comparison.pdf' or 
+'time_avg_correlation.pdf' plots.
+
+The 'middle' analysis was added to perform a correlation analysis on the middle 
+of the GS2 domain. The middle part is extracted (with size determined by the 
+`box_size` configuration variable), and the same plotting and fitting functions 
+are used as for the 'full' case. Convergence of fitting due to the domain being
+too big is usually not an issue in this case, and the `box_size` configuration
+parameter is ignored.
 
 Perpendicular Correlation
 -------------------------

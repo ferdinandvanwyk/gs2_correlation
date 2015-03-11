@@ -31,8 +31,7 @@ import argparse
 # Third Party
 
 # Local
-import full_box_analysis
-import middle_box_analysis
+import simulation
 
 #############
 # Main Code #
@@ -43,8 +42,6 @@ parser = argparse.ArgumentParser(description='Perform correlation and other '
                                  'analyses')
 parser.add_argument('config_file', metavar='config_file', type=str, 
                     help='Location of the configuration file')
-parser.add_argument('size', metavar='size', type=str, 
-        help='Size of box to analyze: full/middle')
 args = parser.parse_args()
 
 # Set up logging framework
@@ -55,10 +52,7 @@ logging.info('')
 
 #Create Simulation object
 
-if args.size == 'full':
-    run = full_box_analysis.FullBox(args.config_file)
-elif args.size == 'middle':
-    run = middle_box_analysis.MiddleBox(args.config_file)
+run = simulation.Simulation(args.config_file)
 
 if run.analysis == 'perp':
     run.perp_analysis()

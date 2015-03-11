@@ -101,6 +101,14 @@ class Simulation(object):
         form [lx, ly, kx, ky] all in normalized rhoref units.
     time_guess : int
         Initial guess for the correlation time in normalized GS2 units.
+    box_size : array_like, [0.2,0.2]
+        When running correlation analysis in the middle of the full GS2
+        domain, this sets the approximate [radial, poloidal] size of this 
+        box in m. This variable is only used when domain = 'middle'
+    time_range : array_like, [0,-1]
+        Time range for which analysis is done. Default is entire range. -1
+        for the final time step is interpreted as up to the final time step,
+        inclusively.
     npeaks_fit : int
         Number of peaks to fit when calculating the correlation time.
     species_index : int
@@ -195,6 +203,10 @@ class Simulation(object):
     write_field_interp_x : bool, True
         Determines whether the radial coordinate is interpolated to match
         the BES resolution when writing to a NetCDF file.
+    r : array_like
+        Radial coordinate *x*, centered at the major radius *rmaj*.
+    z : array_like
+        Poloidal coordinate *z* centered at 0.
     """
 
     def __init__(self, config_file):
@@ -250,20 +262,22 @@ class Simulation(object):
         self.nx = self.nkx
         self.ny = 2*(self.nky - 1)
 
+        self.config_checks()
+
         self.nt_slices = int(self.nt/self.time_slice)
         self.t = self.t*self.amin/self.vth
         self.time_guess = self.time_guess*self.amin/self.vth
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rhoref
         self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rhoref \
                              *np.tan(self.pitch_angle)
-        self.dx = np.linspace(-2*np.pi/self.kx[1], np.pi/self.kx[1],
-                             self.nx-1)*self.rhoref
+        self.dx = np.linspace(-2*np.pi/self.kx[1], 2*np.pi/self.kx[1],
+                             2*self.nx-1)*self.rhoref
         self.dy = np.linspace(-2*np.pi/self.ky[1], 2*np.pi/self.ky[1],
-                             self.ny - 1)*self.rhoref*np.tan(self.pitch_angle)
-        self.fit_dx = self.dx[int(self.nkx/2) - self.perp_fit_length :
-                      int(self.nkx/2) + self.perp_fit_length]
-        self.fit_dy = self.dy[int((self.ny-1)/2) - self.perp_fit_length :
-                      int((self.ny-1)/2) + self.perp_fit_length]
+                             2*self.ny-1)*self.rhoref*np.tan(self.pitch_angle)
+        self.fit_dx = self.dx[int((2*self.nx-1)/2) - self.perp_fit_length :
+                      int((2*self.nx-1)/2) + self.perp_fit_length]
+        self.fit_dy = self.dy[int((2*self.ny-1)/2) - self.perp_fit_length :
+                      int((2*self.ny-1)/2) + self.perp_fit_length]
         self.fit_dx_mesh, self.fit_dy_mesh = np.meshgrid(self.fit_dx, self.fit_dy)
         self.fit_dx_mesh = np.transpose(self.fit_dx_mesh)
         self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
@@ -283,57 +297,6 @@ class Simulation(object):
 
         if self.domain == 'middle':
             self.domain_reduce()
-
-    def domain_reduce(self):
-        """
-        Initialization consists of: 
-        
-        * Calling Simulation.__init__ to read config file, NetCDF file etc.
-        * Calculating radial and poloidal coordinates r, z.
-        * Using input parameter *box_size* to determine the index range to 
-          perform the correlation analysis on.
-        * Reduce extent of real space field using this index.
-        * Recalculate some real space arrays such as x, y, dx, dy, etc.
-        """
-        loggin.info('Reducing domain size to %f x %f cm'%(self.box_size[0]*2,
-                                                          self.box_size[1]*2))
-
-        # Calculate coords r, z
-        self.r = self.x[:] - self.x[-1]/2 + self.rmaj
-        self.z = self.y[:] - self.y[-1]/2 
-
-        # Find index range
-        r_min_idx, r_min = min(enumerate(abs(self.r - (self.box_size[0] + 
-                                                       self.rmaj))), 
-                               key=operator.itemgetter(1))
-        r_box_idx = r_min_idx-int(self.nx/2) + 1
-
-        z_min_idx, z_min = min(enumerate(abs(self.z - self.box_size[1])), 
-                               key=operator.itemgetter(1))
-        z_box_idx = z_min_idx-int(self.ny/2) + 1
-
-        # Reduce extent
-        self.r = self.r[int(self.nx/2)-r_box_idx+1:int(self.nx/2)+r_box_idx]
-        self.z = self.z[int(self.ny/2)-z_box_idx+1:int(self.ny/2)+z_box_idx]
-        self.field_real_space = self.field_real_space[
-                :,int(self.nx/2)-r_box_idx+1:int(self.nx/2)+r_box_idx,
-                int(self.ny/2)-z_box_idx+1:int(self.ny/2)+z_box_idx]
-
-        # Recalculate real space arrays
-        self.nx = len(self.r)
-        self.ny = len(self.z)
-
-        self.x = np.linspace(0, self.r[-1] - self.r[0], self.nx)
-        self.y = np.linspace(0, 2*self.z[-1], self.ny)
-        self.dx = np.linspace(-self.x[-1], self.x[-1], self.nx)
-        self.dy = np.linspace(-self.y[-1], self.y[-1], self.ny)
-        self.fit_dx = self.dx
-        self.fit_dy = self.dy
-        self.fit_dx_mesh, self.fit_dy_mesh = np.meshgrid(self.fit_dx, self.fit_dy)
-        self.fit_dx_mesh = np.transpose(self.fit_dx_mesh)
-        self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
-
-        loggin.info('Finished reducing domain size.')
 
     def read_config(self):
         """
@@ -376,11 +339,10 @@ class Simulation(object):
             form [lx, ly, kx, ky] all in normalized rhoref units.
         time_guess : int, 10
             Initial guess for the correlation time in normalized GS2 units.
-        box_size : array_like, [0.1,0.1]
+        box_size : array_like, [0.2,0.2]
             When running correlation analysis in the middle of the full GS2
             domain, this sets the approximate [radial, poloidal] size of this 
-            box in m. This variable is only used when using the 'middle' 
-            command line parameter.
+            box in m. This variable is only used when domain = 'middle'
         time_range : array_like, [0,-1]
             Time range for which analysis is done. Default is entire range. -1
             for the final time step is interpreted as up to the final time step,
@@ -442,8 +404,20 @@ class Simulation(object):
         # Analysis Namelist #
         #####################
 
+        self.domain = config_parse.get('analysis', 'domain', 
+                                        fallback='full').strip("'")
+
+        if self.domain == 'full':
+            self.out_dir = 'full_analysis'
+        elif self.domain == 'middle':
+            self.out_dir = 'middle_analysis'
+
+        self.out_dir = config_parse.get('analysis', 'out_dir',
+                                         fallback=self.out_dir)
+
         self.file_ext = config_parse.get('analysis', 'file_ext',
                                          fallback='.cdf')
+
         # Automatically find .out.nc file if only directory specified
         self.in_file = str(config_parse['analysis']['cdf_file'])
         if self.in_file.find(self.file_ext) == -1:
@@ -466,9 +440,6 @@ class Simulation(object):
                                  'film']:
             raise ValueError('Analysis must be one of (perp, time, '
                              'write_field, make_film)')
-
-        self.out_dir = str(config_parse.get('analysis', 'out_dir',
-                                            fallback='analysis'))
 
         self.interpolate_bool = config_parse.getboolean('analysis', 'interpolate',
                                              fallback=True)
@@ -514,7 +485,7 @@ class Simulation(object):
                                                'time_guess', fallback=10))
 
         self.box_size = str(config_parse.get('analysis',
-                                               'box_size', fallback='[0.1,0.1]'))
+                                               'box_size', fallback='[0.2,0.2]'))
         self.box_size = self.box_size[1:-1].split(',')
         self.box_size = [float(s) for s in self.box_size]
 
@@ -548,6 +519,18 @@ class Simulation(object):
         logging.info('The following values were read from ' + self.config_file)
         logging.info(vars(self))
         logging.info('Finished read_config.')
+
+    def config_checks(self):
+        """
+        This function contains consistency checks of configurations parameters.
+        """
+
+        # Ensure perp_fit_length doesn't extend outside array
+        if (int((2*self.nx-1)/2) + self.perp_fit_length >= 2*self.nx - 1):
+               raise ValueError('+/- perp_fit_length outside of dx array.')
+
+        if (int((2*self.ny-1)/2) + self.perp_fit_length >= 2*self.ny - 1):
+               raise ValueError('+/- perp_fit_length outside of dy array.')
 
     def read_netcdf(self):
         """
@@ -653,6 +636,93 @@ class Simulation(object):
         """
         self.field = self.field[:,:,:,0] + 1j*self.field[:,:,:,1]
 
+    def domain_reduce(self):
+        """
+        Initialization consists of: 
+        
+        * Calculating radial and poloidal coordinates r, z.
+        * Using input parameter *box_size* to determine the index range to 
+          perform the correlation analysis on.
+        * Reduce extent of real space field using this index.
+        * Recalculate some real space arrays such as x, y, dx, dy, etc.
+        """
+        loggin.info('Reducing domain size to %f x %f cm'%(self.box_size[0],
+                                                          self.box_size[1]))
+
+        # Switch box size to length either side of 0
+        self.box_size = self.box_size/2
+
+        # Calculate coords r, z
+        self.r = self.x[:] - self.x[-1]/2 + self.rmaj
+        self.z = self.y[:] - self.y[-1]/2 
+
+        # Find index range
+        r_min_idx, r_min = min(enumerate(abs(self.r - (self.box_size[0] + 
+                                                       self.rmaj))), 
+                               key=operator.itemgetter(1))
+        r_box_idx = r_min_idx-int(self.nx/2) + 1
+
+        z_min_idx, z_min = min(enumerate(abs(self.z - self.box_size[1])), 
+                               key=operator.itemgetter(1))
+        z_box_idx = z_min_idx-int(self.ny/2) + 1
+
+        # Reduce extent
+        self.r = self.r[int(self.nx/2)-r_box_idx+1:int(self.nx/2)+r_box_idx]
+        self.z = self.z[int(self.ny/2)-z_box_idx+1:int(self.ny/2)+z_box_idx]
+        self.field_real_space = self.field_real_space[
+                :,int(self.nx/2)-r_box_idx+1:int(self.nx/2)+r_box_idx,
+                int(self.ny/2)-z_box_idx+1:int(self.ny/2)+z_box_idx]
+
+        # Recalculate real space arrays
+        self.nx = len(self.r)
+        self.ny = len(self.z)
+
+        self.x = np.linspace(0, self.r[-1] - self.r[0], self.nx)
+        self.y = np.linspace(0, 2*self.z[-1], self.ny)
+        self.dx = np.linspace(-self.x[-1], self.x[-1], 2*self.nx-1)
+        self.dy = np.linspace(-self.y[-1], self.y[-1], 2*self.ny-1)
+        self.fit_dx = self.dx
+        self.fit_dy = self.dy
+        self.fit_dx_mesh, self.fit_dy_mesh = np.meshgrid(self.fit_dx, self.fit_dy)
+        self.fit_dx_mesh = np.transpose(self.fit_dx_mesh)
+        self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
+
+        loggin.info('Finished reducing domain size.')
+
+    def perp_analysis(self):
+        """
+        Performs a perpendicular correlation analysis on the field.
+
+        Notes
+        -----
+
+        * Uses a 2D Wiener-Khinchin theorem to calculate the correlation
+          function.
+        * Splits correlation function into time slices and fits each time
+          slice with a tilted Gaussian using the perp_fit function.
+        * The fit parameters for the previous time slice is used as the initial
+          guess for the next time slice.
+        """
+
+        logging.info('Start perpendicular correlation analysis...')
+
+        if 'perp' not in os.listdir(self.out_dir):
+            os.system("mkdir " + self.out_dir + '/perp')
+
+        self.calculate_perp_corr()
+        self.perp_fit_params = np.empty([self.nt_slices, 4], dtype=float)
+
+        for it in range(self.nt_slices):
+            self.perp_corr_fit(it)
+
+        np.savetxt(self.out_dir + '/perp/perp_fit_params.csv', (self.perp_fit_params),
+                   delimiter=',', fmt='%1.3f')
+
+        self.perp_plots()
+        self.perp_analysis_summary()
+
+        logging.info('Finished perpendicular correlation analysis.')
+
     def wk_2d(self):
         """
         Calculates perpendicular correlation function for each time step.
@@ -697,6 +767,24 @@ class Simulation(object):
 
         logging.info("Finished 2D WK theorem.")
 
+    def calculate_perp_corr(self):
+        """
+        Calculates the perpendicular correlation function from the real space
+        field.
+        """
+        logging.info("Calculating perpendicular correlation function...")
+
+        self.perp_corr = np.empty([self.nt, 2*self.nx-1, 2*self.ny-1], dtype=float)
+        for it in range(self.nt):
+            self.perp_corr[it,:,:] = sig.fftconvolve(self.field_real_space[it,:,:], 
+                                                     self.field_real_space[it,::-1,::-1],
+                                                     mode='full')
+            self.perp_corr[it,:,:] = (self.perp_corr[it,:,:] /  
+                                        np.max(self.perp_corr[it,:,:]))
+
+        logging.info("Finished calculating perpendicular correlation " 
+                      "function...")
+
     def perp_corr_fit(self, it):
         """
         Fits tilted Gaussian to perpendicular correlation function.
@@ -717,11 +805,15 @@ class Simulation(object):
         * perp_guess = (lx, ly, kx) - use tilted_gauss_ky_fixed and set 
           ky = 2*pi/ly 
         """
-        corr_fn = self.perp_corr[it*self.time_slice:(it+1)*self.time_slice,
-                                 self.nx/2 - self.perp_fit_length :
-                                 self.nx/2 + self.perp_fit_length,
-                                 (self.ny-1)/2 - self.perp_fit_length :
-                                 (self.ny-1)/2 + self.perp_fit_length]
+
+        if self.domain == 'full':
+            corr_fn = self.perp_corr[it*self.time_slice:(it+1)*self.time_slice,
+                                     (2*self.nx-1)/2 - self.perp_fit_length :
+                                     (2*self.nx-1)/2 + self.perp_fit_length,
+                                     (2*self.ny-1)/2 - self.perp_fit_length :
+                                     (2*self.ny-1)/2 + self.perp_fit_length]
+        elif self.domain == 'middle':
+            corr_fn = self.perp_corr
 
         # Average corr_fn over time
         avg_corr = np.mean(corr_fn, axis=0)
@@ -754,11 +846,14 @@ class Simulation(object):
         logging.info("Writing perp_analysis plots...")
 
         sns.set_style('darkgrid', {'axes.axisbelow':False, 'legend.frameon': True})
-        #Time averaged correlation
-        corr_fn = self.perp_corr[:, int(self.nx/2) - self.perp_fit_length :
-                                    int(self.nx/2) + self.perp_fit_length,
-                                    int((self.ny-1)/2) - self.perp_fit_length :
-                                    int((self.ny-1)/2) + self.perp_fit_length]
+
+        if self.domain == 'full':
+            corr_fn = self.perp_corr[:, int((2*self.nx-1)/2) - self.perp_fit_length :
+                                        int((2*self.nx-1)/2) + self.perp_fit_length,
+                                        int((2*self.ny-1)/2) - self.perp_fit_length :
+                                        int((2*self.ny-1)/2) + self.perp_fit_length]
+        elif self.domain == 'middle':
+            corr_fn = self.perp_corr
 
         avg_corr = np.mean(corr_fn, axis=0) # Average over time
 
