@@ -83,10 +83,6 @@ class TestClass(object):
     def test_field_to_complex(self, run):
         assert np.iscomplexobj(run.field) == True 
 
-    def test_wk_2d(self, run):
-        run.wk_2d()
-        assert run.perp_corr.shape == (run.nt, run.nkx, run.ny-1)
-
     def test_field_to_real_space(self, run):
         run.field_to_real_space()
         assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
