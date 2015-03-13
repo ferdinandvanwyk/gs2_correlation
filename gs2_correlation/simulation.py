@@ -405,7 +405,7 @@ class Simulation(object):
         #####################
 
         self.domain = config_parse.get('analysis', 'domain', 
-                                        fallback='full').strip("'")
+                                        fallback='full')
 
         if self.domain == 'full':
             self.out_dir = 'full_analysis'
@@ -646,11 +646,11 @@ class Simulation(object):
         * Reduce extent of real space field using this index.
         * Recalculate some real space arrays such as x, y, dx, dy, etc.
         """
-        loggin.info('Reducing domain size to %f x %f cm'%(self.box_size[0],
+        logging.info('Reducing domain size to %f x %f cm'%(self.box_size[0],
                                                           self.box_size[1]))
 
         # Switch box size to length either side of 0
-        self.box_size = self.box_size/2
+        self.box_size = np.array(self.box_size)/2
 
         # Calculate coords r, z
         self.r = self.x[:] - self.x[-1]/2 + self.rmaj
@@ -687,7 +687,7 @@ class Simulation(object):
         self.fit_dx_mesh = np.transpose(self.fit_dx_mesh)
         self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
 
-        loggin.info('Finished reducing domain size.')
+        logging.info('Finished reducing domain size.')
 
     def perp_analysis(self):
         """

@@ -91,7 +91,7 @@ class TestClass(object):
         run.field_to_real_space()
         assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
 
-    def domain_reduce(self, run):
+    def test_domain_reduce(self, run):
         run.box_size = [0.1, 0.1]
         original_max_x = run.x[-1]
         original_max_y = run.y[-1]
