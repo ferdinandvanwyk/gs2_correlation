@@ -4,3 +4,5 @@ source = gs2_correlation
 omit = 
     */python?.?/*
     *__init__*
+    *main*
+    *misc_analysis*
