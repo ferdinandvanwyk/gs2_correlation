@@ -105,7 +105,7 @@ class TestClass(object):
         assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
         assert ('perp_fit_summary.txt' in os.listdir('test/test_run/v/id_1/analysis/perp'))
 
-    def test_perp_analysis(self, run):
+    def test_perp_analysis_3(self, run):
         run.perp_guess = [1,1,1]
         run.perp_analysis()
         assert run.perp_fit_params.shape == (5,4)

@@ -295,6 +295,7 @@ class Simulation(object):
         self.field_to_complex()
         self.fourier_correction()
         self.field_to_real_space()
+        self.field_normalize()
 
         if self.domain == 'middle':
             self.domain_reduce()
@@ -690,6 +691,46 @@ class Simulation(object):
 
         logging.info('Finished reducing domain size.')
 
+    def field_to_real_space(self):
+        """
+        Converts field from (kx, ky) to (x, y) and saves as new array attribute.
+
+        Notes
+        -----
+
+        * Since python defines x = IFFT[FFT(x)] need to undo the implicit 
+          normalization by multiplying by the size of the arrays.
+        * GS2 fluctuations are O(rho_star) and must be multiplied by rho_star
+          to get their true values.
+        """
+
+        self.field_real_space = np.empty([self.nt,self.nx,self.ny],dtype=float)
+        for it in range(self.nt):
+            self.field_real_space[it,:,:] = np.fft.irfft2(self.field[it,:,:])
+            self.field_real_space[it,:,:] = np.roll(self.field_real_space[it,:,:],
+                                                    int(self.nx/2), axis=0)
+
+        self.field_real_space = self.field_real_space*self.nx*self.ny
+        self.field_real_space = self.field_real_space*self.rho_star
+
+    def field_normalize(self):
+        """
+        Defines normalized field by subtracting the mean and dividing by the RMS
+        value.
+        """
+        logging.info('Normalizing the real space field...')
+
+        self.field_real_space_norm = \
+                                np.empty([self.nt,self.nx,self.ny],dtype=float)
+        for ix in range(self.nx):
+            for iy in range(self.ny):
+                self.field_real_space_norm[:,ix,iy] -= \
+                                        np.mean(self.field_real_space[:,ix,iy])
+                self.field_real_space_norm[:,ix,iy] /= \
+                                        np.std(self.field_real_space[:,ix,iy])
+
+        logging.info('Finished normalizing the real space field.')
+
     def perp_analysis(self):
         """
         Performs a perpendicular correlation analysis on the field.
@@ -927,28 +968,6 @@ class Simulation(object):
         self.time_analysis_summary()
 
         logging.info("Finished time_analysis...")
-
-    def field_to_real_space(self):
-        """
-        Converts field from (kx, ky) to (x, y) and saves as new array attribute.
-
-        Notes
-        -----
-
-        * Since python defines x = IFFT[FFT(x)] need to undo the implicit 
-          normalization by multiplying by the size of the arrays.
-        * GS2 fluctuations are O(rho_star) and must be multiplied by rho_star
-          to get their true values.
-        """
-
-        self.field_real_space = np.empty([self.nt,self.nx,self.ny],dtype=float)
-        for it in range(self.nt):
-            self.field_real_space[it,:,:] = np.fft.irfft2(self.field[it,:,:])
-            self.field_real_space[it,:,:] = np.roll(self.field_real_space[it,:,:],
-                                                    int(self.nx/2), axis=0)
-
-        self.field_real_space = self.field_real_space*self.nx*self.ny
-        self.field_real_space = self.field_real_space*self.rho_star
 
     def calculate_time_corr(self, it):
         """
