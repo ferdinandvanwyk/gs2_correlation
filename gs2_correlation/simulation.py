@@ -1011,7 +1011,6 @@ class Simulation(object):
         
         field_window = self.field_real_space_norm[it*self.time_slice:(it+1)*
                                                   self.time_slice,:,:]
-        print('shape = ', field_window.shape)
 
         for ix in range(self.nx):
             self.time_corr[it,:,ix,:] = sig.fftconvolve(field_window[:,ix,:], 

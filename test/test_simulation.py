@@ -150,6 +150,7 @@ class TestClass(object):
         assert ('ntot_igomega_by_mode.cdf' in os.listdir('test/test_run/v/id_1/analysis/write_field'))
 
     def test_make_film(self, run):
+        self.film_lim = [1,1]
         run.make_film()
         assert ('ntot_igomega_by_mode_spec_0_0000.png' in os.listdir('test/test_run/v/id_1/analysis/film/film_frames'))
         assert ('ntot_igomega_by_mode_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/film/'))
