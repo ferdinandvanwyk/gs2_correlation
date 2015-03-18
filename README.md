@@ -12,6 +12,26 @@ correlation analysis.
 Getting Started
 ===============
 
+Documentation
+-------------
+
+The documentation is completely built on Sphinx with `numpydoc` docstring 
+convention and is hosted on [Read the Docs](https://readthedocs.org/): 
+[gs2-correlation.rtfd.org](http://gs2-correlation.rtfd.org). Using RTD/GitHub 
+webhooks, the documentation is rebuilt upon every commit that makes
+changes to the documentation files The current build status is shown by the 
+`docs` badge at the top of the main page. To make the docs, run:
+
+    $ cd doc
+    $ make html
+
+where `html` can be replaced with other acceptable formats, such as latex,
+latexpdf, text, etc. In order to view the Latex document, it first has to be 
+built:
+
+    $ cd build/latex
+    $ make
+
 Python Version Support
 ----------------------
 
@@ -40,26 +60,10 @@ Running Tests
 run the tests, run the following in the package root directory:
 
     $ py.test
+    
+To see information on the test coverage for individual files:
 
-Documentation
--------------
-
-The documentation is completely built on Sphinx with `numpydoc` docstring 
-convention and is hosted on [Read the Docs](https://readthedocs.org/): 
-[gs2-correlation.rtfd.org](http://gs2-correlation.rtfd.org). Using RTD/GitHub 
-webhooks, the documentation is rebuilt upon every commit that makes
-changes to the documentation files The current build status is shown by the 
-`docs` badge at the top of the main page. To make the docs, run:
-
-    $ cd doc
-    $ make html
-
-where `html` can be replaced with other acceptable formats, such as latex,
-latexpdf, text, etc. In order to view the Latex document, it first has to be 
-built:
-
-    $ cd build/latex
-    $ make
+    $ py.test --cov gs2_correlation
 
 Continuous Integration and Testing
 ----------------------------------
