@@ -727,7 +727,7 @@ class Simulation(object):
                 self.field_real_space_norm[:,ix,iy] -= \
                                         np.mean(self.field_real_space[:,ix,iy])
                 self.field_real_space_norm[:,ix,iy] /= \
-                                        np.std(self.field_real_space[:,ix,iy])
+                                        np.std(self.field_real_space_norm[:,ix,iy])
 
         logging.info('Finished normalizing the real space field.')
 
@@ -752,6 +752,7 @@ class Simulation(object):
             os.system("mkdir " + self.out_dir + '/perp')
 
         self.calculate_perp_corr()
+        self.perp_norm_mask()
         self.perp_fit_params = np.empty([self.nt_slices, 4], dtype=float)
 
         for it in range(self.nt_slices):
@@ -774,14 +775,43 @@ class Simulation(object):
 
         self.perp_corr = np.empty([self.nt, 2*self.nx-1, 2*self.ny-1], dtype=float)
         for it in range(self.nt):
-            self.perp_corr[it,:,:] = sig.fftconvolve(self.field_real_space[it,:,:], 
-                                                     self.field_real_space[it,::-1,::-1],
-                                                     mode='full')
+            self.perp_corr[it,:,:] = \
+                            sig.fftconvolve(self.field_real_space_norm[it,:,:], 
+                                            self.field_real_space_norm[it,::-1,::-1],
+                                            mode='full')
             self.perp_corr[it,:,:] = (self.perp_corr[it,:,:] /  
                                         np.max(self.perp_corr[it,:,:]))
 
         logging.info("Finished calculating perpendicular correlation " 
                       "function...")
+
+    def perp_norm_mask(self):
+        """
+        Applies the appropriate normalization to the perpendicular correlation 
+        function.
+
+        Notes
+        -----
+
+        After calling ``sig.fftconvolve`` to calculate ``perp_corr``, we are
+        left with an unnormalized correlation function as a function of dx
+        and dy. This function applies a 2D nomalization mask to ``perp_corr``
+        which is dependent on the number of points that ``field_real_space_norm``
+        has in common with itself for a given dx, dy. ``field_real_space_norm``
+        is already normalized to the standard deviation of the time signal, so 
+        the only difference between fftconvolve and np.corrcoef is the number
+        of points in common in the convolution (that aren't the zero padded 
+        values and after averaging over many time steps).
+        """
+        logging.info('Applying perp normalization mask...')
+
+        x = np.ones([self.nx, self.ny]) 
+        mask = sig.correlate(x,x)
+
+        for it in range(self.nt):
+            self.perp_corr[it,:,:] /= mask 
+
+        logging.info('Finised applying perp normalization mask...')
 
     def perp_corr_fit(self, it):
         """
@@ -980,8 +1010,8 @@ class Simulation(object):
             This is the index of the time slice currently being calculated.
         """
         
-        field_window = self.field_real_space[it*self.time_slice:(it+1)*
-                                             self.time_slice,:,:]
+        field_window = self.field_real_space_norm[it*self.time_slice:(it+1)*
+                                                  self.time_slice,:,:]
 
         for ix in range(self.nx):
             self.time_corr[it,:,ix,:] = sig.fftconvolve(field_window[:,ix,:], 

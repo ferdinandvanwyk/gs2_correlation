@@ -86,6 +86,15 @@ class TestClass(object):
     def test_field_to_real_space(self, run):
         run.field_to_real_space()
         assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
+        
+    def test_field_normalize(self, run):
+        run.field_normalize()
+        assert run.field_real_space_norm.shape == (run.nt, run.nx, run.ny)
+
+    def test_perp_norm_mask(self, run):
+        run.perp_corr = np.ones([51,9,11])
+        run.perp_norm_mask()
+        assert np.abs(run.perp_corr[0,4,5] - 1./30.) < 1e-5
 
     def test_domain_reduce(self, run):
         run.box_size = [0.1, 0.1]
