@@ -779,8 +779,6 @@ class Simulation(object):
                             sig.fftconvolve(self.field_real_space_norm[it,:,:], 
                                             self.field_real_space_norm[it,::-1,::-1],
                                             mode='full')
-            self.perp_corr[it,:,:] = (self.perp_corr[it,:,:] /  
-                                        np.max(self.perp_corr[it,:,:]))
 
         logging.info("Finished calculating perpendicular correlation " 
                       "function...")
@@ -993,6 +991,7 @@ class Simulation(object):
 
         for it in range(self.nt_slices):
             self.calculate_time_corr(it)
+            self.time_norm_mask(it)
             self.time_corr_fit(it)
 
         self.time_analysis_summary()
@@ -1012,12 +1011,45 @@ class Simulation(object):
         
         field_window = self.field_real_space_norm[it*self.time_slice:(it+1)*
                                                   self.time_slice,:,:]
+        print('shape = ', field_window.shape)
 
         for ix in range(self.nx):
             self.time_corr[it,:,ix,:] = sig.fftconvolve(field_window[:,ix,:], 
                                                         field_window[::-1,ix,::-1])
-            self.time_corr[it,:,ix,:] = (self.time_corr[it,:,ix,:] /  
-                                        np.max(self.time_corr[it,:,ix,:]))
+
+    def time_norm_mask(self, it):
+        """
+        Applies the appropriate normalization to the time correlation function.
+
+        Notes
+        -----
+
+        After calling ``sig.fftconvolve`` to calculate ``time_corr``, we are
+        left with an unnormalized correlation function as a function of dt
+        and dy. This function applies a 2D nomalization mask to ``time_corr``
+        which is dependent on the number of points that ``field_real_space_norm``
+        has in common with itself for a given dt, dy, and time window. 
+        ``field_real_space_norm`` is already normalized to the standard 
+        deviation of the time signal, so the only difference between fftconvolve 
+        and np.corrcoef is the number of points in common in the convolution 
+        (that aren't the zero padded values and after averaging over many time 
+        steps).
+
+        Parameters
+        ----------
+
+        it : int
+            This is the index of the time slice currently being calculated.
+        """
+        logging.info('Applying time normalization mask...')
+
+        x = np.ones([self.time_slice, self.ny]) 
+        mask = sig.correlate(x,x)
+
+        for ix in range(self.nx):
+            self.time_corr[it,:,ix,:] /= mask 
+
+        logging.info('Finised applying perp normalization mask...')
 
     def time_corr_fit(self, it):
         """

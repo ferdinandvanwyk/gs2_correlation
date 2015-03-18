@@ -140,6 +140,11 @@ class TestClass(object):
         assert ('time_fit_it_0_ix_0.pdf' in 
                 os.listdir('test/test_run/v/id_1/analysis/time/corr_fns'))
 
+    def test_time_norm_mask(self, run):
+        run.time_corr = np.ones([5, 19, 5, 11])
+        run.time_norm_mask(0)
+        assert np.abs(run.time_corr[0,9,0,5] - 1./60) < 1e-5
+
     def test_write_field(self, run):
         run.write_field()
         assert ('ntot_igomega_by_mode.cdf' in os.listdir('test/test_run/v/id_1/analysis/write_field'))
