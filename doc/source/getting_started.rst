@@ -36,6 +36,12 @@ run the tests, run the following in the package root directory:
 
     $ py.test
 
+To see information on the test coverage for individual files:
+
+.. code:: bash
+
+    $ py.test --cov gs2_correlation
+
 Documentation
 -------------
 
