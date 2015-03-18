@@ -9,13 +9,6 @@ gs2_correlation
 fluctuations. This includes spatial (both radial and poloidal), and temporal 
 correlation analysis.
 
-Documentation
--------------
-
-The full documentation is hosted on ReadtheDocs:
-[gs2-correlation.rtfd.org](http://gs2-correlation.rtfd.org)
-
-
 Getting Started
 ===============
 
@@ -65,8 +58,8 @@ where `html` can be replaced with other acceptable formats, such as latex,
 latexpdf, text, etc. In order to view the Latex document, it first has to be 
 built:
 
-   $ cd build/latex
-   $ make
+    $ cd build/latex
+    $ make
 
 Continuous Integration and Testing
 ----------------------------------
