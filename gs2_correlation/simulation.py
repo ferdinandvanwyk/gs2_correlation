@@ -46,6 +46,7 @@ import scipy.interpolate as interp
 import scipy.optimize as opt
 import scipy.signal as sig
 import matplotlib
+matplotlib.rcParams['axes.unicode_minus']=False
 import matplotlib.pyplot as plt
 plt.rcParams.update({'figure.autolayout': True})
 import seaborn as sns
