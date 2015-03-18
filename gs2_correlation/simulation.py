@@ -1383,31 +1383,3 @@ class Simulation(object):
 
         logging.info("Finished cropping film images.")
 
-
-        
-        
-        
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
