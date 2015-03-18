@@ -724,7 +724,8 @@ class Simulation(object):
                                 np.empty([self.nt,self.nx,self.ny],dtype=float)
         for ix in range(self.nx):
             for iy in range(self.ny):
-                self.field_real_space_norm[:,ix,iy] -= \
+                self.field_real_space_norm[:,ix,iy] = \
+                                        self.field_real_space[:,ix,iy] - \
                                         np.mean(self.field_real_space[:,ix,iy])
                 self.field_real_space_norm[:,ix,iy] /= \
                                         np.std(self.field_real_space_norm[:,ix,iy])
