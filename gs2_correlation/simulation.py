@@ -295,10 +295,11 @@ class Simulation(object):
         self.field_to_complex()
         self.fourier_correction()
         self.field_to_real_space()
-        self.field_normalize()
 
         if self.domain == 'middle':
             self.domain_reduce()
+
+        self.field_normalize()
 
     def read_config(self):
         """
