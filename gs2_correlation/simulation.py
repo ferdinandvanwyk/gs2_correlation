@@ -804,7 +804,7 @@ class Simulation(object):
         logging.info('Applying perp normalization mask...')
 
         x = np.ones([self.nx, self.ny]) 
-        mask = sig.correlate(x,x)
+        mask = sig.fftconvolve(x,x)
 
         for it in range(self.nt):
             self.perp_corr[it,:,:] /= mask 
@@ -1043,7 +1043,7 @@ class Simulation(object):
         logging.info('Applying time normalization mask...')
 
         x = np.ones([self.time_slice, self.ny]) 
-        mask = sig.correlate(x,x)
+        mask = sig.fftconvolve(x,x)
 
         for ix in range(self.nx):
             self.time_corr[it,:,ix,:] /= mask 
