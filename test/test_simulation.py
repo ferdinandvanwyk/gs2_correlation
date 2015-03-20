@@ -87,15 +87,6 @@ class TestClass(object):
         run.field_to_real_space()
         assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
         
-    def test_field_normalize(self, run):
-        run.field_normalize()
-        assert run.field_real_space_norm.shape == (run.nt, run.nx, run.ny)
-
-    def test_perp_norm_mask(self, run):
-        run.perp_corr = np.ones([51,9,11])
-        run.perp_norm_mask()
-        assert np.abs(run.perp_corr[0,4,5] - 1./30.) < 1e-5
-
     def test_domain_reduce(self, run):
         run.box_size = [0.1, 0.1]
         original_max_x = run.x[-1]
@@ -125,7 +116,17 @@ class TestClass(object):
         assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
         assert ('perp_fit_summary.txt' in os.listdir('test/test_run/v/id_1/analysis/perp'))
 
+    def test_field_normalize_perp(self, run):
+        run.field_normalize_perp()
+        assert run.field_real_space_norm.shape == (run.nt, run.nx, run.ny)
+
+    def test_perp_norm_mask(self, run):
+        run.perp_corr = np.ones([51,9,11])
+        run.perp_norm_mask()
+        assert np.abs(run.perp_corr[0,4,5] - 1./30.) < 1e-5
+
     def test_calculate_perp_corr(self, run):
+        run.field_normalize_perp()
         run.calculate_perp_corr()
         assert run.perp_corr.shape == (run.nt, 2*run.nx-1, 2*run.ny-1)
     
@@ -139,6 +140,10 @@ class TestClass(object):
         assert ('corr_fns' in os.listdir('test/test_run/v/id_1/analysis/time'))
         assert ('time_fit_it_0_ix_0.pdf' in 
                 os.listdir('test/test_run/v/id_1/analysis/time/corr_fns'))
+
+    def test_field_normalize_time(self, run):
+        run.field_normalize_time()
+        assert run.field_real_space_norm.shape == (run.nt, run.nx, run.ny)
 
     def test_time_norm_mask(self, run):
         run.time_corr = np.ones([5, 19, 5, 11])

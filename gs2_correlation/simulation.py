@@ -300,8 +300,6 @@ class Simulation(object):
         if self.domain == 'middle':
             self.domain_reduce()
 
-        self.field_normalize()
-
     def read_config(self):
         """
         Reads analysis and normalization parameters from self.config_file.
@@ -715,25 +713,6 @@ class Simulation(object):
         self.field_real_space = self.field_real_space*self.nx*self.ny
         self.field_real_space = self.field_real_space*self.rho_star
 
-    def field_normalize(self):
-        """
-        Defines normalized field by subtracting the mean and dividing by the RMS
-        value.
-        """
-        logging.info('Normalizing the real space field...')
-
-        self.field_real_space_norm = \
-                                np.empty([self.nt,self.nx,self.ny],dtype=float)
-        for ix in range(self.nx):
-            for iy in range(self.ny):
-                self.field_real_space_norm[:,ix,iy] = \
-                                        self.field_real_space[:,ix,iy] - \
-                                        np.mean(self.field_real_space[:,ix,iy])
-                self.field_real_space_norm[:,ix,iy] /= \
-                                        np.std(self.field_real_space_norm[:,ix,iy])
-
-        logging.info('Finished normalizing the real space field.')
-
     def perp_analysis(self):
         """
         Performs a perpendicular correlation analysis on the field.
@@ -754,6 +733,7 @@ class Simulation(object):
         if 'perp' not in os.listdir(self.out_dir):
             os.system("mkdir " + self.out_dir + '/perp')
 
+        self.field_normalize_perp()
         self.calculate_perp_corr()
         self.perp_norm_mask()
         self.perp_fit_params = np.empty([self.nt_slices, 4], dtype=float)
@@ -768,6 +748,25 @@ class Simulation(object):
         self.perp_analysis_summary()
 
         logging.info('Finished perpendicular correlation analysis.')
+
+    def field_normalize_perp(self):
+        """
+        Defines normalized field for the perpandicular correlation by 
+        subtracting the mean and dividing by the RMS value.
+        """
+        logging.info('Normalizing the real space field...')
+
+        self.field_real_space_norm = \
+                                np.empty([self.nt,self.nx,self.ny],dtype=float)
+        for ix in range(self.nx):
+            for iy in range(self.ny):
+                self.field_real_space_norm[:,ix,iy] = \
+                                        self.field_real_space[:,ix,iy] - \
+                                        np.mean(self.field_real_space[:,ix,iy])
+                self.field_real_space_norm[:,ix,iy] /= \
+                                        np.std(self.field_real_space_norm[:,ix,iy])
+
+        logging.info('Finished normalizing the real space field.')
 
     def calculate_perp_corr(self):
         """
@@ -992,6 +991,7 @@ class Simulation(object):
                                    2*self.ny-1], dtype=float)
         self.corr_time = np.empty([self.nt_slices, self.nx], dtype=float)
 
+        self.field_normalize_time()
         for it in range(self.nt_slices):
             self.calculate_time_corr(it)
             self.time_norm_mask(it)
@@ -1000,6 +1000,30 @@ class Simulation(object):
         self.time_analysis_summary()
 
         logging.info("Finished time_analysis...")
+
+    def field_normalize_time(self):
+        """
+        Defines normalized field for the time correlation by subtracting the 
+        mean and dividing by the RMS value.
+        """
+        logging.info('Normalizing the real space field...')
+
+        self.field_real_space_norm = \
+                                np.empty([self.nt,self.nx,self.ny],dtype=float)
+
+        for it in range(self.nt_slices):
+            t_min = it*self.time_slice
+            t_max = (it+1)*self.time_slice
+            field_window = self.field_real_space_norm[t_min:t_max,:,:]
+            for ix in range(self.nx):
+                for iy in range(self.ny):
+                    self.field_real_space_norm[t_min:t_max,ix,iy] = \
+                                            field_window[:,ix,iy] - \
+                                            np.mean(field_window[:,ix,iy])
+                    self.field_real_space_norm[t_min:t_max,ix,iy] /= \
+                        np.std(self.field_real_space_norm[t_min:t_max,ix,iy])
+
+        logging.info('Finished normalizing the real space field.')
 
     def calculate_time_corr(self, it):
         """
