@@ -1014,7 +1014,7 @@ class Simulation(object):
         for it in range(self.nt_slices):
             t_min = it*self.time_slice
             t_max = (it+1)*self.time_slice
-            field_window = self.field_real_space_norm[t_min:t_max,:,:]
+            field_window = self.field_real_space[t_min:t_max,:,:]
             for ix in range(self.nx):
                 for iy in range(self.ny):
                     self.field_real_space_norm[t_min:t_max,ix,iy] = \
