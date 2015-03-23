@@ -1343,9 +1343,15 @@ class Simulation(object):
         if im.size[0] % 2 != 0 or im.size[1] % 2 != 0:
             self.crop_images() 
 
+        logging.info('avconv command: ')
+        logging.info("avconv -threads 2 -y -f image2 -r " + str(self.film_fps) + 
+                  " -i '" + self.out_dir + "/film/film_frames/" + self.in_field + 
+                  "_spec_" + str(self.spec_idx) + "_%04d.png' -q 1 " + 
+                  self.out_dir +"/film/" + self.in_field + "_spec_" + 
+                  str(self.spec_idx) +".mp4")
         os.system("avconv -threads 2 -y -f image2 -r " + str(self.film_fps) + 
                   " -i '" + self.out_dir + "/film/film_frames/" + self.in_field + 
-                  "_spec_" + str(self.spec_idx) + "_%04d.png' " + 
+                  "_spec_" + str(self.spec_idx) + "_%04d.png' -q 1 " + 
                   self.out_dir +"/film/" + self.in_field + "_spec_" + 
                   str(self.spec_idx) +".mp4")
 
@@ -1381,7 +1387,7 @@ class Simulation(object):
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
 
-        plt.colorbar(im, cax=cax)
+        plt.colorbar(im, cax=cax, label=r'$\delta n (\%)$')
         plt.savefig(self.out_dir + "/film/film_frames/" + self.in_field + 
                     "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=110,
                     bbox_inches='tight')
