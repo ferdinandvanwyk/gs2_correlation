@@ -21,7 +21,7 @@ class TestClass(object):
 
     @pytest.fixture(scope='function')
     def run(self):
-        sim = Simulation('test/test_run/config.ini')
+        sim = Simulation('test/test_config.ini')
         return sim
 
     def test_init(self, run):
@@ -84,7 +84,6 @@ class TestClass(object):
         assert np.iscomplexobj(run.field) == True 
 
     def test_field_to_real_space(self, run):
-        run.field_to_real_space()
         assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
         
     def test_domain_reduce(self, run):
@@ -94,6 +93,17 @@ class TestClass(object):
         run.domain_reduce()
         assert run.x[-1] <= original_max_x
         assert run.y[-1] <= original_max_y
+
+    def test_field_odd_pts(self, run):
+        run.field_odd_pts()
+        assert (np.array(run.field_real_space.shape)%2 == [1,1,1]).all()
+        assert len(run.t)%2 == 1
+        assert len(run.x)%2 == 1
+        assert len(run.y)%2 == 1
+        assert len(run.dx)%2 == 1
+        assert len(run.dy)%2 == 1
+        assert len(run.fit_dx)%2 == 1
+        assert len(run.fit_dy)%2 == 1
 
     def test_perp_analysis(self, run):
         run.perp_analysis()
@@ -121,22 +131,22 @@ class TestClass(object):
         assert run.field_real_space_norm.shape == (run.nt, run.nx, run.ny)
 
     def test_perp_norm_mask(self, run):
-        run.perp_corr = np.ones([51,9,11])
+        run.perp_corr = np.ones([51,5,5])
         run.perp_norm_mask()
-        assert np.abs(run.perp_corr[0,4,5] - 1./30.) < 1e-5
+        assert np.abs(run.perp_corr[0,2,2] - 1./25.) < 1e-5
 
     def test_calculate_perp_corr(self, run):
         run.field_normalize_perp()
         run.calculate_perp_corr()
-        assert run.perp_corr.shape == (run.nt, 2*run.nx-1, 2*run.ny-1)
+        assert run.perp_corr.shape == (run.nt, run.nx, run.ny)
     
     def test_time_analysis(self, run):
         run.time_analysis()
         assert ('corr_time.csv' in os.listdir('test/test_run/v/id_1/analysis/time'))
         assert ('corr_time.pdf' in os.listdir('test/test_run/v/id_1/analysis/time'))
         assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
-        assert run.time_corr.shape == (run.nt_slices, 2*run.time_slice-1,
-                                       run.nx, 2*run.ny-1)
+        assert run.time_corr.shape == (run.nt_slices, run.time_slice,
+                                       run.nx, run.ny)
         assert ('corr_fns' in os.listdir('test/test_run/v/id_1/analysis/time'))
         assert ('time_fit_it_0_ix_0.pdf' in 
                 os.listdir('test/test_run/v/id_1/analysis/time/corr_fns'))
@@ -146,9 +156,9 @@ class TestClass(object):
         assert run.field_real_space_norm.shape == (run.nt, run.nx, run.ny)
 
     def test_time_norm_mask(self, run):
-        run.time_corr = np.ones([5, 19, 5, 11])
+        run.time_corr = np.ones([5, 9, 5, 5])
         run.time_norm_mask(0)
-        assert np.abs(run.time_corr[0,9,0,5] - 1./60) < 1e-5
+        assert np.abs(run.time_corr[0,4,0,2] - 1./45.) < 1e-5
 
     def test_write_field(self, run):
         run.write_field()

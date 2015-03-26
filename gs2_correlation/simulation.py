@@ -38,6 +38,7 @@ import configparser
 import logging
 import operator #enumerate list
 import multiprocessing
+import warnings
 
 # Third Party
 import numpy as np
@@ -272,17 +273,6 @@ class Simulation(object):
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rhoref
         self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rhoref \
                              *np.tan(self.pitch_angle)
-        self.dx = np.linspace(-2*np.pi/self.kx[1], 2*np.pi/self.kx[1],
-                             2*self.nx-1)*self.rhoref
-        self.dy = np.linspace(-2*np.pi/self.ky[1], 2*np.pi/self.ky[1],
-                             2*self.ny-1)*self.rhoref*np.tan(self.pitch_angle)
-        self.fit_dx = self.dx[int((2*self.nx-1)/2) - self.perp_fit_length :
-                      int((2*self.nx-1)/2) + self.perp_fit_length]
-        self.fit_dy = self.dy[int((2*self.ny-1)/2) - self.perp_fit_length :
-                      int((2*self.ny-1)/2) + self.perp_fit_length]
-        self.fit_dx_mesh, self.fit_dy_mesh = np.meshgrid(self.fit_dx, self.fit_dy)
-        self.fit_dx_mesh = np.transpose(self.fit_dx_mesh)
-        self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
 
         if self.interpolate_bool:
             self.interpolate()
@@ -299,6 +289,8 @@ class Simulation(object):
 
         if self.domain == 'middle':
             self.domain_reduce()
+
+        self.field_odd_pts()
 
     def read_config(self):
         """
@@ -528,11 +520,16 @@ class Simulation(object):
         """
 
         # Ensure perp_fit_length doesn't extend outside array
-        if (int((2*self.nx-1)/2) + self.perp_fit_length >= 2*self.nx - 1):
+        if (int(self.nx/2) + self.perp_fit_length >= self.nx):
                raise ValueError('+/- perp_fit_length outside of dx array.')
 
-        if (int((2*self.ny-1)/2) + self.perp_fit_length >= 2*self.ny - 1):
+        if (int(self.ny/2) + self.perp_fit_length >= self.ny):
                raise ValueError('+/- perp_fit_length outside of dy array.')
+
+        if self.time_slice%2 != 1:
+            warnings.warn('time_slice should be odd, reducing from by '
+                                 'one...')
+            self.time_slice -= 1
 
     def read_netcdf(self):
         """
@@ -638,6 +635,28 @@ class Simulation(object):
         """
         self.field = self.field[:,:,:,0] + 1j*self.field[:,:,:,1]
 
+    def field_to_real_space(self):
+        """
+        Converts field from (kx, ky) to (x, y) and saves as new array attribute.
+
+        Notes
+        -----
+
+        * Since python defines x = IFFT[FFT(x)] need to undo the implicit 
+          normalization by multiplying by the size of the arrays.
+        * GS2 fluctuations are O(rho_star) and must be multiplied by rho_star
+          to get their true values.
+        """
+
+        self.field_real_space = np.empty([self.nt,self.nx,self.ny],dtype=float)
+        for it in range(self.nt):
+            self.field_real_space[it,:,:] = np.fft.irfft2(self.field[it,:,:])
+            self.field_real_space[it,:,:] = np.roll(self.field_real_space[it,:,:],
+                                                    int(self.nx/2), axis=0)
+
+        self.field_real_space = self.field_real_space*self.nx*self.ny
+        self.field_real_space = self.field_real_space*self.rho_star
+
     def domain_reduce(self):
         """
         Initialization consists of: 
@@ -681,37 +700,54 @@ class Simulation(object):
 
         self.x = np.linspace(0, self.r[-1] - self.r[0], self.nx)
         self.y = np.linspace(0, 2*self.z[-1], self.ny)
-        self.dx = np.linspace(-self.x[-1], self.x[-1], 2*self.nx-1)
-        self.dy = np.linspace(-self.y[-1], self.y[-1], 2*self.ny-1)
-        self.fit_dx = self.dx
-        self.fit_dy = self.dy
-        self.fit_dx_mesh, self.fit_dy_mesh = np.meshgrid(self.fit_dx, self.fit_dy)
-        self.fit_dx_mesh = np.transpose(self.fit_dx_mesh)
-        self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
 
         logging.info('Finished reducing domain size.')
 
-    def field_to_real_space(self):
+    def field_odd_pts(self):
         """
-        Converts field from (kx, ky) to (x, y) and saves as new array attribute.
+        Ensures real space field has odd number of points in x and y.
 
-        Notes
-        -----
-
-        * Since python defines x = IFFT[FFT(x)] need to undo the implicit 
-          normalization by multiplying by the size of the arrays.
-        * GS2 fluctuations are O(rho_star) and must be multiplied by rho_star
-          to get their true values.
+        This is done so that when ``sig.fftconvolve`` is called on the field
+        with the 'same' option, the resulting correlation function also has an 
+        odd number of points. If this wasn't done, one axis *might* have an 
+        even number of points meaning the correlation function will not have a 
+        convenient middle point to use as the zero separation point, which 
+        would then require more general fitting functions. This way we can 
+        force dx=0, dy=0 at the self.nx/2, self.ny/2 location and avoid extra 
+        parameters in the fitting functions.
         """
+        logging.info('Ensuring field has odd points in space')
 
-        self.field_real_space = np.empty([self.nt,self.nx,self.ny],dtype=float)
-        for it in range(self.nt):
-            self.field_real_space[it,:,:] = np.fft.irfft2(self.field[it,:,:])
-            self.field_real_space[it,:,:] = np.roll(self.field_real_space[it,:,:],
-                                                    int(self.nx/2), axis=0)
+        if self.nx%2 != 1:
+            self.field_real_space = self.field_real_space[:,:-1,:]
+            self.x = self.x[:-1] 
+        if self.ny%2 != 1:
+            self.field_real_space = self.field_real_space[:,:,:-1]
+            self.y = self.y[:-1] 
 
-        self.field_real_space = self.field_real_space*self.nx*self.ny
-        self.field_real_space = self.field_real_space*self.rho_star
+        self.nx = len(self.x)
+        self.ny = len(self.y)
+
+        if self.domain == 'middle':
+            self.dx = np.linspace(-self.x[-1]/2, self.x[-1]/2, self.nx)
+            self.dy = np.linspace(-self.y[-1]/2, self.y[-1]/2, self.ny)
+            self.fit_dx = self.dx
+            self.fit_dy = self.dy
+            self.fit_dx_mesh, self.fit_dy_mesh = np.meshgrid(self.fit_dx, self.fit_dy)
+            self.fit_dx_mesh = np.transpose(self.fit_dx_mesh)
+            self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
+        else:
+            self.dx = np.linspace(-np.pi/self.kx[1], np.pi/self.kx[1],
+                                 self.nx)*self.rhoref
+            self.dy = np.linspace(-np.pi/self.ky[1], np.pi/self.ky[1],
+                                 self.ny)*self.rhoref*np.tan(self.pitch_angle)
+            self.fit_dx = self.dx[int(self.nx/2) - self.perp_fit_length + 1 :
+                          int(self.nx/2) + self.perp_fit_length]
+            self.fit_dy = self.dy[int(self.ny/2) - self.perp_fit_length + 1 :
+                          int(self.ny/2) + self.perp_fit_length]
+            self.fit_dx_mesh, self.fit_dy_mesh = np.meshgrid(self.fit_dx, self.fit_dy)
+            self.fit_dx_mesh = np.transpose(self.fit_dx_mesh)
+            self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
 
     def perp_analysis(self):
         """
@@ -720,8 +756,7 @@ class Simulation(object):
         Notes
         -----
 
-        * Uses a 2D Wiener-Khinchin theorem to calculate the correlation
-          function.
+        * Uses sig.fftconvolve to calculate the 2D perp correlation function.
         * Splits correlation function into time slices and fits each time
           slice with a tilted Gaussian using the perp_fit function.
         * The fit parameters for the previous time slice is used as the initial
@@ -775,15 +810,15 @@ class Simulation(object):
         """
         logging.info("Calculating perpendicular correlation function...")
 
-        self.perp_corr = np.empty([self.nt, 2*self.nx-1, 2*self.ny-1], dtype=float)
+        self.perp_corr = np.empty([self.nt, self.nx, self.ny], dtype=float)
         for it in range(self.nt):
             self.perp_corr[it,:,:] = \
                             sig.fftconvolve(self.field_real_space_norm[it,:,:], 
                                             self.field_real_space_norm[it,::-1,::-1],
-                                            mode='full')
+                                            mode='same')
 
         logging.info("Finished calculating perpendicular correlation " 
-                      "function...")
+                     "function...")
 
     def perp_norm_mask(self):
         """
@@ -806,7 +841,7 @@ class Simulation(object):
         logging.info('Applying perp normalization mask...')
 
         x = np.ones([self.nx, self.ny]) 
-        mask = sig.fftconvolve(x,x)
+        mask = sig.fftconvolve(x,x,'same')
 
         for it in range(self.nt):
             self.perp_corr[it,:,:] /= mask 
@@ -836,10 +871,10 @@ class Simulation(object):
 
         if self.domain == 'full':
             corr_fn = self.perp_corr[it*self.time_slice:(it+1)*self.time_slice,
-                                     (2*self.nx-1)/2 - self.perp_fit_length :
-                                     (2*self.nx-1)/2 + self.perp_fit_length,
-                                     (2*self.ny-1)/2 - self.perp_fit_length :
-                                     (2*self.ny-1)/2 + self.perp_fit_length]
+                                     int(self.nx/2) - self.perp_fit_length + 1 :
+                                     int(self.nx/2) + self.perp_fit_length,
+                                     int(self.ny/2) - self.perp_fit_length + 1 :
+                                     int(self.ny/2) + self.perp_fit_length]
         elif self.domain == 'middle':
             corr_fn = self.perp_corr
 
@@ -876,10 +911,10 @@ class Simulation(object):
         sns.set_style('darkgrid', {'axes.axisbelow':False, 'legend.frameon': True})
 
         if self.domain == 'full':
-            corr_fn = self.perp_corr[:, int((2*self.nx-1)/2) - self.perp_fit_length :
-                                        int((2*self.nx-1)/2) + self.perp_fit_length,
-                                        int((2*self.ny-1)/2) - self.perp_fit_length :
-                                        int((2*self.ny-1)/2) + self.perp_fit_length]
+            corr_fn = self.perp_corr[:, int(self.nx/2) - self.perp_fit_length + 1 :
+                                        int(self.nx/2) + self.perp_fit_length,
+                                        int(self.ny/2) - self.perp_fit_length + 1:
+                                        int(self.ny/2) + self.perp_fit_length]
         elif self.domain == 'middle':
             corr_fn = self.perp_corr
 
@@ -987,8 +1022,8 @@ class Simulation(object):
         os.system('rm ' + self.out_dir + '/time/corr_fns/*')
 
         
-        self.time_corr = np.empty([self.nt_slices, 2*self.time_slice-1, self.nx,
-                                   2*self.ny-1], dtype=float)
+        self.time_corr = np.empty([self.nt_slices, self.time_slice, self.nx,
+                                   self.ny], dtype=float)
         self.corr_time = np.empty([self.nt_slices, self.nx], dtype=float)
 
         self.field_normalize_time()
@@ -1041,7 +1076,8 @@ class Simulation(object):
 
         for ix in range(self.nx):
             self.time_corr[it,:,ix,:] = sig.fftconvolve(field_window[:,ix,:], 
-                                                        field_window[::-1,ix,::-1])
+                                                        field_window[::-1,ix,::-1],
+                                                        'same')
 
     def time_norm_mask(self, it):
         """
@@ -1070,7 +1106,7 @@ class Simulation(object):
         logging.info('Applying time normalization mask...')
 
         x = np.ones([self.time_slice, self.ny]) 
-        mask = sig.fftconvolve(x,x)
+        mask = sig.fftconvolve(x,x,'same')
 
         for ix in range(self.nx):
             self.time_corr[it,:,ix,:] /= mask 
@@ -1103,11 +1139,11 @@ class Simulation(object):
             This is the index of the time slice currently being fitted.
         """
         t = self.t[it*self.time_slice:(it+1)*self.time_slice]
-        self.dt = np.linspace(-max(t)+t[0], max(t)-t[0], 2*self.time_slice-1)
+        self.dt = np.linspace((-max(t)+t[0])/2, (max(t)-t[0])/2, self.time_slice)
 
         peaks = np.zeros([self.nx, self.npeaks_fit], dtype=float)
         max_index = np.empty([self.nx, self.npeaks_fit], dtype=int);
-        mid_idx = self.ny-1
+        mid_idx = int(self.ny/2)
 
         for ix in range(self.nx):
             for iy in range(mid_idx,mid_idx+self.npeaks_fit):
