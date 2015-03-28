@@ -1235,7 +1235,7 @@ class Simulation(object):
         """
         sns.set_style('darkgrid', {'axes.axisbelow':True, 'legend.frameon': True})
             
-        mid_idx = self.ny-1
+        mid_idx = int(self.ny/2)
         plt.clf()
         plt.plot(self.dt*1e6, self.time_corr[it,:,ix,mid_idx:mid_idx+self.npeaks_fit])
         plt.hold(True)
