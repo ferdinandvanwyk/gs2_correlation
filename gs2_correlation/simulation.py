@@ -1116,7 +1116,7 @@ class Simulation(object):
         for ix in range(self.nx):
             self.time_corr[it,:,ix,:] /= mask 
 
-        logging.info('Finised applying perp normalization mask...')
+        logging.info('Finised applying time normalization mask.')
 
     def time_corr_fit(self, it):
         """
