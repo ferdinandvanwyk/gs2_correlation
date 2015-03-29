@@ -1248,14 +1248,14 @@ class Simulation(object):
         plt.hold(True)
 
         if plot_type == 'decaying':
-            plt.plot(self.dt[self.time_slice-1:]*1e6, 
-                     fit.decaying_exp(self.dt[self.time_slice-1:],self.corr_time[it,ix]), 
+            plt.plot(self.dt[int(self.time_slice/2):]*1e6, 
+                     fit.decaying_exp(self.dt[int(self.time_slice/2):],self.corr_time[it,ix]), 
                      color='#3333AD', lw=2, 
                      label=r'$\exp[-|\Delta t_{peak} / \tau_c|]$')
             plt.legend()
         if plot_type == 'growing':
-            plt.plot(self.dt[:self.time_slice-1]*1e6, 
-                     fit.growing_exp(self.dt[:self.time_slice-1],self.corr_time[it,ix]), 
+            plt.plot(self.dt[:int(self.time_slice/2)]*1e6, 
+                     fit.growing_exp(self.dt[:int(self.time_slice/2)],self.corr_time[it,ix]), 
                      color='#3333AD', lw=2, 
                      label=r'$\exp[|\Delta t_{peak} / \tau_c|]$')
             plt.legend()

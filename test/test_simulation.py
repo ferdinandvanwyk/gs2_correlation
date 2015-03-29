@@ -45,7 +45,7 @@ class TestClass(object):
         assert (type(run.theta_idx) == int or type(run.theta_idx) == 
                                                type(None))
         assert type(run.npeaks_fit) == int
-        assert type(run.time_guess) == int
+        assert type(run.time_guess) == float
         assert type(run.box_size) == list
         assert type(run.time_range) == list
 
