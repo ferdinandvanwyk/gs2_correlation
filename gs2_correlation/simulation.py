@@ -765,8 +765,13 @@ class Simulation(object):
 
         logging.info('Start perpendicular correlation analysis...')
 
-        if 'perp' not in os.listdir(self.out_dir):
-            os.system("mkdir " + self.out_dir + '/perp')
+        if len(self.perp_guess) == 3:
+            self.perp_dir = 'perp_ky_fixed'
+        elif len(self.perp_guess) == 4:
+            self.perp_dir = 'perp'
+
+        if self.perp_dir not in os.listdir(self.out_dir):
+            os.system("mkdir " + self.out_dir + '/' + self.perp_dir)
 
         self.field_normalize_perp()
         self.calculate_perp_corr()
@@ -776,8 +781,8 @@ class Simulation(object):
         for it in range(self.nt_slices):
             self.perp_corr_fit(it)
 
-        np.savetxt(self.out_dir + '/perp/perp_fit_params.csv', (self.perp_fit_params),
-                   delimiter=',', fmt='%1.3f')
+        np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_params.csv', 
+                   (self.perp_fit_params), delimiter=',', fmt='%1.3f')
 
         self.perp_plots()
         self.perp_analysis_summary()
@@ -926,7 +931,7 @@ class Simulation(object):
         plt.colorbar(ticks=np.linspace(-1, 1, 11))
         plt.xlabel(r'$\Delta x (m)$')
         plt.ylabel(r'$\Delta y (m)$')
-        plt.savefig(self.out_dir + '/perp/time_avg_correlation.pdf')
+        plt.savefig(self.out_dir + '/'+self.perp_dir+'/time_avg_correlation.pdf')
 
         # Tilted Gaussian using time-averaged fitting parameters
         data_fitted = fit.tilted_gauss((self.fit_dx_mesh, self.fit_dy_mesh),
@@ -940,7 +945,7 @@ class Simulation(object):
         plt.colorbar(ticks=np.linspace(-1, 1, 11))
         plt.xlabel(r'$\Delta x (m)$')
         plt.ylabel(r'$\Delta y (m)$')
-        plt.savefig(self.out_dir + '/perp/perp_corr_fit.pdf')
+        plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_corr_fit.pdf')
 
         # Avg correlation and fitted function overlayed
         plt.clf()
@@ -953,7 +958,7 @@ class Simulation(object):
                                   11, levels=np.linspace(-1, 1, 11), colors='k')
         plt.xlabel(r'$\Delta x (m)$')
         plt.ylabel(r'$\Delta y (m)$')
-        plt.savefig(self.out_dir + '/perp/perp_fit_comparison.pdf')
+        plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_comparison.pdf')
 
         logging.info("Finished writing perp_analysis plots...")
 
@@ -975,9 +980,9 @@ class Simulation(object):
         plt.legend()
         plt.xlabel('Time Window')
         plt.yscale('log')
-        plt.savefig(self.out_dir + '/perp/perp_fit_params_vs_time_slice.pdf')
+        plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_params_vs_time_slice.pdf')
 
-        summary_file = open(self.out_dir + '/perp/perp_fit_summary.txt', 'w')
+        summary_file = open(self.out_dir + '/'+self.perp_dir+'/perp_fit_summary.txt', 'w')
         summary_file.write('lx = ' + str(np.mean(self.perp_fit_params[:,0]))
                            + " m\n")
         summary_file.write('std(lx) = ' + str(np.std(self.perp_fit_params[:,0]))
