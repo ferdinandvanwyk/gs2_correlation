@@ -269,7 +269,6 @@ class Simulation(object):
 
         self.nt_slices = int(self.nt/self.time_slice)
         self.t = self.t*self.amin/self.vth
-        self.time_guess = self.time_guess*self.amin/self.vth
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rhoref
         self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rhoref \
                              *np.tan(self.pitch_angle)
@@ -477,6 +476,7 @@ class Simulation(object):
                                                'npeaks_fit', fallback=5))
         self.time_guess = int(config_parse.get('analysis',
                                                'time_guess', fallback=10))
+        self.time_guess = self.time_guess*self.amin/self.vth
 
         self.box_size = str(config_parse.get('analysis',
                                                'box_size', fallback='[0.2,0.2]'))
