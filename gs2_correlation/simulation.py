@@ -660,7 +660,6 @@ class Simulation(object):
             for iy in range(self.nky):
                 self.field[:,ix,iy] = self.field[:,ix,iy]*np.exp(-1j * iy * \
                                                           self.omega * self.t)
-        sys.exit()
 
     def field_to_complex(self):
         """
