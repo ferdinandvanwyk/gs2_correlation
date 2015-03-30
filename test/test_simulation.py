@@ -41,6 +41,7 @@ class TestClass(object):
         assert type(run.interpolate_bool) == bool
         assert type(run.zero_bes_scales_bool) == bool
         assert type(run.zero_zf_scales_bool) == bool
+        assert type(run.lab_frame) == bool
         assert (type(run.spec_idx) == int or type(run.spec_idx) == type(None))
         assert (type(run.theta_idx) == int or type(run.theta_idx) == 
                                                type(None))
@@ -51,11 +52,13 @@ class TestClass(object):
 
         assert type(run.amin) == float
         assert type(run.vth) == float
-        assert type(run.rhoref) == float
+        assert type(run.rho_ref) == float
         assert type(run.pitch_angle) == float
         assert type(run.rmaj) == float
         assert type(run.nref) == float
         assert type(run.tref) == float
+        assert type(run.omega) == float
+        assert type(run.dpsi_da) == float
 
         assert type(run.seaborn_context) == str
         assert type(run.film_fps) == int
@@ -77,8 +80,12 @@ class TestClass(object):
     def test_zero_bes_scales(self, run):
         assert (run.field[:, 1, 1] == 0).all()
 
-    def test_zf_bes(self, run):
+    def test_zero_zf_scales(self, run):
         assert (run.field[:, :, 0] == 0).all()
+
+    def test_to_lab_frame(self, run):
+        run.field = np.ones([51,5,6])
+        assert np.abs(run.field[5,0,3] - np.exp(-1j*3*run.omega*run.t[5])) < 1e-5
 
     def test_field_to_complex(self, run):
         assert np.iscomplexobj(run.field) == True 

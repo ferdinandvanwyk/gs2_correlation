@@ -81,15 +81,17 @@ class Simulation(object):
         'write_field'.
     out_dir : str, 'analysis'
         Output directory for analysis.
-    interpolate_bool : bool
-        Interpolate in time onto a regular grid. Default = True. Specify as
-        interpolate in configuration file.
-    zero_bes_scales_bool : bool
-        Zero out scales which are larger than the BES. Default = False. Specify
-        as zero_bes_scales in configuration file.
-    zero_zf_scales_bool : bool
-        Zero out the zonal flow (ky = 0) modes. Default = False. Specify as
-        zero_zf_scales in configuration file.
+    interpolate_bool : bool, True
+        Interpolate in time onto a regular grid. Specify as interpolate in 
+        configuration file.
+    zero_bes_scales_bool : bool, False
+        Zero out scales which are larger than the BES. Specify as 
+        zero_bes_scales in configuration file.
+    zero_zf_scales_bool : bool, False
+        Zero out the zonal flow (ky = 0) modes. Specify as zero_zf_scales in 
+        configuration file.
+    lab_frame : bool, False
+        Transform from rotating to lab frame.
     domain : str, 'full'
         Specifies whether to analyze the full real space domain, or only the 
         middle part of size *box_size*.
@@ -101,7 +103,7 @@ class Simulation(object):
          = 20.
     perp_guess : array_like
         Initial guess for perpendicular correlation function fitting. Of the
-        form [lx, ly, kx, ky] all in normalized rhoref units.
+        form [lx, ly, kx, ky] all in normalized rho_ref units.
     time_guess : int
         Initial guess for the correlation time in normalized GS2 units.
     box_size : array_like, [0.2,0.2]
@@ -124,12 +126,24 @@ class Simulation(object):
         Minor radius of device in *m*.
     vth : float
         Thermal velocity of the reference species in *m/s*
-    rhoref : float
+    rho_ref : float
         Larmor radius of the reference species in *m*.
     rho_star : float
         The expansion parameter defined as rho_ref/amin.
     pitch_angle : float
         Pitch angle of the magnetic field lines in *rad*.
+    rmaj : float, 0
+        Major radius of the outboard midplane. Used when writing out 
+        the field to the NetCDF file. This is **not** the *rmaj* value from
+        GS2.
+    nref : float, 1
+        Density of the reference species in m^-3.
+    tref : float, 1
+        Temperature of the reference species in eV.
+    omega : float, 0
+        Angular frequency of the plasma at the radial location of the flux tube.
+    dpsi_da : float, 0
+        Relationship between psi_n and rho_miller (a_n = diameter/diameter LCFS)
     seaborn_context : str
         Context for plot output: paper, notebook, talk, poster. See:
         http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
@@ -224,9 +238,11 @@ class Simulation(object):
         * Interpolates onto a regular time grid.
         * Zeros out BES scales.
         * Zeros out ZF scales.
+        * Transforms to lab frame.
         * Calculates the real space field.
         * Reduce domain size to according to *box_size* if domain is specified
           as 'middle', otherwise do nothing.
+        * Ensures real space field has odd points.
 
         Parameters
         ----------
@@ -253,7 +269,7 @@ class Simulation(object):
         # Set plot options
         sns.set_context(self.seaborn_context)
 
-        self.rho_star = self.rhoref/self.amin
+        self.rho_star = self.rho_ref/self.amin
 
         self.read_netcdf()
 
@@ -269,9 +285,13 @@ class Simulation(object):
 
         self.nt_slices = int(self.nt/self.time_slice)
         self.t = self.t*self.amin/self.vth
-        self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rhoref
-        self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rhoref \
+        self.time_guess = self.time_guess*self.amin/self.vth
+        self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rho_ref
+        self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rho_ref \
                              *np.tan(self.pitch_angle)
+
+        self.field_to_complex()
+        self.fourier_correction()
 
         if self.interpolate_bool:
             self.interpolate()
@@ -282,8 +302,9 @@ class Simulation(object):
         if self.zero_zf_scales_bool:
             self.zero_zf_scales()
 
-        self.field_to_complex()
-        self.fourier_correction()
+        if self.lab_frame:
+            self.to_lab_frame()
+
         self.field_to_real_space()
 
         if self.domain == 'middle':
@@ -318,6 +339,8 @@ class Simulation(object):
             Zero out scales which are larger than the BES.
         zero_zf_scales : bool, False
             Zero out the zonal flow (ky = 0) modes.
+        lab_frame : bool, False
+            Transform from rotating to lab frame.
         domain : str, 'full'
             Specifies whether to analyze the full real space domain, or only the 
             middle part of size *box_size*.
@@ -329,7 +352,7 @@ class Simulation(object):
             fit.
         perp_guess : array_like, [1,1,1,1]
             Initial guess for perpendicular correlation function fitting. Of the
-            form [lx, ly, kx, ky] all in normalized rhoref units.
+            form [lx, ly, kx, ky] all in normalized rho_ref units.
         time_guess : int, 10
             Initial guess for the correlation time in normalized GS2 units.
         box_size : array_like, [0.2,0.2]
@@ -353,14 +376,22 @@ class Simulation(object):
             Minor radius of device in *m*.
         vth : float
             Thermal velocity of the reference species in *m/s*
-        rhoref : float
+        rho_ref : float
             Larmor radius of the reference species in *m*.
         pitch_angle : float
             Pitch angle of the magnetic field lines in *rad*.
-        r_maj : float, 0
+        rmaj : float, 0
             Major radius of the outboard midplane. Used when writing out 
             the field to the NetCDF file. This is **not** the *rmaj* value from
             GS2.
+        nref : float, 1
+            Density of the reference species in m^-3.
+        tref : float, 1
+            Temperature of the reference species in eV.
+        omega : float, 0
+            Angular frequency of the plasma at the radial location of the flux tube.
+        dpsi_da : float, 0
+            Relationship between psi_n and rho_miller (a_n = diameter/diameter LCFS)
         seaborn_context : str, 'talk'
             Context for plot output: paper, notebook, talk, poster. See:
             http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
@@ -387,11 +418,14 @@ class Simulation(object):
 
         self.amin = float(config_parse['normalization']['a_minor'])
         self.vth = float(config_parse['normalization']['vth_ref'])
-        self.rhoref = float(config_parse['normalization']['rho_ref'])
+        self.rho_ref = float(config_parse['normalization']['rho_ref'])
         self.pitch_angle = float(config_parse['normalization']['pitch_angle'])
         self.rmaj = float(config_parse.get('normalization', 'rmaj', fallback=0))
         self.nref = float(config_parse.get('normalization', 'nref', fallback=1))
         self.tref = float(config_parse.get('normalization', 'tref', fallback=1))
+        self.omega = float(config_parse.get('normalization', 'omega', fallback=0))
+        self.dpsi_da = float(config_parse.get('normalization', 'dpsi_da', 
+                                              fallback=0))
 
         #####################
         # Analysis Namelist #
@@ -443,6 +477,9 @@ class Simulation(object):
         self.zero_zf_scales_bool = config_parse.getboolean('analysis',
                                    'zero_zf_scales', fallback=False)
 
+        self.lab_frame = config_parse.getboolean('analysis',
+                                   'lab_frame', fallback=False)
+
         self.spec_idx = str(config_parse['analysis']['species_index'])
         if self.spec_idx == "None":
             self.spec_idx = None
@@ -465,11 +502,11 @@ class Simulation(object):
         self.perp_guess = self.perp_guess[1:-1].split(',')
         self.perp_guess = [float(s) for s in self.perp_guess]
         if len(self.perp_guess) == 4:
-            self.perp_guess = self.perp_guess * np.array([self.rhoref, self.rhoref,
-                                                 1/self.rhoref, 1/self.rhoref])
+            self.perp_guess = self.perp_guess * np.array([self.rho_ref, self.rho_ref,
+                                                 1/self.rho_ref, 1/self.rho_ref])
         elif len(self.perp_guess) == 3:
-            self.perp_guess = self.perp_guess * np.array([self.rhoref, self.rhoref,
-                                                 1/self.rhoref])
+            self.perp_guess = self.perp_guess * np.array([self.rho_ref, self.rho_ref,
+                                                 1/self.rho_ref])
         self.perp_guess = list(self.perp_guess)
 
         self.npeaks_fit = int(config_parse.get('analysis',
@@ -527,9 +564,14 @@ class Simulation(object):
                raise ValueError('+/- perp_fit_length outside of dy array.')
 
         if self.time_slice%2 != 1:
-            warnings.warn('time_slice should be odd, reducing from by '
-                                 'one...')
+            warnings.warn('time_slice should be odd, reducing by one...')
             self.time_slice -= 1
+
+        if self.lab_frame and self.omega == 0:
+            warnings.warn('Changing to lab frame but omega = 0 (default).')
+
+        if self.lab_frame and self.dpsi_da == 0:
+            warnings.warn('Changing to lab frame but dpsi_da = 0 (default).')
 
     def read_netcdf(self):
         """
@@ -595,11 +637,10 @@ class Simulation(object):
         logging.info('Started interpolating onto a regular time grid...')
 
         t_reg = np.linspace(min(self.t), max(self.t), self.nt)
-        for i in range(len(self.kx)):
-            for j in range(len(self.ky)):
-                for k in range(2):
-                    f = interp.interp1d(self.t, self.field[:, i, j, k], axis=0)
-                    self.field[:, i, j, k] = f(t_reg)
+        for i in range(self.nkx):
+            for j in range(self.nky):
+                f = interp.interp1d(self.t, self.field[:, i, j], axis=0)
+                self.field[:, i, j] = f(t_reg)
         self.t = t_reg
 
         logging.info('Finished interpolating onto a regular time grid.')
@@ -611,17 +652,39 @@ class Simulation(object):
         The BES is approximately 160x80mm(rad x pol), so we would set kx < 0.25
         and ky < 0.5 to zero, since k = 2 pi / L.
         """
-        for ikx in range(len(self.kx)):
-            for iky in range(len(self.ky)):
+        for ikx in range(self.nkx):
+            for iky in range(self.nky):
                 # Roughly the size of BES (160x80mm)
                 if abs(self.kx[ikx]) < 0.25 and self.ky[iky] < 0.5:
-                    self.field[:,ikx,iky,:] = 0.0
+                    self.field[:,ikx,iky] = 0.0
 
     def zero_zf_scales(self):
         """
         Sets zonal flow (ky = 0) modes to zero.
         """
-        self.field[:,:,0,:] = 0.0
+        self.field[:,:,0] = 0.0
+
+    def to_lab_frame(self):
+        """
+        Transforms from the rotating frame to the lab frame.
+
+        Notes
+        -----
+
+        The important thing here is that ky is NOT the toroidal wavenumber *n0*. 
+        It is related to n0 by [1]_:
+
+        ky_gs2 = n0*(rho_ref/a_min)*dpsi_da
+
+        .. [1] C. M. Roach, "Equilibrium flow shear implementation in GS2",
+               http://gyrokinetics.sourceforge.net/wiki/index.php/Documents,
+               http://svn.code.sf.net/p/gyrokinetics/code/wikifiles/CMR/ExB_GS2.pdf
+        """
+        n0 = int(self.ky[1]*(self.amin/self.rho_ref)*self.dpsi_da)
+        for ix in range(self.nkx):
+            for iy in range(self.nky):
+                self.field[:,ix,iy] = self.field[:,ix,iy]*np.exp(-1j * n0 * iy * \
+                                                          self.omega * self.t)
 
     def field_to_complex(self):
         """
@@ -738,9 +801,9 @@ class Simulation(object):
             self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
         else:
             self.dx = np.linspace(-np.pi/self.kx[1], np.pi/self.kx[1],
-                                 self.nx)*self.rhoref
+                                 self.nx)*self.rho_ref
             self.dy = np.linspace(-np.pi/self.ky[1], np.pi/self.ky[1],
-                                 self.ny)*self.rhoref*np.tan(self.pitch_angle)
+                                 self.ny)*self.rho_ref*np.tan(self.pitch_angle)
             self.fit_dx = self.dx[int(self.nx/2) - self.perp_fit_length + 1 :
                           int(self.nx/2) + self.perp_fit_length]
             self.fit_dy = self.dy[int(self.ny/2) - self.perp_fit_length + 1 :
