@@ -103,7 +103,7 @@ class Simulation(object):
          = 20.
     perp_guess : array_like
         Initial guess for perpendicular correlation function fitting. Of the
-        form [lx, ly, kx, ky] all in normalized rhoref units.
+        form [lx, ly, kx, ky] all in normalized rho_ref units.
     time_guess : int
         Initial guess for the correlation time in normalized GS2 units.
     box_size : array_like, [0.2,0.2]
@@ -126,7 +126,7 @@ class Simulation(object):
         Minor radius of device in *m*.
     vth : float
         Thermal velocity of the reference species in *m/s*
-    rhoref : float
+    rho_ref : float
         Larmor radius of the reference species in *m*.
     rho_star : float
         The expansion parameter defined as rho_ref/amin.
@@ -142,6 +142,8 @@ class Simulation(object):
         Temperature of the reference species in eV.
     omega : float, 0
         Angular frequency of the plasma at the radial location of the flux tube.
+    dpsi_da : float, 0
+        Relationship between psi_n and rho_miller (a_n = diameter/diameter LCFS)
     seaborn_context : str
         Context for plot output: paper, notebook, talk, poster. See:
         http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
@@ -267,7 +269,7 @@ class Simulation(object):
         # Set plot options
         sns.set_context(self.seaborn_context)
 
-        self.rho_star = self.rhoref/self.amin
+        self.rho_star = self.rho_ref/self.amin
 
         self.read_netcdf()
 
@@ -284,8 +286,8 @@ class Simulation(object):
         self.nt_slices = int(self.nt/self.time_slice)
         self.t = self.t*self.amin/self.vth
         self.time_guess = self.time_guess*self.amin/self.vth
-        self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rhoref
-        self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rhoref \
+        self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rho_ref
+        self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rho_ref \
                              *np.tan(self.pitch_angle)
 
         self.field_to_complex()
@@ -350,7 +352,7 @@ class Simulation(object):
             fit.
         perp_guess : array_like, [1,1,1,1]
             Initial guess for perpendicular correlation function fitting. Of the
-            form [lx, ly, kx, ky] all in normalized rhoref units.
+            form [lx, ly, kx, ky] all in normalized rho_ref units.
         time_guess : int, 10
             Initial guess for the correlation time in normalized GS2 units.
         box_size : array_like, [0.2,0.2]
@@ -374,7 +376,7 @@ class Simulation(object):
             Minor radius of device in *m*.
         vth : float
             Thermal velocity of the reference species in *m/s*
-        rhoref : float
+        rho_ref : float
             Larmor radius of the reference species in *m*.
         pitch_angle : float
             Pitch angle of the magnetic field lines in *rad*.
@@ -388,6 +390,8 @@ class Simulation(object):
             Temperature of the reference species in eV.
         omega : float, 0
             Angular frequency of the plasma at the radial location of the flux tube.
+        dpsi_da : float, 0
+            Relationship between psi_n and rho_miller (a_n = diameter/diameter LCFS)
         seaborn_context : str, 'talk'
             Context for plot output: paper, notebook, talk, poster. See:
             http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
@@ -414,12 +418,14 @@ class Simulation(object):
 
         self.amin = float(config_parse['normalization']['a_minor'])
         self.vth = float(config_parse['normalization']['vth_ref'])
-        self.rhoref = float(config_parse['normalization']['rho_ref'])
+        self.rho_ref = float(config_parse['normalization']['rho_ref'])
         self.pitch_angle = float(config_parse['normalization']['pitch_angle'])
         self.rmaj = float(config_parse.get('normalization', 'rmaj', fallback=0))
         self.nref = float(config_parse.get('normalization', 'nref', fallback=1))
         self.tref = float(config_parse.get('normalization', 'tref', fallback=1))
         self.omega = float(config_parse.get('normalization', 'omega', fallback=0))
+        self.dpsi_da = float(config_parse.get('normalization', 'dpsi_da', 
+                                              fallback=0))
 
         #####################
         # Analysis Namelist #
@@ -496,11 +502,11 @@ class Simulation(object):
         self.perp_guess = self.perp_guess[1:-1].split(',')
         self.perp_guess = [float(s) for s in self.perp_guess]
         if len(self.perp_guess) == 4:
-            self.perp_guess = self.perp_guess * np.array([self.rhoref, self.rhoref,
-                                                 1/self.rhoref, 1/self.rhoref])
+            self.perp_guess = self.perp_guess * np.array([self.rho_ref, self.rho_ref,
+                                                 1/self.rho_ref, 1/self.rho_ref])
         elif len(self.perp_guess) == 3:
-            self.perp_guess = self.perp_guess * np.array([self.rhoref, self.rhoref,
-                                                 1/self.rhoref])
+            self.perp_guess = self.perp_guess * np.array([self.rho_ref, self.rho_ref,
+                                                 1/self.rho_ref])
         self.perp_guess = list(self.perp_guess)
 
         self.npeaks_fit = int(config_parse.get('analysis',
@@ -557,9 +563,14 @@ class Simulation(object):
                raise ValueError('+/- perp_fit_length outside of dy array.')
 
         if self.time_slice%2 != 1:
-            warnings.warn('time_slice should be odd, reducing from by '
-                                 'one...')
+            warnings.warn('time_slice should be odd, reducing by one...')
             self.time_slice -= 1
+
+        if self.lab_frame and self.omega == 0:
+            warnings.warn('Changing to lab frame but omega = 0 (default).')
+
+        if self.lab_frame and self.dpsi_da == 0:
+            warnings.warn('Changing to lab frame but dpsi_da = 0 (default).')
 
     def read_netcdf(self):
         """
@@ -655,10 +666,23 @@ class Simulation(object):
     def to_lab_frame(self):
         """
         Transforms from the rotating frame to the lab frame.
+
+        Notes
+        -----
+
+        The important thing here is that ky is NOT the toroidal wavenumber *n0*. 
+        It is related to n0 by [1]_:
+
+        ky_gs2 = n0*(rho_ref/a_min)*dpsi_da
+
+        .. [1] C. M. Roach, "Equilibrium flow shear implementation in GS2",
+               http://gyrokinetics.sourceforge.net/wiki/index.php/Documents,
+               http://svn.code.sf.net/p/gyrokinetics/code/wikifiles/CMR/ExB_GS2.pdf
         """
+        n0 = int(self.ky[1]*(self.amin/self.rho_ref)*self.dpsi_da)
         for ix in range(self.nkx):
             for iy in range(self.nky):
-                self.field[:,ix,iy] = self.field[:,ix,iy]*np.exp(-1j * iy * \
+                self.field[:,ix,iy] = self.field[:,ix,iy]*np.exp(-1j * n0 * iy * \
                                                           self.omega * self.t)
 
     def field_to_complex(self):
@@ -776,9 +800,9 @@ class Simulation(object):
             self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
         else:
             self.dx = np.linspace(-np.pi/self.kx[1], np.pi/self.kx[1],
-                                 self.nx)*self.rhoref
+                                 self.nx)*self.rho_ref
             self.dy = np.linspace(-np.pi/self.ky[1], np.pi/self.ky[1],
-                                 self.ny)*self.rhoref*np.tan(self.pitch_angle)
+                                 self.ny)*self.rho_ref*np.tan(self.pitch_angle)
             self.fit_dx = self.dx[int(self.nx/2) - self.perp_fit_length + 1 :
                           int(self.nx/2) + self.perp_fit_length]
             self.fit_dy = self.dy[int(self.ny/2) - self.perp_fit_length + 1 :

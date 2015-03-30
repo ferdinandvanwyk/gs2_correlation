@@ -52,12 +52,13 @@ class TestClass(object):
 
         assert type(run.amin) == float
         assert type(run.vth) == float
-        assert type(run.rhoref) == float
+        assert type(run.rho_ref) == float
         assert type(run.pitch_angle) == float
         assert type(run.rmaj) == float
         assert type(run.nref) == float
         assert type(run.tref) == float
         assert type(run.omega) == float
+        assert type(run.dpsi_da) == float
 
         assert type(run.seaborn_context) == str
         assert type(run.film_fps) == int
