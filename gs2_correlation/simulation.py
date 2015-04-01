@@ -683,7 +683,7 @@ class Simulation(object):
         n0 = int(self.ky[1]*(self.amin/self.rho_ref)*self.dpsi_da)
         for ix in range(self.nkx):
             for iy in range(self.nky):
-                self.field[:,ix,iy] = self.field[:,ix,iy]*np.exp(-1j * n0 * iy * \
+                self.field[:,ix,iy] = self.field[:,ix,iy]*np.exp(1j * n0 * iy * \
                                                           self.omega * self.t)
 
     def field_to_complex(self):
