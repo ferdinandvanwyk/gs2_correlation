@@ -113,18 +113,18 @@ class TestClass(object):
         assert len(run.fit_dx)%2 == 1
         assert len(run.fit_dy)%2 == 1
 
-    def test_perp_analysis(self, run):
-        run.perp_analysis()
-        assert run.perp_fit_params.shape == (5,4)
-        assert ('perp_fit_params.csv' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('time_avg_correlation.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('perp_corr_fit.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('perp_fit_comparison.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('perp_fit_summary.txt' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-
     def test_perp_analysis_3(self, run):
         run.perp_guess = [5,1,0.1]
+        run.perp_analysis()
+        assert run.perp_fit_params.shape == (5,4)
+        assert ('perp_fit_params.csv' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
+        assert ('time_avg_correlation.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
+        assert ('perp_corr_fit.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
+        assert ('perp_fit_comparison.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
+        assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
+        assert ('perp_fit_summary.txt' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
+
+    def test_perp_analysis(self, run):
         run.perp_analysis()
         assert run.perp_fit_params.shape == (5,4)
         assert ('perp_fit_params.csv' in os.listdir('test/test_run/v/id_1/analysis/perp'))
@@ -147,6 +147,14 @@ class TestClass(object):
         run.field_normalize_perp()
         run.calculate_perp_corr()
         assert run.perp_corr.shape == (run.nt, run.nx, run.ny)
+
+    def test_fluctuation_level(self, run):
+        run.field_real_space = np.random.randint(0,10,size=[5,5,5])
+        run.perp_dir = 'perp'
+        run.fluctuation_levels()
+        assert np.abs(run.fluc_level - np.mean(run.field_real_space)) < 1e-5
+        assert np.abs(run.fluc_level_std - np.std(run.field_real_space)) < 1e-5
+        assert ('fluctuation_summary.txt' in os.listdir('test/test_run/v/id_1/analysis/perp'))
     
     def test_time_analysis(self, run):
         run.time_analysis()

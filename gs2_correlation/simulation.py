@@ -224,6 +224,10 @@ class Simulation(object):
         Radial coordinate *x*, centered at the major radius *rmaj*.
     z : array_like
         Poloidal coordinate *z* centered at 0.
+    fluc_level : float
+        Mean fluctuation level for all space and time.
+    fluc_level_std : float
+        Standard deviation of the mean fluctuation level.
     """
 
     def __init__(self, config_file):
@@ -824,6 +828,7 @@ class Simulation(object):
           slice with a tilted Gaussian using the perp_fit function.
         * The fit parameters for the previous time slice is used as the initial
           guess for the next time slice.
+        * Also writes information on the mean fluctuation levels
         """
 
         logging.info('Start perpendicular correlation analysis...')
@@ -849,6 +854,8 @@ class Simulation(object):
 
         self.perp_plots()
         self.perp_analysis_summary()
+
+        self.fluctuation_levels()
 
         logging.info('Finished perpendicular correlation analysis.')
 
@@ -1069,6 +1076,23 @@ class Simulation(object):
         summary_file.close()
 
         logging.info("Finished writing perp_analysis summary...")
+
+    def fluctuation_levels(self):
+        """
+        Caculates mean fluctuation level and standard deviation and writes 
+        results.
+        """
+        logging.info("Calculating fluctuation level...")
+
+        self.fluc_level = np.mean(np.abs(self.field_real_space))
+        self.fluc_level_std = np.std(np.abs(self.field_real_space))
+
+        summary_file = open(self.out_dir + '/'+self.perp_dir+
+                            '/fluctuation_summary.txt', 'w')
+        summary_file.write('dn/n = ' + str(self.fluc_level) + "\n")
+        summary_file.write('std(lx) = ' + str(self.fluc_level_std) + "\n")
+
+        logging.info("Finished calculating fluctuation level.")
 
     def time_analysis(self):
         """
