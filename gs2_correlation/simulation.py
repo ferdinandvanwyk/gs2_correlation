@@ -289,7 +289,6 @@ class Simulation(object):
 
         self.nt_slices = int(self.nt/self.time_slice)
         self.t = self.t*self.amin/self.vth
-        self.time_guess = self.time_guess*self.amin/self.vth
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rho_ref
         self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rho_ref \
                              *np.tan(self.pitch_angle)
