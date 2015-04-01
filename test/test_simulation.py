@@ -85,7 +85,8 @@ class TestClass(object):
 
     def test_to_lab_frame(self, run):
         run.field = np.ones([51,5,6])
-        assert np.abs(run.field[5,0,3] - np.exp(-1j*3*run.omega*run.t[5])) < 1e-5
+        run.to_lab_frame()
+        assert np.abs(run.field[5,0,3] - np.real(np.exp(1j*3*10*run.omega*run.t[5]))) < 1e-5
 
     def test_field_to_complex(self, run):
         assert np.iscomplexobj(run.field) == True 
