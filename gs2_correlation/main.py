@@ -58,7 +58,6 @@ if run.analysis == 'all':
     run.perp_analysis()
     run.time_analysis()
     run.write_field()
-    run.make_film()
 elif run.analysis == 'perp':
     run.perp_analysis()
 elif run.analysis == 'time':
