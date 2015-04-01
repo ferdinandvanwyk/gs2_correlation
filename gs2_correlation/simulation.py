@@ -1085,9 +1085,9 @@ class Simulation(object):
         logging.info("Calculating fluctuation level...")
 
         self.fluc_level = np.mean(np.abs(self.field_real_space))
-        self.fluc_level_std = np.std(np.abs(self.field_real_space))
+        self.fluc_level_std = np.std(self.field_real_space)
 
-        summary_file = open(self.out_dir + '/'+self.perp_dir+
+        summary_file = open(self.out_dir + '/'+ self.perp_dir +
                             '/fluctuation_summary.txt', 'w')
         summary_file.write('dn/n = ' + str(self.fluc_level) + "\n")
         summary_file.write('std(lx) = ' + str(self.fluc_level_std) + "\n")
