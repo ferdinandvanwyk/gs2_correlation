@@ -46,13 +46,14 @@ from scipy.io import netcdf
 import scipy.interpolate as interp
 import scipy.optimize as opt
 import scipy.signal as sig
-import matplotlib
-matplotlib.rcParams['axes.unicode_minus']=False
+import matplotlib as mpl
 import matplotlib.pyplot as plt
-plt.rcParams.update({'figure.autolayout': True})
 import seaborn as sns
 from PIL import Image
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+plt.rcParams.update({'figure.autolayout': True})
+mpl.rcParams['axes.unicode_minus']=False
+
 
 # Local
 import gs2_correlation.fitting_functions as fit
@@ -1345,6 +1346,8 @@ class Simulation(object):
             
         mid_idx = int(self.ny/2)
         plt.clf()
+        sns.set_style('whitegrid', {'legend.frameon': True})
+        fig, ax = plt.subplots(1, 1)                                                    
         plt.plot(self.dt*1e6, self.time_corr[it,:,ix,mid_idx:mid_idx+self.npeaks_fit])
         plt.hold(True)
         plt.plot(self.dt[max_index[ix,:]]*1e6, peaks[ix,:], 'o', color='#7A1919')
@@ -1368,6 +1371,13 @@ class Simulation(object):
                      label=r'$\exp[- (\Delta t_{peak} / \tau_c)^2] '
                             '\cos(\omega \Delta t) $')
             plt.legend()
+
+        ax.xaxis.set_minor_locator(mpl.ticker.MultipleLocator( 
+                               (plt.xticks()[0][1]-plt.xticks()[0][0]) / 2.0 ))
+        ax.yaxis.set_minor_locator(mpl.ticker.MultipleLocator( 
+                               (plt.yticks()[0][1]-plt.yticks()[0][0]) / 2.0 ))
+        ax.grid(True, 'major', color='0.92', linestyle='-', linewidth=1.4)              
+        ax.grid(True, 'minor', color='0.92', linestyle='-', linewidth=0.7)
 
         plt.xlabel(r'$\Delta t (\mu s)})$')
         plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
