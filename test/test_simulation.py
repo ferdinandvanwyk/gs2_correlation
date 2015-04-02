@@ -152,8 +152,8 @@ class TestClass(object):
         run.field_real_space = np.random.randint(0,10,size=[5,5,5])
         run.perp_dir = 'perp'
         run.fluctuation_levels()
-        assert np.abs(run.fluc_level - np.mean(run.field_real_space)) < 1e-5
-        assert np.abs(run.fluc_level_std - np.std(run.field_real_space)) < 1e-5
+        assert np.abs(run.fluc_level - np.mean(np.sqrt(np.mean(run.field_real_space**2, axis=0)))) < 1e-5
+        assert np.abs(run.fluc_level_std - np.std(np.sqrt(np.mean(run.field_real_space**2, axis=0)))) < 1e-5
         assert ('fluctuation_summary.txt' in os.listdir('test/test_run/v/id_1/analysis/perp'))
     
     def test_time_analysis(self, run):

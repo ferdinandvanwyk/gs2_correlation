@@ -608,6 +608,8 @@ class Simulation(object):
         self.kx = np.array(self.ncfile.variables['kx'][:])
         self.ky = np.array(self.ncfile.variables['ky'][:])
 
+        self.ncfile.close()
+
         logging.info('Finished reading from NetCDf file.')
 
     def fourier_correction(self):
@@ -1080,16 +1082,31 @@ class Simulation(object):
         """
         Caculates mean fluctuation level and standard deviation and writes 
         results.
+
+        Notes
+        -----
+
+        More precisely the following is calculated
+
+        * At each grid point the RMS value is calculated in time.
+        * The mean and std of the fluctuation levels are then the mean and 
+          std of these RMS values.
+
+        This is done since the standard deviation of a quantity with a mean of
+        zero will be the RMS value so a straighforward mean and std across the
+        whole box cannot be done.
         """
         logging.info("Calculating fluctuation level...")
 
-        self.fluc_level = np.mean(np.abs(self.field_real_space))
-        self.fluc_level_std = np.std(self.field_real_space)
+        rms = np.sqrt(np.mean(self.field_real_space**2, axis=0))
+    
+        self.fluc_level = np.mean(rms)
+        self.fluc_level_std = np.std(rms)
 
         summary_file = open(self.out_dir + '/'+ self.perp_dir +
                             '/fluctuation_summary.txt', 'w')
         summary_file.write('dn/n = ' + str(self.fluc_level) + "\n")
-        summary_file.write('std(lx) = ' + str(self.fluc_level_std) + "\n")
+        summary_file.write('std(dn/n) = ' + str(self.fluc_level_std) + "\n")
 
         logging.info("Finished calculating fluctuation level.")
 
