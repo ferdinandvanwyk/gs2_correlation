@@ -57,6 +57,7 @@ mpl.rcParams['axes.unicode_minus']=False
 
 # Local
 import gs2_correlation.fitting_functions as fit
+import gs2_correlation.plot_style as plot_style
 
 class Simulation(object):
     """
@@ -985,7 +986,7 @@ class Simulation(object):
         """
         logging.info("Writing perp_analysis plots...")
 
-        sns.set_style('darkgrid', {'axes.axisbelow':False, 'legend.frameon': True})
+        plot_style.dark()
 
         if self.domain == 'full':
             corr_fn = self.perp_corr[:, int(self.nx/2) - self.perp_fit_length + 1 :
@@ -998,17 +999,21 @@ class Simulation(object):
         avg_corr = np.mean(corr_fn, axis=0) # Average over time
 
         plt.clf()
+        fig, ax = plt.subplots(1, 1)
         plt.contourf(self.fit_dx, self.fit_dy, np.transpose(avg_corr), 11,
                      levels=np.linspace(-1, 1, 11), cmap='coolwarm')
         plt.colorbar(ticks=np.linspace(-1, 1, 11))
         plt.xlabel(r'$\Delta x (m)$')
         plt.ylabel(r'$\Delta y (m)$')
+        plot_style.minor_grid(ax)
+        plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.perp_dir+'/time_avg_correlation.pdf')
 
         # Tilted Gaussian using time-averaged fitting parameters
         data_fitted = fit.tilted_gauss((self.fit_dx_mesh, self.fit_dy_mesh),
                                         *np.mean(self.perp_fit_params, axis=0))
         plt.clf()
+        fig, ax = plt.subplots(1, 1)
         plt.contourf(self.fit_dx, self.fit_dy,
                      np.transpose(data_fitted.reshape(len(self.fit_dx),
                                                       len(self.fit_dy))),
@@ -1017,10 +1022,13 @@ class Simulation(object):
         plt.colorbar(ticks=np.linspace(-1, 1, 11))
         plt.xlabel(r'$\Delta x (m)$')
         plt.ylabel(r'$\Delta y (m)$')
+        plot_style.minor_grid(ax)
+        plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_corr_fit.pdf')
 
         # Avg correlation and fitted function overlayed
         plt.clf()
+        fig, ax = plt.subplots(1, 1)
         plt.contourf(self.fit_dx, self.fit_dy, np.transpose(avg_corr), 10,
                      levels=np.linspace(-1, 1, 11), cmap='coolwarm')
         plt.colorbar(ticks=np.linspace(-1, 1, 11))
@@ -1030,6 +1038,8 @@ class Simulation(object):
                                   11, levels=np.linspace(-1, 1, 11), colors='k')
         plt.xlabel(r'$\Delta x (m)$')
         plt.ylabel(r'$\Delta y (m)$')
+        plot_style.minor_grid(ax)
+        plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_comparison.pdf')
 
         logging.info("Finished writing perp_analysis plots...")
@@ -1045,12 +1055,16 @@ class Simulation(object):
         logging.info("Writing perp_analysis summary...")
 
         plt.clf()
+        plot_style.white()
+        fig, ax = plt.subplots(1, 1)
         plt.plot(np.abs(self.perp_fit_params[:,0]), label=r'$l_x (m)$')
         plt.plot(np.abs(self.perp_fit_params[:,1]), label=r'$l_y (m)$')
         plt.plot(np.abs(self.perp_fit_params[:,2]), label=r'$|k_x| (m^{-1})$')
         plt.plot(np.abs(self.perp_fit_params[:,3]), label=r'$|k_y| (m^{-1})$')
         plt.legend()
         plt.xlabel('Time Window')
+        plot_style.minor_grid(ax)
+        plot_style.ticks_bottom_left(ax)
         plt.yscale('log')
         plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_params_vs_time_slice.pdf')
 
@@ -1342,12 +1356,11 @@ class Simulation(object):
             Type of fitting function to plot. One of: 'growing'/'decaying'/
             'oscillating'
         """
-        sns.set_style('darkgrid', {'axes.axisbelow':True, 'legend.frameon': True})
+        plot_style.white()
             
         mid_idx = int(self.ny/2)
         plt.clf()
-        sns.set_style('whitegrid', {'legend.frameon': True})
-        fig, ax = plt.subplots(1, 1)                                                    
+        fig, ax = plt.subplots(1, 1)
         plt.plot(self.dt*1e6, self.time_corr[it,:,ix,mid_idx:mid_idx+self.npeaks_fit])
         plt.hold(True)
         plt.plot(self.dt[max_index[ix,:]]*1e6, peaks[ix,:], 'o', color='#7A1919')
@@ -1372,17 +1385,13 @@ class Simulation(object):
                             '\cos(\omega \Delta t) $')
             plt.legend()
 
-        ax.xaxis.set_minor_locator(mpl.ticker.MultipleLocator( 
-                               (plt.xticks()[0][1]-plt.xticks()[0][0]) / 2.0 ))
-        ax.yaxis.set_minor_locator(mpl.ticker.MultipleLocator( 
-                               (plt.yticks()[0][1]-plt.yticks()[0][0]) / 2.0 ))
-        ax.grid(True, 'major', color='0.92', linestyle='-', linewidth=1.4)              
-        ax.grid(True, 'minor', color='0.92', linestyle='-', linewidth=0.7)
-
         plt.xlabel(r'$\Delta t (\mu s)})$')
         plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
+        plot_style.minor_grid(ax)
+        plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/time/corr_fns/time_fit_it_' + str(it) + 
                     '_ix_' + str(ix) + '.pdf')
+        plt.close(fig)
 
     def time_analysis_summary(self):
         """
@@ -1401,11 +1410,14 @@ class Simulation(object):
 
         # Plot corr_time as a function of radius, average over time window
         plt.clf()
+        fig, ax = plt.subplots(1, 1)
         t_error = np.nanstd(self.corr_time*1e6, axis=0)
         plt.errorbar(self.x, np.nanmean(self.corr_time*1e6, axis=0), yerr=t_error)
         plt.ylim(ymin=0)
         plt.xlabel("Radius (m)")
         plt.ylabel(r'Correlations Time $\tau_c$ ($\mu$ s)')
+        plot_style.minor_grid(ax)
+        plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/time/corr_time.pdf')
 
         summary_file = open(self.out_dir + '/time/time_fit_summary.txt', 'w')
@@ -1480,6 +1492,8 @@ class Simulation(object):
         """
         logging.info("Starting make_film...")
 
+        plot_style.white()
+
         if 'film' not in os.listdir(self.out_dir):
             os.system("mkdir " + self.out_dir + '/film')
         if 'film_frames' not in os.listdir(self.out_dir+'/film'):
@@ -1542,6 +1556,7 @@ class Simulation(object):
         cax = divider.append_axes("right", size="5%", pad=0.05)
 
         plt.colorbar(im, cax=cax, label=r'$\delta n (\%)$')
+        plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + "/film/film_frames/" + self.in_field + 
                     "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=110,
                     bbox_inches='tight')
