@@ -168,7 +168,7 @@ class Simulation(object):
         since fitting finds lx, ly, kx, ky.
     time_corr : array_like
         Correlation function used to calculate the correlation function. It is
-        of size (nt_slices, 2*time_slice-1, nx, 2*ny-1), owing to the 2D 
+        of size (nt_slices, time_slice, nx, ny), owing to the 2D 
         correlation calculated in the t and y directions.
     corr_time : array_like
         Parameters obtained from time fitting procedure. Of size (nt_slices, nx).
@@ -291,7 +291,6 @@ class Simulation(object):
 
         self.config_checks()
 
-        self.nt_slices = int(self.nt/self.time_slice)
         self.t = self.t*self.amin/self.vth
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rho_ref
         self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rho_ref \
@@ -302,6 +301,7 @@ class Simulation(object):
 
         if self.time_interpolate_bool or self.lab_frame:
             self.time_interpolate()
+        self.nt_slices = int(self.nt/self.time_slice)
 
         if self.zero_bes_scales_bool:
             self.zero_bes_scales()
