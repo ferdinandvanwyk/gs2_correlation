@@ -1555,7 +1555,7 @@ class Simulation(object):
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
 
-        plt.colorbar(im, cax=cax, label=r'$\delta n (\%)$')
+        plt.colorbar(im, cax=cax, label=r'$\delta n / n (-)$')
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + "/film/film_frames/" + self.in_field + 
                     "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=110,
