@@ -83,9 +83,11 @@ class Simulation(object):
         'write_field'.
     out_dir : str, 'analysis'
         Output directory for analysis.
-    interpolate_bool : bool, True
+    time_interpolate_bool : bool, True
         Interpolate in time onto a regular grid. Specify as interpolate in 
         configuration file.
+    time_interp_fac : int, 1
+        Sets the time interpolation multiple.
     zero_bes_scales_bool : bool, False
         Zero out scales which are larger than the BES. Specify as 
         zero_bes_scales in configuration file.
@@ -298,8 +300,8 @@ class Simulation(object):
         self.field_to_complex()
         self.fourier_correction()
 
-        if self.interpolate_bool:
-            self.interpolate()
+        if self.time_interpolate_bool or self.lab_frame:
+            self.time_interpolate()
 
         if self.zero_bes_scales_bool:
             self.zero_bes_scales()
@@ -338,8 +340,10 @@ class Simulation(object):
             'write_field', 'film'.
         out_dir : str, 'analysis'
             Output directory for analysis.
-        interpolate : bool, True
+        time_interpolate : bool, True
             Interpolate in time onto a regular grid.
+        time_interp_fac : int, 1
+            Sets the time interpolation multiple.
         zero_bes_scales : bool, False
             Zero out scales which are larger than the BES.
         zero_zf_scales : bool, False
@@ -473,8 +477,13 @@ class Simulation(object):
             raise ValueError('Analysis must be one of (perp, time, '
                              'write_field, make_film)')
 
-        self.interpolate_bool = config_parse.getboolean('analysis', 'interpolate',
-                                             fallback=True)
+        self.time_interpolate_bool = config_parse.getboolean('analysis', 
+                                                             'time_interpolate',
+                                                             fallback=True)
+
+        self.time_interp_fac = int(config_parse.get('analysis', 
+                                                    'time_interp_fac',
+                                                    fallback=1))
 
         self.zero_bes_scales_bool = config_parse.getboolean('analysis',
                                    'zero_bes_scales', fallback=False)
@@ -578,6 +587,10 @@ class Simulation(object):
         if self.lab_frame and self.dpsi_da == 0:
             warnings.warn('Changing to lab frame but dpsi_da = 0 (default).')
 
+        if self.lab_frame and self.time_interp_fac == 1:
+            warnings.warn('Transforming to lab frame, but time_interp_fac = 1. '
+                          'This is probably not high enough. Recommend 4.')
+
     def read_netcdf(self):
         """
         Read array from NetCDF file.
@@ -633,22 +646,27 @@ class Simulation(object):
         
         self.field[:,:,1:] = self.field[:,:,1:]/2
 
-    def interpolate(self):
+    def time_interpolate(self):
         """
         Interpolates in time onto a regular grid
 
-        Depending on whether the user specified to interpolate, the time grid
+        Depending on whether the user specified time_interpolate, the time grid
         is interpolated into a regular grid. This is required in order to do
-        FFTs in time. Interpolation is done by default if not specified.
+        FFTs in time. Interpolation is done by default if not specified. 
+        time_interp_fac sets the multiple of interpolation.
         """
         logging.info('Started interpolating onto a regular time grid...')
 
-        t_reg = np.linspace(min(self.t), max(self.t), self.nt)
+        t_reg = np.linspace(min(self.t), max(self.t), self.time_interp_fac*self.nt)
+        tmp_field = np.empty([self.time_interp_fac*self.nt, self.nkx, self.nky], 
+                             dtype=complex)
         for i in range(self.nkx):
             for j in range(self.nky):
                 f = interp.interp1d(self.t, self.field[:, i, j], axis=0)
-                self.field[:, i, j] = f(t_reg)
+                tmp_field[:, i, j] = f(t_reg)
         self.t = t_reg
+        self.nt = len(self.t)
+        self.field = tmp_field
 
         logging.info('Finished interpolating onto a regular time grid.')
 

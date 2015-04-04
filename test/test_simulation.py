@@ -38,7 +38,8 @@ class TestClass(object):
         assert type(run.time_slice) == int
         assert type(run.perp_fit_length) == int
         assert type(run.perp_guess) == list
-        assert type(run.interpolate_bool) == bool
+        assert type(run.time_interpolate_bool) == bool
+        assert type(run.time_interp_fac) == int
         assert type(run.zero_bes_scales_bool) == bool
         assert type(run.zero_zf_scales_bool) == bool
         assert type(run.lab_frame) == bool
@@ -72,11 +73,18 @@ class TestClass(object):
         arr_shapes = (run.nt, run.nkx, run.nky)
         assert field_shape == arr_shapes
     
-    def test_interpolate(self, run):
+    def test_time_interpolate(self, run):
         field_shape = run.field.shape
         arr_shapes = (run.nt, run.nkx, run.nky)
         assert field_shape == arr_shapes
         
+    def test_time_interpolate_4(self, run):
+        run.time_interp_fac = 4
+        arr_shapes = (run.time_interp_fac*run.nt, run.nkx, run.nky)
+        run.time_interpolate()
+        field_shape = run.field.shape
+        assert field_shape == arr_shapes
+
     def test_zero_bes_scales(self, run):
         assert (run.field[:, 1, 1] == 0).all()
 
