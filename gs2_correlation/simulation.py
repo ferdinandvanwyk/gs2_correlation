@@ -591,6 +591,10 @@ class Simulation(object):
             warnings.warn('Transforming to lab frame, but time_interp_fac = 1. '
                           'This is probably not high enough. Recommend 4.')
 
+        if not self.lab_frame and self.time_interp_fac > 1:
+            warnings.warn('Not transforming to lab frame, but time_interp_fac > 1. '
+                          'This is probably not needed.')
+
     def read_netcdf(self):
         """
         Read array from NetCDF file.
