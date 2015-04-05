@@ -1160,11 +1160,16 @@ class Simulation(object):
         """
         logging.info("Starting time_analysis...")
 
-        if 'time' not in os.listdir(self.out_dir):
-            os.system("mkdir " + self.out_dir + '/time')
-        if 'corr_fns' not in os.listdir(self.out_dir+'/time'):
-            os.system("mkdir " + self.out_dir + '/time/corr_fns')
-        os.system('rm ' + self.out_dir + '/time/corr_fns/*')
+        if self.lab_frame:
+            self.time_dir = 'time_lab_frame'
+        elif not self.lab_frame:
+            self.time_dir = 'time'
+
+        if self.time_dir not in os.listdir(self.out_dir):
+            os.system("mkdir " + self.out_dir + '/' + self.time_dir)
+        if 'corr_fns' not in os.listdir(self.out_dir+'/'+self.time_dir):
+            os.system("mkdir " + self.out_dir + '/'+self.time_dir+'/corr_fns')
+        os.system('rm ' + self.out_dir + '/'+self.time_dir+'/corr_fns/*')
 
         
         self.time_corr = np.empty([self.nt_slices, self.time_slice, self.nx,
@@ -1411,8 +1416,8 @@ class Simulation(object):
         plt.ylabel(r'$C_{\Delta y}(\Delta t)$')
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
-        plt.savefig(self.out_dir + '/time/corr_fns/time_fit_it_' + str(it) + 
-                    '_ix_' + str(ix) + '.pdf')
+        plt.savefig(self.out_dir + '/'+self.time_dir+'/corr_fns/time_fit_it_' +
+                    str(it) + '_ix_' + str(ix) + '.pdf')
         plt.close(fig)
 
     def time_analysis_summary(self):
@@ -1425,8 +1430,8 @@ class Simulation(object):
         """
         logging.info("Writing time_analysis summary...")
 
-        np.savetxt(self.out_dir + '/time/corr_time.csv', (self.corr_time),
-                   delimiter=',', fmt='%.4e')
+        np.savetxt(self.out_dir + '/'+self.time_dir+'/corr_time.csv', 
+                   (self.corr_time), delimiter=',', fmt='%.4e')
 
         self.corr_time = np.abs(self.corr_time)
 
@@ -1440,9 +1445,9 @@ class Simulation(object):
         plt.ylabel(r'Correlations Time $\tau_c$ ($\mu$ s)')
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
-        plt.savefig(self.out_dir + '/time/corr_time.pdf')
+        plt.savefig(self.out_dir + '/'+self.time_dir+'/corr_time.pdf')
 
-        summary_file = open(self.out_dir + '/time/time_fit_summary.txt', 'w')
+        summary_file = open(self.out_dir + '/'+self.time_dir+'/time_fit_summary.txt', 'w')
         summary_file.write('tau_c = ' + str(np.nanmean(self.corr_time)*1e6)
                            + " mu s\n")
         summary_file.write('std(tau_c) = ' + str(np.nanstd(self.corr_time)*1e6)

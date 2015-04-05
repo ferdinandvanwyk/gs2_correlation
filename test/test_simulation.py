@@ -165,6 +165,7 @@ class TestClass(object):
         assert ('fluctuation_summary.txt' in os.listdir('test/test_run/v/id_1/analysis/perp'))
     
     def test_time_analysis(self, run):
+        run.lab_frame = False
         run.time_analysis()
         assert ('corr_time.csv' in os.listdir('test/test_run/v/id_1/analysis/time'))
         assert ('corr_time.pdf' in os.listdir('test/test_run/v/id_1/analysis/time'))
@@ -174,6 +175,18 @@ class TestClass(object):
         assert ('corr_fns' in os.listdir('test/test_run/v/id_1/analysis/time'))
         assert ('time_fit_it_0_ix_0.pdf' in 
                 os.listdir('test/test_run/v/id_1/analysis/time/corr_fns'))
+
+    def test_time_analysis_lab_frame(self, run):
+        run.lab_frame = True
+        run.time_analysis()
+        assert ('corr_time.csv' in os.listdir('test/test_run/v/id_1/analysis/time_lab_frame'))
+        assert ('corr_time.pdf' in os.listdir('test/test_run/v/id_1/analysis/time_lab_frame'))
+        assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
+        assert run.time_corr.shape == (run.nt_slices, run.time_slice,
+                                       run.nx, run.ny)
+        assert ('corr_fns' in os.listdir('test/test_run/v/id_1/analysis/time_lab_frame'))
+        assert ('time_fit_it_0_ix_0.pdf' in 
+                os.listdir('test/test_run/v/id_1/analysis/time_lab_frame/corr_fns'))
 
     def test_field_normalize_time(self, run):
         run.field_normalize_time()
