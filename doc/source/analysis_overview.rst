@@ -130,6 +130,10 @@ Films of the field varying in time is done as follows:
 * Use avconv to combine png files into a film at a rate of *film_fps* frames
   per second.
 
+Given that films take a long time to make (especially with added interpolation)
+separate directories are used for the rotating and lab frames: film and 
+film_lab_frame, respectively.
+
 Lab Reference Frame
 -------------------
 
