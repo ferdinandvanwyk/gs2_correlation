@@ -1521,33 +1521,39 @@ class Simulation(object):
 
         plot_style.white()
 
-        if 'film' not in os.listdir(self.out_dir):
-            os.system("mkdir " + self.out_dir + '/film')
-        if 'film_frames' not in os.listdir(self.out_dir+'/film'):
-            os.system("mkdir " + self.out_dir + '/film/film_frames')
-        os.system("rm " + self.out_dir + "/film/film_frames/" + self.in_field + 
-                  "_spec_" + str(self.spec_idx) + "*.png")
+        if self.lab_frame:
+            self.film_dir = 'film_lab_frame'
+        elif not self.lab_frame:
+            self.film_dir = 'film'
+
+        if self.film_dir not in os.listdir(self.out_dir):
+            os.system("mkdir " + self.out_dir + '/'+self.film_dir)
+        if 'film_frames' not in os.listdir(self.out_dir+'/'+self.film_dir):
+            os.system("mkdir " + self.out_dir + '/'+self.film_dir+'/film_frames')
+        os.system("rm " + self.out_dir + '/'+self.film_dir+'/film_frames/' + 
+                  self.in_field + "_spec_" + str(self.spec_idx) + "*.png")
 
         self.field_max = np.max(self.field_real_space)
         self.field_min = np.min(self.field_real_space)
         for it in range(self.nt):
             self.plot_real_space_field(it)
 
-        im = Image.open(self.out_dir + "/film/film_frames/" + self.in_field + 
-                  "_spec_" + str(self.spec_idx) + "_0000.png")
+        im = Image.open(self.out_dir + '/'+self.film_dir+'/film_frames/' + 
+                        self.in_field + "_spec_" + str(self.spec_idx) + 
+                        "_0000.png")
         if im.size[0] % 2 != 0 or im.size[1] % 2 != 0:
             self.crop_images() 
 
         logging.info('avconv command: ')
         logging.info("avconv -threads 2 -y -f image2 -r " + str(self.film_fps) + 
-                  " -i '" + self.out_dir + "/film/film_frames/" + self.in_field + 
-                  "_spec_" + str(self.spec_idx) + "_%04d.png' -q 1 " + 
-                  self.out_dir +"/film/" + self.in_field + "_spec_" + 
-                  str(self.spec_idx) +".mp4")
+                  " -i '" + self.out_dir + '/'+self.film_dir+'/film_frames/' + 
+                  self.in_field + "_spec_" + str(self.spec_idx) + 
+                  "_%04d.png' -q 1 " + self.out_dir + '/'+self.film_dir+'/' + 
+                  self.in_field + "_spec_" + str(self.spec_idx) +".mp4")
         os.system("avconv -threads 2 -y -f image2 -r " + str(self.film_fps) + 
-                  " -i '" + self.out_dir + "/film/film_frames/" + self.in_field + 
-                  "_spec_" + str(self.spec_idx) + "_%04d.png' -q 1 " + 
-                  self.out_dir +"/film/" + self.in_field + "_spec_" + 
+                  " -i '" + self.out_dir + '/'+self.film_dir+'/film_frames/' + 
+                  self.in_field + "_spec_" + str(self.spec_idx) + "_%04d.png' -q 1 " + 
+                  self.out_dir + '/'+self.film_dir+'/' + self.in_field + "_spec_" + 
                   str(self.spec_idx) +".mp4")
 
         logging.info("Finished make_film.")
@@ -1584,9 +1590,9 @@ class Simulation(object):
 
         plt.colorbar(im, cax=cax, label=r'$\delta n / n (-)$')
         plot_style.ticks_bottom_left(ax)
-        plt.savefig(self.out_dir + "/film/film_frames/" + self.in_field + 
-                    "_spec_" + str(self.spec_idx) + "_%04d.png"%it, dpi=110,
-                    bbox_inches='tight')
+        plt.savefig(self.out_dir + '/'+self.film_dir+'/film_frames/' + 
+                    self.in_field + "_spec_" + str(self.spec_idx) + 
+                    "_%04d.png"%it, dpi=110, bbox_inches='tight')
 
     def crop_images(self):
         """
@@ -1603,11 +1609,13 @@ class Simulation(object):
         logging.info("Cropping film images...")
 
         for it in range(self.nt):
-            im = Image.open(self.out_dir + "/film/film_frames/" + self.in_field + 
-                    "_spec_" + str(self.spec_idx) + "_%04d.png"%it)
+            im = Image.open(self.out_dir + '/'+self.film_dir+'/film_frames/' + 
+                            self.in_field + "_spec_" + str(self.spec_idx) + 
+                            "_%04d.png"%it)
             im_crop = im.crop((0, 0, int(im.size[0]/2)*2, int(im.size[1]/2)*2))
-            im_crop.save(self.out_dir + "/film/film_frames/" + self.in_field + 
-                    "_spec_" + str(self.spec_idx) + "_%04d.png"%it)
+            im_crop.save(self.out_dir + '/'+self.film_dir+'/film_frames/' + 
+                         self.in_field + "_spec_" + str(self.spec_idx) + 
+                         "_%04d.png"%it)
 
         logging.info("Finished cropping film images.")
 
