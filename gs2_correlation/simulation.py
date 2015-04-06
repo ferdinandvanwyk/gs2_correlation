@@ -1442,7 +1442,7 @@ class Simulation(object):
         plt.errorbar(self.x, np.nanmean(self.corr_time*1e6, axis=0), yerr=t_error)
         plt.ylim(ymin=0)
         plt.xlabel("Radius (m)")
-        plt.ylabel(r'Correlations Time $\tau_c$ ($\mu$ s)')
+        plt.ylabel(r'Correlation Time $\tau_c$ ($\mu$ s)')
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.time_dir+'/corr_time.pdf')
