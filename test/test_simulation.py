@@ -201,6 +201,11 @@ class TestClass(object):
         run.write_field()
         assert ('ntot_igomega_by_mode.cdf' in os.listdir('test/test_run/v/id_1/analysis/write_field'))
 
+    def test_write_field_lab_frame(self, run):
+        run.lab_frame = True
+        run.write_field()
+        assert ('ntot_igomega_by_mode_lab_frame.cdf' in os.listdir('test/test_run/v/id_1/analysis/write_field'))
+
     def test_make_film(self, run):
         run.film_lim = [1,1]
         run.make_film()

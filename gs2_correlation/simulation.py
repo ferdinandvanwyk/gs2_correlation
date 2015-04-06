@@ -1486,9 +1486,12 @@ class Simulation(object):
             x_nc = self.x
             field_real_space_nc = self.field_real_space
 
-
-        nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' + 
-                                     self.in_field +'.cdf', 'w')
+        if self.lab_frame:
+            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' + 
+                                         self.in_field +'_lab_frame.cdf', 'w')
+        elif not self.lab_frame:
+            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' + 
+                                         self.in_field +'.cdf', 'w')
         nc_file.createDimension('x', len(x_nc))
         nc_file.createDimension('y', self.ny)
         nc_file.createDimension('t', self.nt)
