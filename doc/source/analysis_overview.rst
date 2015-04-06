@@ -137,7 +137,7 @@ film_lab_frame, respectively.
 Lab Reference Frame
 -------------------
 
-Changing to the lab frame involves the following transformation `PoP 2009`_: 
+Changing to the lab frame involves the following transformation [Holland, PoP 2009]: 
 
 .. math:: f_{lab}(t, r, n, \theta) = f_{sim}(t, r, n, \theta)e^{-i n \omega_0 t}
 
@@ -145,7 +145,7 @@ where *n* is the *toroidal* wavenumber. The important thing here is that
 :math:`k_y` is *not* the toroidal wavenumber but does have a component in the
 toroidal direction. The two quantities are related by:
 
-.. math:: k_{y}^{gs2} = \frac{n \rho_{ref}}{a} \frac{d \rho_n}{\d \psi_N}
+.. math:: k_{y}^{gs2} = \frac{n \rho_{ref}}{a} \frac{d \rho_n}{d \psi_N}
 
 In order to transform to the lab frame, the following configuration quantities 
 are needed:
@@ -160,7 +160,7 @@ analysis will be affected by the transformation. The problem of time resolution
 becomes immediately apparent since the time resolution is enough to resolve 
 plasma frame quantities but not lab frame quantities. For this reason, time
 interpolation is almost certainly needed, and a factor four is recommended, 
-following `PoP 2009`_. The level of time interpolation is set using the 
+following [Holland, PoP 2009]. The level of time interpolation is set using the 
 `time_interp_fac` configuration variable and a warning is printed out if 
 changing to the lab frame without some time interpolation. The lab frame time
 correlation analysis is written to a separate folder called 'time_lab_frame'.
@@ -177,8 +177,6 @@ The ZF velocity is calculatd by:
   Numpy routines contain an explicit 1/n normalization to ensure IFT(A) = a.
 * This gives v_zf(t,x) which can be plotted in 2D and averaged in time to give
   the mean ZF velocity as a function of radius.
-
-.. [PoP 2009] Holland *et al.*, Physics of Plasmas, 2009, *Implementation and application of two synthetic diagnostics for validating simulations of core tokamak turbulence*
 
 
 
