@@ -1586,7 +1586,7 @@ class Simulation(object):
         ax.set_aspect('equal')
         plt.xlabel(r'$x (m)$')
         plt.ylabel(r'$y (m)$')
-        plt.title(r'Time = %f $\mu s$'%((self.t[it]-self.t[0])*1e6))
+        plt.title(r'Time = %04d $\mu s$'%(int(np.round((self.t[it]-self.t[0])*1e6))))
 
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
