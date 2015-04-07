@@ -870,6 +870,7 @@ class Simulation(object):
         self.calculate_perp_corr()
         self.perp_norm_mask()
         self.perp_fit_params = np.empty([self.nt_slices, 4], dtype=float)
+        self.perp_fit_params_err = np.empty([self.nt_slices, 4], dtype=float)
 
         for it in range(self.nt_slices):
             self.perp_corr_fit(it)
@@ -987,6 +988,7 @@ class Simulation(object):
                                        avg_corr.ravel(), p0=self.perp_guess)
             
             self.perp_fit_params[it, :] = popt
+            self.perp_fit_params_err[it, :] = np.sqrt(np.diag(pcov))
 
         elif len(self.perp_guess) == 3:
             popt, pcov = opt.curve_fit(fit.tilted_gauss_ky_fixed, 
@@ -995,6 +997,7 @@ class Simulation(object):
                                        avg_corr.ravel(), p0=self.perp_guess)
 
             self.perp_fit_params[it, :] = np.append(popt, 2*np.pi/popt[1])
+            self.perp_fit_params_err[it, :] = np.append(np.sqrt(np.diag(pcov)), (2*np.pi/popt[1])*(np.sqrt(pcov[1,1])/popt[1]))
 
         self.perp_guess = popt
 
@@ -1079,10 +1082,10 @@ class Simulation(object):
         plt.clf()
         plot_style.white()
         fig, ax = plt.subplots(1, 1)
-        plt.plot(np.abs(self.perp_fit_params[:,0]), label=r'$l_x (m)$')
-        plt.plot(np.abs(self.perp_fit_params[:,1]), label=r'$l_y (m)$')
-        plt.plot(np.abs(self.perp_fit_params[:,2]), label=r'$|k_x| (m^{-1})$')
-        plt.plot(np.abs(self.perp_fit_params[:,3]), label=r'$|k_y| (m^{-1})$')
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,0]), label=r'$l_x (m)$', yerr=self.perp_fit_params_err[:,0])
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,1]), label=r'$l_y (m)$', yerr=self.perp_fit_params_err[:,1])
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,2]), label=r'$|k_x| (m^{-1})$', yerr=self.perp_fit_params_err[:,2])
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,3]), label=r'$|k_y| (m^{-1})$', yerr=self.perp_fit_params_err[:,3])
         plt.legend()
         plt.xlabel('Time Window')
         plot_style.minor_grid(ax)
@@ -1094,7 +1097,7 @@ class Simulation(object):
         summary_file.write('#lx(m), ly(m), kx(m^-1), ky(m^-1), theta(rad)\n')
         for i in range(4):
             summary_file.write(str(np.mean(self.perp_fit_params[:,i])) + ' ' +
-                               str(np.std(self.perp_fit_params[:,i])))
+                               str(np.mean(self.perp_fit_params_err[:,i])))
             summary_file.write("\n")
 
         summary_file.write(str(np.arctan(np.mean(self.perp_fit_params[:,2]/ \
@@ -1351,7 +1354,6 @@ class Simulation(object):
                             "RuntimeError - max fitting iterations reached, "
                             "skipping this case with (tau, omega) = NaN\n")
                     self.corr_time[it, ix] = np.nan
-
 
     def time_plot(self, it, ix, max_index, peaks, plot_type, **kwargs):
         """
