@@ -1090,27 +1090,17 @@ class Simulation(object):
         plt.yscale('log')
         plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_params_vs_time_slice.pdf')
 
-        summary_file = open(self.out_dir + '/'+self.perp_dir+'/perp_fit_summary.txt', 'w')
-        summary_file.write('lx = ' + str(np.mean(self.perp_fit_params[:,0]))
-                           + " m\n")
-        summary_file.write('std(lx) = ' + str(np.std(self.perp_fit_params[:,0]))
-                           + " m\n")
-        summary_file.write('ly = ' + str(np.mean(self.perp_fit_params[:,1]))
-                           + " m\n")
-        summary_file.write('std(ly) = ' + str(np.std(self.perp_fit_params[:,1]))
-                           + " m\n")
-        summary_file.write('kx = ' + str(np.mean(self.perp_fit_params[:,2]))
-                           + " m^-1\n")
-        summary_file.write('std(kx) = ' + str(np.std(self.perp_fit_params[:,2]))
-                           + " m^-1\n")
-        summary_file.write('ky = ' + str(np.mean(self.perp_fit_params[:,3]))
-                           + " m^-1\n")
-        summary_file.write('std(ky) = ' + str(np.std(self.perp_fit_params[:,3]))
-                           + " m^-1\n")
-        summary_file.write('theta = ' + str(np.arctan(np.mean(self.perp_fit_params[:,2]/ \
-                            self.perp_fit_params[:,3]))) + "\n")
-        summary_file.write('std(theta) = ' + str(np.std(self.perp_fit_params[:,3]/\
-                           self.perp_fit_params[:,3])) + "\n")
+        summary_file = open(self.out_dir + '/'+self.perp_dir+'/perp_fit_summary.dat', 'w')
+        summary_file.write('#lx(m), ly(m), kx(m^-1), ky(m^-1), theta(rad)\n')
+        for i in range(4):
+            summary_file.write(str(np.mean(self.perp_fit_params[:,i])) + ' ' +
+                               str(np.std(self.perp_fit_params[:,i])))
+            summary_file.write("\n")
+
+        summary_file.write(str(np.arctan(np.mean(self.perp_fit_params[:,2]/ \
+                           self.perp_fit_params[:,3]))) + ' ' + 
+                           str(np.std(self.perp_fit_params[:,3]/\
+                           self.perp_fit_params[:,3])))
         summary_file.close()
 
         logging.info("Finished writing perp_analysis summary...")
@@ -1141,9 +1131,9 @@ class Simulation(object):
         self.fluc_level_std = np.std(rms)
 
         summary_file = open(self.out_dir + '/'+ self.perp_dir +
-                            '/fluctuation_summary.txt', 'w')
-        summary_file.write('dn/n = ' + str(self.fluc_level) + "\n")
-        summary_file.write('std(dn/n) = ' + str(self.fluc_level_std) + "\n")
+                            '/fluctuation_summary.dat', 'w')
+        summary_file.write('dn/n std(dn/n) \n')
+        summary_file.write(str(self.fluc_level) + ' ' + str(self.fluc_level_std))
 
         logging.info("Finished calculating fluctuation level.")
 
@@ -1447,11 +1437,10 @@ class Simulation(object):
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.time_dir+'/corr_time.pdf')
 
-        summary_file = open(self.out_dir + '/'+self.time_dir+'/time_fit_summary.txt', 'w')
-        summary_file.write('tau_c = ' + str(np.nanmean(self.corr_time)*1e6)
-                           + " mu s\n")
-        summary_file.write('std(tau_c) = ' + str(np.nanstd(self.corr_time)*1e6)
-                           + " mu s\n")
+        summary_file = open(self.out_dir + '/'+self.time_dir+'/time_fit_summary.dat', 'w')
+        summary_file.write('#tau_c, std(tau_c)\n')
+        summary_file.write(str(np.nanmean(self.corr_time)*1e6) + ' ' + 
+                           str(np.nanstd(self.corr_time)*1e6))
         summary_file.close()
 
         logging.info("Finished writing time_analysis summary...")

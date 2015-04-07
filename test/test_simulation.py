@@ -130,7 +130,7 @@ class TestClass(object):
         assert ('perp_corr_fit.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
         assert ('perp_fit_comparison.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
         assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
-        assert ('perp_fit_summary.txt' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
+        assert ('perp_fit_summary.dat' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
 
     def test_perp_analysis(self, run):
         run.perp_analysis()
@@ -140,7 +140,7 @@ class TestClass(object):
         assert ('perp_corr_fit.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
         assert ('perp_fit_comparison.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
         assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('perp_fit_summary.txt' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert ('perp_fit_summary.dat' in os.listdir('test/test_run/v/id_1/analysis/perp'))
 
     def test_field_normalize_perp(self, run):
         run.field_normalize_perp()
@@ -162,7 +162,7 @@ class TestClass(object):
         run.fluctuation_levels()
         assert np.abs(run.fluc_level - np.mean(np.sqrt(np.mean(run.field_real_space**2, axis=0)))) < 1e-5
         assert np.abs(run.fluc_level_std - np.std(np.sqrt(np.mean(run.field_real_space**2, axis=0)))) < 1e-5
-        assert ('fluctuation_summary.txt' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert ('fluctuation_summary.dat' in os.listdir('test/test_run/v/id_1/analysis/perp'))
     
     def test_time_analysis(self, run):
         run.lab_frame = False
