@@ -148,6 +148,8 @@ class Simulation(object):
         Angular frequency of the plasma at the radial location of the flux tube.
     dpsi_da : float, 0
         Relationship between psi_n and rho_miller (a_n = diameter/diameter LCFS)
+    drho_dpsi: float, 1
+        Gradient of flux surface label with respect to psi.
     seaborn_context : str
         Context for plot output: paper, notebook, talk, poster. See:
         http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
@@ -293,8 +295,9 @@ class Simulation(object):
 
         self.t = self.t*self.amin/self.vth
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rho_ref
-        self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rho_ref \
-                             *np.tan(self.pitch_angle)
+        self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rho_ref * \
+                             np.tan(self.pitch_angle)*(self.rmaj/self.amin) * \
+                             (self.drho_dpsi)
 
         self.field_to_complex()
         self.fourier_correction()
@@ -401,6 +404,8 @@ class Simulation(object):
             Angular frequency of the plasma at the radial location of the flux tube.
         dpsi_da : float, 0
             Relationship between psi_n and rho_miller (a_n = diameter/diameter LCFS)
+        drho_dpsi: float, 1
+            Gradient of flux surface label with respect to psi.
         seaborn_context : str, 'talk'
             Context for plot output: paper, notebook, talk, poster. See:
             http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
@@ -435,6 +440,8 @@ class Simulation(object):
         self.omega = float(config_parse.get('normalization', 'omega', fallback=0))
         self.dpsi_da = float(config_parse.get('normalization', 'dpsi_da', 
                                               fallback=0))
+        self.drho_dpsi = float(config_parse.get('normalization', 'drho_dpsi', 
+                                              fallback=1))
 
         #####################
         # Analysis Namelist #
