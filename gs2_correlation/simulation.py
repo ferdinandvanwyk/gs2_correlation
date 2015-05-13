@@ -294,10 +294,12 @@ class Simulation(object):
         self.config_checks()
 
         self.t = self.t*self.amin/self.vth
-        self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx)*self.rho_ref
-        self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny)*self.rho_ref * \
-                             np.tan(self.pitch_angle)*(self.rmaj/self.amin) * \
-                             (self.drho_dpsi)
+        self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx, endpoint=False)* \
+                     self.rho_ref
+        self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny, endpoint=False)* \
+                     self.rho_ref * \
+                     np.tan(self.pitch_angle)*(self.rmaj/self.amin) * \
+                     (self.drho_dpsi)
 
         self.field_to_complex()
         self.fourier_correction()
