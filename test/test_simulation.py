@@ -72,6 +72,9 @@ class TestClass(object):
         field_shape = run.field.shape
         arr_shapes = (run.nt, run.nkx, run.nky)
         assert field_shape == arr_shapes
+
+    def test_read_geometry_file(self, run):
+        assert run.geom_file.shape[1] > 6
     
     def test_time_interpolate(self, run):
         field_shape = run.field.shape
@@ -196,6 +199,9 @@ class TestClass(object):
         run.time_corr = np.ones([5, 9, 5, 5])
         run.time_norm_mask(0)
         assert np.abs(run.time_corr[0,4,0,2] - 1./45.) < 1e-5
+
+    def test_par_analysis(self, run):
+        assert True
 
     def test_write_field(self, run):
         run.write_field()

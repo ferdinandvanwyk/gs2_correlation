@@ -282,6 +282,8 @@ class Simulation(object):
         self.rho_star = self.rho_ref/self.amin
 
         self.read_netcdf()
+        if self.analysis == 'par':
+            self.read_geometry_file()
 
         if self.out_dir not in os.listdir():
             os.system("mkdir " + self.out_dir)
@@ -386,6 +388,9 @@ class Simulation(object):
         theta_index : int or None
             Parallel index at which to do analysis. If no theta index in array
             set to None.
+        geom_file : str
+            Location of the geometry file. By default searches the run folder
+            for a '.g' file and loads the first one found.
         amin : float
             Minor radius of device in *m*.
         vth : float
@@ -464,13 +469,14 @@ class Simulation(object):
                                          fallback='.cdf')
 
         # Automatically find .out.nc file if only directory specified
+        self.run_folder = str(config_parse['analysis']['run_folder'])
         self.in_file = str(config_parse['analysis']['cdf_file'])
-        if self.in_file.find(self.file_ext) == -1:
-            dir_files = os.listdir(self.in_file)
+        if self.in_file == "None":
+            dir_files = os.listdir(self.run_folder)
             found = False
             for s in dir_files:
                 if s.find(self.file_ext) != -1:
-                    self.in_file = self.in_file + s
+                    self.in_file = self.run_folder + s
                     found = True
                     break
 
@@ -512,8 +518,13 @@ class Simulation(object):
         self.theta_idx = str(config_parse['analysis']['theta_index'])
         if self.theta_idx == "None":
             self.theta_idx = None
-        else:
-            self.theta_idx = int(self.theta_idx)
+        elif self.theta_idx == "-1":
+            self.theta_idx = [0, None]
+        elif type(eval(self.theta_idx)) == int:
+            self.theta_idx = [self.theta_idx, self.theta_idx+1] 
+        if self.analysis == 'par':
+            warnings.warn('Analysis = par, change to reading full theta grid.')
+            self.theta_idx = [0, None]
 
         self.time_slice = int(config_parse.get('analysis', 'time_slice',
                                                fallback=50))
@@ -547,6 +558,8 @@ class Simulation(object):
                                                'time_range', fallback='[0,-1]'))
         self.time_range = self.time_range[1:-1].split(',')
         self.time_range = [float(s) for s in self.time_range]
+        if self.time_range[1] == -1:
+            self.time_range[1] = None
 
         ###################
         # Output Namelist #
@@ -584,7 +597,7 @@ class Simulation(object):
                raise ValueError('+/- perp_fit_length outside of dx array.')
 
         if (int(self.ny/2) + self.perp_fit_length >= self.ny):
-               raise ValueError('+/- perp_fit_length outside of dy array.')
+            raise ValueError('+/- perp_fit_length outside of dy array.')
 
         if self.time_slice%2 != 1:
             warnings.warn('time_slice should be odd, reducing by one...')
@@ -603,6 +616,11 @@ class Simulation(object):
         if not self.lab_frame and self.time_interp_fac > 1:
             warnings.warn('Not transforming to lab frame, but time_interp_fac > 1. '
                           'This is probably not needed.')
+        
+        if self.analysis != 'par' and len(self.field.shape) > 4:
+            raise ValueError('You are not doing parallel analysis and have more '
+                             'than one theta point. Can only handle one theta '
+                             'value at the moment!')
 
     def read_netcdf(self):
         """
@@ -617,17 +635,18 @@ class Simulation(object):
 
         # NetCDF order is [t, species, ky, kx, theta, r]
         # ncfile.variable returns netcdf object - convert to array
-        if self.time_range[1] == -1:
-            self.field = np.array(self.ncfile.variables[self.in_field]
-                                            [self.time_range[0]:,
-                                             self.spec_idx,:,:,self.theta_idx,:])
-            self.t = np.array(self.ncfile.variables['t'][self.time_range[0]:])
-        else:
+        if self.theta_idx == None:
             self.field = np.array(self.ncfile.variables[self.in_field]
                                             [self.time_range[0]:self.time_range[1],
                                              self.spec_idx,:,:,self.theta_idx,:])
-            self.t = np.array(self.ncfile.variables['t'][self.time_range[0]:
-                                                         self.time_range[1]])
+        else:
+            self.field = np.array(self.ncfile.variables[self.in_field]
+                                            [self.time_range[0]:self.time_range[1],
+                                             self.spec_idx,:,:,
+                                             self.theta_idx[0]:self.theta_idx[1],
+                                             :])
+        self.t = np.array(self.ncfile.variables['t'][self.time_range[0]:
+                                                     self.time_range[1]])
 
 
         self.field = np.squeeze(self.field)
@@ -639,6 +658,27 @@ class Simulation(object):
         self.ncfile.close()
 
         logging.info('Finished reading from NetCDf file.')
+
+    def read_geometry_file(self):
+        """
+        Read the geometry file for the GS2 run.
+
+        Read either from the run folder (default) or from a file manually 
+        specified in the configuration file.
+        """
+
+        self.in_file = str(config_parse['analysis']['cdf_file'])
+        if self.in_file.find(self.file_ext) == -1:
+            dir_files = os.listdir(self.in_file)
+            found = False
+            for s in dir_files:
+                if s.find(self.file_ext) != -1:
+                    self.in_file = self.in_file + s
+                    found = True
+                    break
+
+            if not found:
+                raise NameError('No file found ending in ' + self.file_ext)
 
     def fourier_correction(self):
         """
@@ -1156,7 +1196,6 @@ class Simulation(object):
         Notes
         -----
 
-        * Change from (kx, ky) to (x, y)
         * Split into time windows and perform correlation analysis on each 
           window separately.
         """
@@ -1455,6 +1494,13 @@ class Simulation(object):
         summary_file.close()
 
         logging.info("Finished writing time_analysis summary...")
+
+    def par_analysis(self):
+        """
+        Calculates the parallel correlation function and fits with a Gaussian
+        to find the parallel correlation length.
+        """
+
 
     def write_field(self):
         """

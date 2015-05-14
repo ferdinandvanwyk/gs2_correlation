@@ -119,6 +119,11 @@ The following options are relevant to the fitting procedure:
   normalized time units. Visual inspection can be used to verify the fitting
   procedure.
 
+Parallel Correlation
+--------------------
+
+
+
 Create a Film
 -------------
 

@@ -62,6 +62,8 @@ elif run.analysis == 'perp':
     run.perp_analysis()
 elif run.analysis == 'time':
     run.time_analysis()
+elif run.analysis == 'par':
+    run.par_analysis()
 elif run.analysis == 'write_field':
     run.write_field()
 elif run.analysis == 'film':
