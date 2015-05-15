@@ -53,7 +53,7 @@ from PIL import Image
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 plt.rcParams.update({'figure.autolayout': True})
 mpl.rcParams['axes.unicode_minus']=False
-
+import f90nml as nml
 
 # Local
 import gs2_correlation.fitting_functions as fit
@@ -72,10 +72,23 @@ class Simulation(object):
 
     file_ext : str
         File extension for NetCDF output file. Default = '.cdf'
-    cdf_file : str
-        Path (relative or absolute) and/or name of input NetCDF file. If
-        only a path is specified, the directory is searched for a file
-        ending in '.cdf' and the name is appended to the path.
+    run_folder : str, '../..'
+        Path to run folder.
+    cdf_file : str, None
+        Path (relative or absolute) and name of input NetCDF file. If
+        None, the directory is searched for a file ending in '.cdf' and the 
+        name is appended to the run_folder path.
+    g_file : str, None
+        Path to the '.g' file. If None, run_folder will be searched and the
+        first returned file will be used.
+    inp_file : str, None
+        Path to '.inp' file which is a complete input file produced by GS2
+        containing the Miller parameters.
+    geometry : array_like
+        Array containing entire '.g' file.
+    input_file : dict
+        Dictionary containing all namelist variables from the '.inp' file
+        produced by GS2.
     in_field : str
         Name of the field to be read in from NetCDF file.
     analysis : str
@@ -282,8 +295,8 @@ class Simulation(object):
         self.rho_star = self.rho_ref/self.amin
 
         self.read_netcdf()
-        if self.analysis == 'par':
-            self.read_geometry_file()
+        self.read_geometry_file()
+        self.read_input_file()
 
         if self.out_dir not in os.listdir():
             os.system("mkdir " + self.out_dir)
@@ -336,10 +349,18 @@ class Simulation(object):
         ----------
         file_ext : str, '.cdf'
             File extension for NetCDF output file.
-        cdf_file : str, '*.cdf'
-            Path (relative or absolute) and/or name of input NetCDF file. If
-            only a path is specified, the directory is searched for a file
-            ending in '.cdf' and the name is appended to the path.
+        run_folder : str, '../..'
+            Path to run folder.
+        cdf_file : str, None
+            Path (relative or absolute) and name of input NetCDF file. If
+            None, the directory is searched for a file ending in '.cdf' and the 
+            name is appended to the run_folder path.
+        g_file : str, None
+            Path to the '.g' file. If None, run_folder will be searched and the
+            first returned file will be used.
+        inp_file : str, None
+            Path to '.inp' file which is a complete input file produced by GS2
+            containing the Miller parameters.
         field : str
             Name of the field to be read in from NetCDF file.
         analysis : str, 'all'
@@ -470,7 +491,7 @@ class Simulation(object):
 
         # Automatically find .out.nc file if only directory specified
         self.run_folder = str(config_parse['analysis']['run_folder'])
-        self.in_file = str(config_parse['analysis']['cdf_file'])
+        self.in_file = config_parse.get('analysis', 'cdf_file', fallback='None')
         if self.in_file == "None":
             dir_files = os.listdir(self.run_folder)
             found = False
@@ -482,6 +503,32 @@ class Simulation(object):
 
             if not found:
                 raise NameError('No file found ending in ' + self.file_ext)
+
+        self.g_file = config_parse.get('analysis', 'g_file', fallback='None')
+        if self.g_file == 'None':
+            dir_files = os.listdir(self.run_folder)
+            found = False
+            for s in dir_files:
+                if s.find('.g') != -1:
+                    self.g_file = self.run_folder + s
+                    found = True
+                    break
+
+            if not found:
+                raise NameError('No file found ending in .g')
+
+        self.inp_file = config_parse.get('analysis', 'inp_file', fallback='None')
+        if self.inp_file == 'None':
+            dir_files = os.listdir(self.run_folder)
+            found = False
+            for s in dir_files:
+                if s.find('.inp') != -1:
+                    self.inp_file = self.run_folder + s
+                    found = True
+                    break
+
+            if not found:
+                raise NameError('No file found ending in .inp')
 
         self.in_field = str(config_parse['analysis']['field'])
 
@@ -662,23 +709,22 @@ class Simulation(object):
     def read_geometry_file(self):
         """
         Read the geometry file for the GS2 run.
-
-        Read either from the run folder (default) or from a file manually 
-        specified in the configuration file.
         """
+        logging.info('Reading geometry file...')
+        
+        self.geometry = np.loadtxt(self.g_file)
 
-        self.in_file = str(config_parse['analysis']['cdf_file'])
-        if self.in_file.find(self.file_ext) == -1:
-            dir_files = os.listdir(self.in_file)
-            found = False
-            for s in dir_files:
-                if s.find(self.file_ext) != -1:
-                    self.in_file = self.in_file + s
-                    found = True
-                    break
+        logging.info('Finished reading geometry file.')
 
-            if not found:
-                raise NameError('No file found ending in ' + self.file_ext)
+    def read_input_file(self):
+        """
+        Read the input '.inp' file for the GS2 run.
+        """
+        logging.info('Reading input file...')
+        
+        self.input_file = nml.read(self.inp_file)
+
+        logging.info('Finished reading input file.')
 
     def fourier_correction(self):
         """

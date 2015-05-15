@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg') # specifically for Travis CI to avoid backend errors
 from PIL import Image
+import f90nml as nml
 
 # Local
 from gs2_correlation.simulation import Simulation
@@ -74,7 +75,12 @@ class TestClass(object):
         assert field_shape == arr_shapes
 
     def test_read_geometry_file(self, run):
-        assert run.geom_file.shape[1] > 6
+        run.read_geometry_file()
+        assert run.geometry.shape[1] > 6
+    
+    def test_read_input_file(self, run):
+        run.read_input_file()
+        assert type(run.input_file) == nml.namelist.NmlDict
     
     def test_time_interpolate(self, run):
         field_shape = run.field.shape
