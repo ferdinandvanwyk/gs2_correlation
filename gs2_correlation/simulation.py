@@ -92,7 +92,7 @@ class Simulation(object):
     in_field : str
         Name of the field to be read in from NetCDF file.
     analysis : str
-        Type of analysis to be done. Options are 'all', 'perp', 'time', 
+        Type of analysis to be done. Options are 'all', 'perp', 'par', 'time', 
         'write_field'.
     out_dir : str, 'analysis'
         Output directory for analysis.
@@ -143,6 +143,8 @@ class Simulation(object):
         Minor radius of device in *m*.
     vth : float
         Thermal velocity of the reference species in *m/s*
+    bref : float
+        Reference magnetic field at the centre of the LCFS.
     rho_ref : float
         Larmor radius of the reference species in *m*.
     rho_star : float
@@ -163,6 +165,8 @@ class Simulation(object):
         Relationship between psi_n and rho_miller (a_n = diameter/diameter LCFS)
     drho_dpsi: float, 1
         Gradient of flux surface label with respect to psi.
+    gradpar : array_like
+        Value of the parallel gradient as a function of theta.
     seaborn_context : str
         Context for plot output: paper, notebook, talk, poster. See:
         http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
@@ -247,6 +251,31 @@ class Simulation(object):
         Mean fluctuation level for all space and time.
     fluc_level_std : float
         Standard deviation of the mean fluctuation level.
+    R : array_like
+        Radial location of centre of the flux tube as read in from geometry
+        file.
+    Z : array_like
+        Poloidal location of centre of the flux tube as read in from geometry
+        file.
+    phi_tor : array_like
+        Toroidal angle of location of centre of the flux tube as read in from 
+        geometry file. It is equal to -alpha4 in geometry file.
+    dR_drho : array_like
+        Derivative of R with respect to the radial coordinate rho.
+    dZ_drho : array_like
+        Derivative of Z with respect to the radial coordinate rho.
+    dalpha_drho : array_like
+        Derivative of alpha with respect to the radial coordinate rho.
+    bpol : array_like
+        Poloidal magnetic field as a function of theta as printed out in the 
+        geometry file.
+    btor : float
+        Toroidal magnetic field at the radial location of the flux tube.
+        btor = [r_geo/R(theta=0)]*bref
+    bmag : float
+        Magnitude of the magnetic field at the location of the flux tube.
+    r_geo : float
+        Radial location of the reference magnetic field.
     """
 
     def __init__(self, config_file):
@@ -305,8 +334,14 @@ class Simulation(object):
         self.nky = len(self.ky)
         self.nx = self.nkx
         self.ny = 2*(self.nky - 1)
+        self.ntheta = len(self.theta)
 
         self.config_checks()
+
+        self.rmaj = self.geometry[int(self.ntheta/2),1]*self.amin 
+        self.pitch_angle = np.arctan(self.geometry[int(self.ntheta/2)+1, 2]/ \
+                           (self.geometry[int(self.ntheta/2), 1] * \
+                           self.geometry[int(self.ntheta/2)+1, 3]))
 
         self.t = self.t*self.amin/self.vth
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx, endpoint=False)* \
@@ -315,6 +350,21 @@ class Simulation(object):
                      self.rho_ref * \
                      np.tan(self.pitch_angle)*(self.rmaj/self.amin) * \
                      (self.drho_dpsi)
+        
+        self.R = self.geometry[:,1]*self.amin
+        self.Z = self.geometry[:,2]*self.amin
+        self.alpha = self.geometry[:,3]
+        self.dR_drho = self.geometry[:,4]*self.amin
+        self.dZ_drho = self.geometry[:,5]*self.amin
+        self.dalpha_drho = self.geometry[:,6]*self.amin
+        self.bpol = self.geometry[:,6]*self.bref
+
+        self.r_geo = self.input_file['theta_grid_parameters']['R_geo']*self.amin
+
+        self.btor = self.bref*self.r_geo/ \
+                        self.geometry[int(self.ntheta/2),1]
+        self.bmag = np.sqrt(self.btor**2 + self.bpol**2)  
+
 
         self.field_to_complex()
         self.fourier_correction()
@@ -364,8 +414,8 @@ class Simulation(object):
         field : str
             Name of the field to be read in from NetCDF file.
         analysis : str, 'all'
-            Type of analysis to be done. Options are 'all', 'perp', 'time',
-            'write_field', 'film'.
+            Type of analysis to be done. Options are 'all', 'perp', 'par, 
+            'time', 'write_field', 'film'.
         out_dir : str, 'analysis'
             Output directory for analysis.
         time_interpolate : bool, True
@@ -416,14 +466,10 @@ class Simulation(object):
             Minor radius of device in *m*.
         vth : float
             Thermal velocity of the reference species in *m/s*
+        bref : float
+            Reference magnetic field at the centre of the LCFS.
         rho_ref : float
             Larmor radius of the reference species in *m*.
-        pitch_angle : float
-            Pitch angle of the magnetic field lines in *rad*.
-        rmaj : float, 0
-            Major radius of the outboard midplane. Used when writing out 
-            the field to the NetCDF file. This is **not** the *rmaj* value from
-            GS2.
         nref : float, 1
             Density of the reference species in m^-3.
         tref : float, 1
@@ -432,8 +478,6 @@ class Simulation(object):
             Angular frequency of the plasma at the radial location of the flux tube.
         dpsi_da : float, 0
             Relationship between psi_n and rho_miller (a_n = diameter/diameter LCFS)
-        drho_dpsi: float, 1
-            Gradient of flux surface label with respect to psi.
         seaborn_context : str, 'talk'
             Context for plot output: paper, notebook, talk, poster. See:
             http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
@@ -461,15 +505,12 @@ class Simulation(object):
         self.amin = float(config_parse['normalization']['a_minor'])
         self.vth = float(config_parse['normalization']['vth_ref'])
         self.rho_ref = float(config_parse['normalization']['rho_ref'])
-        self.pitch_angle = float(config_parse['normalization']['pitch_angle'])
-        self.rmaj = float(config_parse.get('normalization', 'rmaj', fallback=0))
+        self.bref = float(config_parse['normalization']['bref'])
         self.nref = float(config_parse.get('normalization', 'nref', fallback=1))
         self.tref = float(config_parse.get('normalization', 'tref', fallback=1))
         self.omega = float(config_parse.get('normalization', 'omega', fallback=0))
         self.dpsi_da = float(config_parse.get('normalization', 'dpsi_da', 
                                               fallback=0))
-        self.drho_dpsi = float(config_parse.get('normalization', 'drho_dpsi', 
-                                              fallback=1))
 
         #####################
         # Analysis Namelist #
@@ -534,7 +575,7 @@ class Simulation(object):
 
         self.analysis = config_parse.get('analysis', 'analysis',
                                          fallback='all')
-        if self.analysis not in ['all', 'perp', 'time', 'write_field', 
+        if self.analysis not in ['all', 'perp', 'par', 'time', 'write_field', 
                                  'film']:
             raise ValueError('Analysis must be one of (perp, time, '
                              'write_field, make_film)')
@@ -701,6 +742,9 @@ class Simulation(object):
 
         self.kx = np.array(self.ncfile.variables['kx'][:])
         self.ky = np.array(self.ncfile.variables['ky'][:])
+        self.theta = np.array(self.ncfile.variables['theta'][:])
+        self.drho_dpsi = float(self.ncfile.variables['drhodpsi'].data)
+        self.gradpar = np.array(self.ncfile.variables['gradpar'][:])/self.amin
 
         self.ncfile.close()
 
@@ -1546,7 +1590,28 @@ class Simulation(object):
         Calculates the parallel correlation function and fits with a Gaussian
         to find the parallel correlation length.
         """
+        logging.info("Starting par_analysis...")
 
+        self.calculate_l_par()
+        self.regular_parallel_grid()
+        self.calculate_par_corr()
+        self.par_norm_mask()
+
+        logging.info("Finished par_analysis...")
+
+    def calculate_l_par(self):
+        """
+        Calculates the real space parallel grid. 
+        """
+        dR_dtheta = np.gradient(R)/np.gradient(theta)
+        dZ_dtheta = np.gradient(Z)/np.gradient(theta)
+
+        dphi_dtheta = self.r_geo*self.bref / (self.R**2 * self.bmag * \
+                                                self.gradpar)
+
+        dl_dtheta = np.sqrt(dR_dtheta**2 + dZ_dtheta**2 + (R*dphi_dtheta)**2)
+        self.l_par = integrate.cumtrapz(dl_dtheta, x=self.theta)
+        print(self.l_par)
 
     def write_field(self):
         """

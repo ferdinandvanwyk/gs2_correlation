@@ -55,8 +55,7 @@ class TestClass(object):
         assert type(run.amin) == float
         assert type(run.vth) == float
         assert type(run.rho_ref) == float
-        assert type(run.pitch_angle) == float
-        assert type(run.rmaj) == float
+        assert type(run.bref) == float
         assert type(run.nref) == float
         assert type(run.tref) == float
         assert type(run.omega) == float
@@ -208,6 +207,9 @@ class TestClass(object):
 
     def test_par_analysis(self, run):
         assert True
+
+    def test_calculate_l_par(self, run):
+        assert run.l_par.shape == run.ntheta
 
     def test_write_field(self, run):
         run.write_field()
