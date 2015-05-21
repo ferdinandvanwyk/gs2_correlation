@@ -347,9 +347,8 @@ class Simulation(object):
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx, endpoint=False)* \
                      self.rho_ref
         self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny, endpoint=False)* \
-                     self.rho_ref * \
-                     np.tan(self.pitch_angle)*(self.rmaj/self.amin) * \
-                     (self.drho_dpsi)
+                     self.rho_ref * np.abs(np.tan(self.pitch_angle))* \
+                     (self.rmaj/self.amin) * (self.drho_dpsi)
         
         self.R = self.geometry[:,1]*self.amin
         self.Z = self.geometry[:,2]*self.amin
@@ -558,18 +557,18 @@ class Simulation(object):
             if not found:
                 raise NameError('No file found ending in .g')
 
-        self.inp_file = config_parse.get('analysis', 'inp_file', fallback='None')
+        self.inp_file = config_parse.get('analysis', 'in_file', fallback='None')
         if self.inp_file == 'None':
             dir_files = os.listdir(self.run_folder)
             found = False
             for s in dir_files:
-                if s.find('.inp') != -1:
+                if s.find('.in') != -1:
                     self.inp_file = self.run_folder + s
                     found = True
                     break
 
             if not found:
-                raise NameError('No file found ending in .inp')
+                raise NameError('No file found ending in .in')
 
         self.in_field = str(config_parse['analysis']['field'])
 
