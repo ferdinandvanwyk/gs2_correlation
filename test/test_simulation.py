@@ -45,8 +45,6 @@ class TestClass(object):
         assert type(run.zero_zf_scales_bool) == bool
         assert type(run.lab_frame) == bool
         assert (type(run.spec_idx) == int or type(run.spec_idx) == type(None))
-        assert (type(run.theta_idx) == int or type(run.theta_idx) == 
-                                               type(None))
         assert type(run.npeaks_fit) == int
         assert type(run.time_guess) == float
         assert type(run.box_size) == list
@@ -70,7 +68,13 @@ class TestClass(object):
 
     def test_read_netcdf(self, run):
         field_shape = run.field.shape
-        arr_shapes = (run.nt, run.nkx, run.nky)
+        arr_shapes = (run.nt, run.nkx, run.nky, run.ntheta)
+        assert field_shape == arr_shapes
+
+    def test_read_netcdf_theta(self, run):
+        run.theta_idx = -1
+        field_shape = run.field.shape
+        arr_shapes = (run.nt, run.nkx, run.nky, run.ntheta)
         assert field_shape == arr_shapes
 
     def test_read_geometry_file(self, run):
@@ -83,26 +87,26 @@ class TestClass(object):
     
     def test_time_interpolate(self, run):
         field_shape = run.field.shape
-        arr_shapes = (run.nt, run.nkx, run.nky)
+        arr_shapes = (run.nt, run.nkx, run.nky, run.ntheta)
         assert field_shape == arr_shapes
         
     def test_time_interpolate_4(self, run):
         run.time_interp_fac = 4
-        arr_shapes = (run.time_interp_fac*run.nt, run.nkx, run.nky)
+        arr_shapes = (run.time_interp_fac*run.nt, run.nkx, run.nky, run.ntheta)
         run.time_interpolate()
         field_shape = run.field.shape
         assert field_shape == arr_shapes
 
     def test_zero_bes_scales(self, run):
-        assert (run.field[:, 1, 1] == 0).all()
+        assert (run.field[:, 1, 1, 0] == 0).all()
 
     def test_zero_zf_scales(self, run):
-        assert (run.field[:, :, 0] == 0).all()
+        assert (run.field[:, :, 0, :] == 0).all()
 
     def test_to_lab_frame(self, run):
-        run.field = np.ones([51,5,6])
+        run.field = np.ones([51,5,6,9])
         run.to_lab_frame()
-        assert np.abs(run.field[5,0,3] - np.real(np.exp(1j*3*10*run.omega*run.t[5]))) < 1e-5
+        assert np.abs(run.field[5,0,3,0] - np.real(np.exp(1j*3*10*run.omega*run.t[5]))) < 1e-5
 
     def test_field_to_complex(self, run):
         assert np.iscomplexobj(run.field) == True 
@@ -114,13 +118,20 @@ class TestClass(object):
         run.box_size = [0.1, 0.1]
         original_max_x = run.x[-1]
         original_max_y = run.y[-1]
+        run.field_real_space = run.field_real_space[:,:,:,np.newaxis]
         run.domain_reduce()
         assert run.x[-1] <= original_max_x
         assert run.y[-1] <= original_max_y
 
     def test_field_odd_pts(self, run):
+        run.field_real_space = np.ones([51,5,6,9])
+        run.x = np.ones([5])
+        run.nx = 5
+        run.y = np.ones([6])
+        run.ny = 6
         run.field_odd_pts()
-        assert (np.array(run.field_real_space.shape)%2 == [1,1,1]).all()
+        #print(run.field_real_space.shape)
+        assert (np.array(run.field_real_space.shape)%2 == [1,1,1,1]).all()
         assert len(run.t)%2 == 1
         assert len(run.x)%2 == 1
         assert len(run.y)%2 == 1
@@ -214,20 +225,20 @@ class TestClass(object):
 
     def test_write_field(self, run):
         run.write_field()
-        assert ('ntot_igomega_by_mode.cdf' in os.listdir('test/test_run/v/id_1/analysis/write_field'))
+        assert ('ntot_t.cdf' in os.listdir('test/test_run/v/id_1/analysis/write_field'))
 
     def test_write_field_lab_frame(self, run):
         run.lab_frame = True
         run.write_field()
-        assert ('ntot_igomega_by_mode_lab_frame.cdf' in os.listdir('test/test_run/v/id_1/analysis/write_field'))
+        assert ('ntot_t_lab_frame.cdf' in os.listdir('test/test_run/v/id_1/analysis/write_field'))
 
     def test_make_film(self, run):
         run.film_lim = [1,1]
         run.make_film()
-        assert ('ntot_igomega_by_mode_spec_0_0000.png' in os.listdir('test/test_run/v/id_1/analysis/film/film_frames'))
-        assert ('ntot_igomega_by_mode_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/film/'))
+        assert ('ntot_t_spec_0_0000.png' in os.listdir('test/test_run/v/id_1/analysis/film/film_frames'))
+        assert ('ntot_t_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/film/'))
         
-        im = Image.open('test/test_run/v/id_1/analysis/film/film_frames/ntot_igomega_by_mode_spec_0_0000.png')
+        im = Image.open('test/test_run/v/id_1/analysis/film/film_frames/ntot_t_spec_0_0000.png')
         size = im.size
         assert size[0] % 2 == 0
         assert size[1] % 2 == 0
@@ -236,10 +247,10 @@ class TestClass(object):
         run.film_lim = [1,1]
         run.lab_frame = True
         run.make_film()
-        assert ('ntot_igomega_by_mode_spec_0_0000.png' in os.listdir('test/test_run/v/id_1/analysis/film_lab_frame/film_frames'))
-        assert ('ntot_igomega_by_mode_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/film_lab_frame/'))
+        assert ('ntot_t_spec_0_0000.png' in os.listdir('test/test_run/v/id_1/analysis/film_lab_frame/film_frames'))
+        assert ('ntot_t_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/film_lab_frame/'))
         
-        im = Image.open('test/test_run/v/id_1/analysis/film_lab_frame/film_frames/ntot_igomega_by_mode_spec_0_0000.png')
+        im = Image.open('test/test_run/v/id_1/analysis/film_lab_frame/film_frames/ntot_t_spec_0_0000.png')
         size = im.size
         assert size[0] % 2 == 0
         assert size[1] % 2 == 0

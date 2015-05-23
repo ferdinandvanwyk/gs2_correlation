@@ -44,6 +44,7 @@ import warnings
 import numpy as np
 from scipy.io import netcdf
 import scipy.interpolate as interp
+import scipy.integrate as integrate
 import scipy.optimize as opt
 import scipy.signal as sig
 import matplotlib as mpl
@@ -81,9 +82,8 @@ class Simulation(object):
     g_file : str, None
         Path to the '.g' file. If None, run_folder will be searched and the
         first returned file will be used.
-    inp_file : str, None
-        Path to '.inp' file which is a complete input file produced by GS2
-        containing the Miller parameters.
+    in_file : str, None
+        Path to '.in' file.
     geometry : array_like
         Array containing entire '.g' file.
     input_file : dict
@@ -334,7 +334,7 @@ class Simulation(object):
         self.nky = len(self.ky)
         self.nx = self.nkx
         self.ny = 2*(self.nky - 1)
-        self.ntheta = len(self.theta)
+        self.ntheta = self.field.shape[3]
 
         self.config_checks()
 
@@ -356,14 +356,12 @@ class Simulation(object):
         self.dR_drho = self.geometry[:,4]*self.amin
         self.dZ_drho = self.geometry[:,5]*self.amin
         self.dalpha_drho = self.geometry[:,6]*self.amin
-        self.bpol = self.geometry[:,6]*self.bref
+        self.bpol = self.geometry[:,7]*self.bref
 
         self.r_geo = self.input_file['theta_grid_parameters']['R_geo']*self.amin
 
-        self.btor = self.bref*self.r_geo/ \
-                        self.geometry[int(self.ntheta/2),1]
+        self.btor = self.bref*self.r_geo/self.R[int(self.ntheta/2)]
         self.bmag = np.sqrt(self.btor**2 + self.bpol**2)  
-
 
         self.field_to_complex()
         self.fourier_correction()
@@ -388,6 +386,10 @@ class Simulation(object):
 
         self.field_odd_pts()
 
+        if self.analysis != 'par':
+            self.field_real_space = self.field_real_space[:,:,:,0]
+
+
     def read_config(self):
         """
         Reads analysis and normalization parameters from self.config_file.
@@ -407,9 +409,8 @@ class Simulation(object):
         g_file : str, None
             Path to the '.g' file. If None, run_folder will be searched and the
             first returned file will be used.
-        inp_file : str, None
-            Path to '.inp' file which is a complete input file produced by GS2
-            containing the Miller parameters.
+        in_file : str, None
+            Path to '.in' file.
         field : str
             Name of the field to be read in from NetCDF file.
         analysis : str, 'all'
@@ -531,13 +532,13 @@ class Simulation(object):
 
         # Automatically find .out.nc file if only directory specified
         self.run_folder = str(config_parse['analysis']['run_folder'])
-        self.in_file = config_parse.get('analysis', 'cdf_file', fallback='None')
-        if self.in_file == "None":
+        self.cdf_file = config_parse.get('analysis', 'cdf_file', fallback='None')
+        if self.cdf_file == "None":
             dir_files = os.listdir(self.run_folder)
             found = False
             for s in dir_files:
                 if s.find(self.file_ext) != -1:
-                    self.in_file = self.run_folder + s
+                    self.cdf_file = self.run_folder + s
                     found = True
                     break
 
@@ -557,13 +558,13 @@ class Simulation(object):
             if not found:
                 raise NameError('No file found ending in .g')
 
-        self.inp_file = config_parse.get('analysis', 'in_file', fallback='None')
-        if self.inp_file == 'None':
+        self.in_file = config_parse.get('analysis', 'in_file', fallback='None')
+        if self.in_file == 'None':
             dir_files = os.listdir(self.run_folder)
             found = False
             for s in dir_files:
                 if s.find('.in') != -1:
-                    self.inp_file = self.run_folder + s
+                    self.in_file = self.run_folder + s
                     found = True
                     break
 
@@ -576,7 +577,7 @@ class Simulation(object):
                                          fallback='all')
         if self.analysis not in ['all', 'perp', 'par', 'time', 'write_field', 
                                  'film']:
-            raise ValueError('Analysis must be one of (perp, time, '
+            raise ValueError('Analysis must be one of (perp, time, par, '
                              'write_field, make_film)')
 
         self.time_interpolate_bool = config_parse.getboolean('analysis', 
@@ -608,8 +609,10 @@ class Simulation(object):
         elif self.theta_idx == "-1":
             self.theta_idx = [0, None]
         elif type(eval(self.theta_idx)) == int:
-            self.theta_idx = [self.theta_idx, self.theta_idx+1] 
-        if self.analysis == 'par':
+            self.theta_idx = [int(self.theta_idx), int(self.theta_idx)+1] 
+        else:
+            raise ValueError("theta_idx can only be one of: None, -1(all), int")
+        if self.analysis == 'par' and self.theta_idx != [0, None]:
             warnings.warn('Analysis = par, change to reading full theta grid.')
             self.theta_idx = [0, None]
 
@@ -704,7 +707,12 @@ class Simulation(object):
             warnings.warn('Not transforming to lab frame, but time_interp_fac > 1. '
                           'This is probably not needed.')
         
-        if self.analysis != 'par' and len(self.field.shape) > 4:
+        if self.theta_idx == None and self.in_field[-2:] == '_t':
+            raise ValueError('You have specified a field with theta info but '
+                             'left theta_idx=None. Specify theta_idx as -1 '
+                             'for full theta info or pick a specific theta.')
+
+        if self.analysis != 'par' and self.ntheta > 1:
             raise ValueError('You are not doing parallel analysis and have more '
                              'than one theta point. Can only handle one theta '
                              'value at the moment!')
@@ -715,10 +723,18 @@ class Simulation(object):
 
         Read array specified in configuration file as 'in_field'. Function
         uses information from the configuration object passed to it.
+
+        Notes
+        -----
+
+        * An additional axis is added in the case of no theta_idx. This allows
+          usual loops in theta to be kept but have no effect. If only one 
+          element in dimension initialization will be performed regardless,
+          however dimension will be removed for perp and time analysis.
         """
         logging.info('Start reading from NetCDf file...')
 
-        self.ncfile = netcdf.netcdf_file(self.in_file, 'r')
+        self.ncfile = netcdf.netcdf_file(self.cdf_file, 'r')
 
         # NetCDF order is [t, species, ky, kx, theta, r]
         # ncfile.variable returns netcdf object - convert to array
@@ -738,6 +754,8 @@ class Simulation(object):
 
         self.field = np.squeeze(self.field)
         self.field = np.swapaxes(self.field, 1, 2)
+        if len(self.field.shape) < 5:
+            self.field = self.field[:,:,:,np.newaxis,:]
 
         self.kx = np.array(self.ncfile.variables['kx'][:])
         self.ky = np.array(self.ncfile.variables['ky'][:])
@@ -765,7 +783,7 @@ class Simulation(object):
         """
         logging.info('Reading input file...')
         
-        self.input_file = nml.read(self.inp_file)
+        self.input_file = nml.read(self.in_file)
 
         logging.info('Finished reading input file.')
 
@@ -786,7 +804,7 @@ class Simulation(object):
         all non-zonal components by 2.
         """
         
-        self.field[:,:,1:] = self.field[:,:,1:]/2
+        self.field[:,:,:,1:] = self.field[:,:,:,1:]/2
 
     def time_interpolate(self):
         """
@@ -800,12 +818,14 @@ class Simulation(object):
         logging.info('Started interpolating onto a regular time grid...')
 
         t_reg = np.linspace(min(self.t), max(self.t), self.time_interp_fac*self.nt)
-        tmp_field = np.empty([self.time_interp_fac*self.nt, self.nkx, self.nky], 
-                             dtype=complex)
-        for i in range(self.nkx):
-            for j in range(self.nky):
-                f = interp.interp1d(self.t, self.field[:, i, j], axis=0)
-                tmp_field[:, i, j] = f(t_reg)
+        tmp_field = np.empty([self.time_interp_fac*self.nt, self.nkx, self.nky,
+                              self.ntheta], dtype=complex)
+        for ikx in range(self.nkx):
+            for iky in range(self.nky):
+                for ith in range(self.ntheta):
+                    f = interp.interp1d(self.t, self.field[:, ikx, iky, ith], 
+                                        axis=0)
+                    tmp_field[:, ikx, iky, ith] = f(t_reg)
         self.t = t_reg
         self.nt = len(self.t)
         self.field = tmp_field
@@ -821,15 +841,16 @@ class Simulation(object):
         """
         for ikx in range(self.nkx):
             for iky in range(self.nky):
-                # Roughly the size of BES (160x80mm)
-                if abs(self.kx[ikx]) < 0.25 and self.ky[iky] < 0.5:
-                    self.field[:,ikx,iky] = 0.0
+                for ith in range(self.ntheta):
+                    # Roughly the size of BES (160x80mm)
+                    if abs(self.kx[ikx]) < 0.25 and self.ky[iky] < 0.5:
+                        self.field[:,ikx,iky,ith] = 0.0
 
     def zero_zf_scales(self):
         """
         Sets zonal flow (ky = 0) modes to zero.
         """
-        self.field[:,:,0] = 0.0
+        self.field[:,:,0,:] = 0.0
 
     def to_lab_frame(self):
         """
@@ -850,8 +871,9 @@ class Simulation(object):
         n0 = int(self.ky[1]*(self.amin/self.rho_ref)*self.dpsi_da)
         for ix in range(self.nkx):
             for iy in range(self.nky):
-                self.field[:,ix,iy] = self.field[:,ix,iy]*np.exp(1j * n0 * iy * \
-                                                          self.omega * self.t)
+                for ith in range(self.ntheta):
+                    self.field[:,ix,iy,ith] = self.field[:,ix,iy,ith]*np.exp(1j * \
+                                                n0 * iy * self.omega * self.t)
 
     def field_to_complex(self):
         """
@@ -863,7 +885,7 @@ class Simulation(object):
         * ri = 0 - Real part of the field.
         * ri = 1 - Imaginary part of the field.
         """
-        self.field = self.field[:,:,:,0] + 1j*self.field[:,:,:,1]
+        self.field = self.field[:,:,:,:,0] + 1j*self.field[:,:,:,:,1]
 
     def field_to_real_space(self):
         """
@@ -878,11 +900,11 @@ class Simulation(object):
           to get their true values.
         """
 
-        self.field_real_space = np.empty([self.nt,self.nx,self.ny],dtype=float)
-        for it in range(self.nt):
-            self.field_real_space[it,:,:] = np.fft.irfft2(self.field[it,:,:])
-            self.field_real_space[it,:,:] = np.roll(self.field_real_space[it,:,:],
-                                                    int(self.nx/2), axis=0)
+        self.field_real_space = np.empty([self.nt,self.nx,self.ny,self.ntheta],
+                                         dtype=float)
+        self.field_real_space = np.fft.irfft2(self.field, axes=[1,2])
+        self.field_real_space = np.roll(self.field_real_space,
+                                                int(self.nx/2), axis=1)
 
         self.field_real_space = self.field_real_space*self.nx*self.ny
         self.field_real_space = self.field_real_space*self.rho_star
@@ -922,7 +944,7 @@ class Simulation(object):
         self.z = self.z[int(self.ny/2)-z_box_idx+1:int(self.ny/2)+z_box_idx]
         self.field_real_space = self.field_real_space[
                 :,int(self.nx/2)-r_box_idx+1:int(self.nx/2)+r_box_idx,
-                int(self.ny/2)-z_box_idx+1:int(self.ny/2)+z_box_idx]
+                int(self.ny/2)-z_box_idx+1:int(self.ny/2)+z_box_idx,:]
 
         # Recalculate real space arrays
         self.nx = len(self.r)
@@ -949,10 +971,10 @@ class Simulation(object):
         logging.info('Ensuring field has odd points in space')
 
         if self.nx%2 != 1:
-            self.field_real_space = self.field_real_space[:,:-1,:]
+            self.field_real_space = self.field_real_space[:,:-1,:,:]
             self.x = self.x[:-1] 
         if self.ny%2 != 1:
-            self.field_real_space = self.field_real_space[:,:,:-1]
+            self.field_real_space = self.field_real_space[:,:,:-1,:]
             self.y = self.y[:-1] 
 
         self.nx = len(self.x)
@@ -986,6 +1008,9 @@ class Simulation(object):
         Notes
         -----
 
+        * Remove theta dimension before doing analysis to avoid pointless code
+          which accounts for a theta information. Will produce error if more 
+          than one element during config_checks.
         * Uses sig.fftconvolve to calculate the 2D perp correlation function.
         * Splits correlation function into time slices and fits each time
           slice with a tilted Gaussian using the perp_fit function.
@@ -1602,15 +1627,13 @@ class Simulation(object):
         """
         Calculates the real space parallel grid. 
         """
-        dR_dtheta = np.gradient(R)/np.gradient(theta)
-        dZ_dtheta = np.gradient(Z)/np.gradient(theta)
+        dR_dtheta = np.gradient(self.R)/np.gradient(self.theta)
+        dZ_dtheta = np.gradient(self.Z)/np.gradient(self.theta)
 
-        dphi_dtheta = self.r_geo*self.bref / (self.R**2 * self.bmag * \
+        dphi_dtheta = self.r_geo*self.bref / (self.R**2 * self.bmag[10] * \
                                                 self.gradpar)
-
-        dl_dtheta = np.sqrt(dR_dtheta**2 + dZ_dtheta**2 + (R*dphi_dtheta)**2)
+        dl_dtheta = np.sqrt(dR_dtheta**2 + dZ_dtheta**2 + (self.R*dphi_dtheta)**2)
         self.l_par = integrate.cumtrapz(dl_dtheta, x=self.theta)
-        print(self.l_par)
 
     def write_field(self):
         """
@@ -1633,11 +1656,12 @@ class Simulation(object):
             interp_fac = int(np.ceil(self.x[1]/0.005))
             x_nc = np.linspace(min(self.x), max(self.x), interp_fac*self.nx)
             field_real_space_nc = np.empty([self.nt, len(x_nc), self.ny], 
-                                               dtype=float)
+                                           dtype=float)
             for it in range(self.nt):
                 for iy in range(self.ny):
-                    f = interp.interp1d(self.x, self.field_real_space[it,:,iy])
-                    field_real_space_nc[it,:,iy] = f(x_nc)
+                        f = interp.interp1d(self.x, 
+                                            self.field_real_space[it,:,iy])
+                        field_real_space_nc[it,:,iy] = f(x_nc)
         else:
             x_nc = self.x
             field_real_space_nc = self.field_real_space
@@ -1658,13 +1682,14 @@ class Simulation(object):
         nc_y = nc_file.createVariable('y','d',('y',))
         nc_t = nc_file.createVariable('t','d',('t',))
         nc_field = nc_file.createVariable(self.in_field[:self.in_field.find('_')],
-                                          'd',('t', 'x', 'y',))
+                                      'd',('t', 'x', 'y'))
+
+        nc_field[:,:,:] = field_real_space_nc[:,:,:]
         nc_nref[:] = self.nref
         nc_tref[:] = self.tref
         nc_x[:] = x_nc[:] - x_nc[-1]/2
         nc_y[:] = self.y[:] - self.y[-1]/2 
         nc_t[:] = self.t[:] - self.t[0]
-        nc_field[:,:,:] = field_real_space_nc[:,:,:]
         nc_file.close()
         
         logging.info("Finished write_field...")
