@@ -220,8 +220,8 @@ class TestClass(object):
         assert True
 
     def test_calculate_l_par(self, run):
-        assert True
-        #assert run.l_par.shape == run.ntheta
+        run.calculate_l_par()
+        assert run.l_par.shape[0] == len(run.theta)
 
     def test_write_field(self, run):
         run.write_field()

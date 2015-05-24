@@ -323,9 +323,9 @@ class Simulation(object):
 
         self.rho_star = self.rho_ref/self.amin
 
-        self.read_netcdf()
-        self.read_geometry_file()
         self.read_input_file()
+        self.read_geometry_file()
+        self.read_netcdf()
 
         if self.out_dir not in os.listdir():
             os.system("mkdir " + self.out_dir)
@@ -338,10 +338,18 @@ class Simulation(object):
 
         self.config_checks()
 
-        self.rmaj = self.geometry[int(self.ntheta/2),1]*self.amin 
-        self.pitch_angle = np.arctan(self.geometry[int(self.ntheta/2)+1, 2]/ \
-                           (self.geometry[int(self.ntheta/2), 1] * \
-                           self.geometry[int(self.ntheta/2)+1, 3]))
+        self.R = self.geometry[:,1]*self.amin
+        self.Z = self.geometry[:,2]*self.amin
+        self.alpha = self.geometry[:,3]
+        self.tor_phi = -self.geometry[:,3]
+        self.dR_drho = self.geometry[:,4]*self.amin
+        self.dZ_drho = self.geometry[:,5]*self.amin
+        self.dalpha_drho = self.geometry[:,6]*self.amin
+
+        self.rmaj = self.R[int(self.ntheta/2)]*self.amin 
+        self.pitch_angle = np.arctan(self.Z[int(self.ntheta/2)+1]/ \
+                           (self.R[int(self.ntheta/2)] * \
+                           self.tor_phi[int(self.ntheta/2)+1]))
 
         self.t = self.t*self.amin/self.vth
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx, endpoint=False)* \
@@ -350,14 +358,6 @@ class Simulation(object):
                      self.rho_ref * np.abs(np.tan(self.pitch_angle))* \
                      (self.rmaj/self.amin) * (self.drho_dpsi)
         
-        self.R = self.geometry[:,1]*self.amin
-        self.Z = self.geometry[:,2]*self.amin
-        self.alpha = self.geometry[:,3]
-        self.dR_drho = self.geometry[:,4]*self.amin
-        self.dZ_drho = self.geometry[:,5]*self.amin
-        self.dalpha_drho = self.geometry[:,6]*self.amin
-        self.bpol = self.geometry[:,7]*self.bref
-
         self.r_geo = self.input_file['theta_grid_parameters']['R_geo']*self.amin
 
         self.btor = self.bref*self.r_geo/self.R[int(self.ntheta/2)]
@@ -762,6 +762,11 @@ class Simulation(object):
         self.theta = np.array(self.ncfile.variables['theta'][:])
         self.drho_dpsi = float(self.ncfile.variables['drhodpsi'].data)
         self.gradpar = np.array(self.ncfile.variables['gradpar'][:])/self.amin
+        try:
+            self.bpol = np.array(self.ncfile.variables['bpol'][:])*self.bref
+        except KeyError:
+            self.bpol = self.geometry[:,7]*self.bref
+
 
         self.ncfile.close()
 
@@ -1630,10 +1635,10 @@ class Simulation(object):
         dR_dtheta = np.gradient(self.R)/np.gradient(self.theta)
         dZ_dtheta = np.gradient(self.Z)/np.gradient(self.theta)
 
-        dphi_dtheta = self.r_geo*self.bref / (self.R**2 * self.bmag[10] * \
-                                                self.gradpar)
+        dphi_dtheta = self.r_geo*self.bref / (self.R**2 * \
+                        self.bmag[int(self.ntheta/2)] * self.gradpar)
         dl_dtheta = np.sqrt(dR_dtheta**2 + dZ_dtheta**2 + (self.R*dphi_dtheta)**2)
-        self.l_par = integrate.cumtrapz(dl_dtheta, x=self.theta)
+        self.l_par = np.append(0, integrate.cumtrapz(dl_dtheta, x=self.theta))
 
     def write_field(self):
         """
