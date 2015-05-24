@@ -1621,17 +1621,40 @@ class Simulation(object):
         """
         logging.info("Starting par_analysis...")
 
+        self.field_normalize_par()
         self.calculate_l_par()
-        self.regular_parallel_grid()
         self.calculate_par_corr()
-        self.par_norm_mask()
+
+        print(self.par_corr.shape)
 
         logging.info("Finished par_analysis...")
+
+    def field_normalize_par(self):
+        """
+        Defines normalized field for the parallel correlation by subtracting 
+        the mean and dividing by the RMS value.
+        """
+        logging.info('Normalizing the real space field...')
+
+        self.field_real_space_norm = \
+            np.empty([self.nt,self.nx,self.ny,self.ntheta],dtype=float)
+        for ix in range(self.nx):
+            for iy in range(self.ny):
+                for ith in range(self.ntheta):
+                    self.field_real_space_norm[:,ix,iy,ith] = \
+                                    self.field_real_space[:,ix,iy,ith] - \
+                                    np.mean(self.field_real_space[:,ix,iy,ith])
+                    self.field_real_space_norm[:,ix,iy,ith] /= \
+                                np.std(self.field_real_space_norm[:,ix,iy,ith])
+
+        logging.info('Finished normalizing the real space field.')
 
     def calculate_l_par(self):
         """
         Calculates the real space parallel grid. 
         """
+        logging.info('Start calculating parallel length...')
+
         dR_dtheta = np.gradient(self.R)/np.gradient(self.theta)
         dZ_dtheta = np.gradient(self.Z)/np.gradient(self.theta)
 
@@ -1639,6 +1662,41 @@ class Simulation(object):
                         self.bmag[int(self.ntheta/2)] * self.gradpar)
         dl_dtheta = np.sqrt(dR_dtheta**2 + dZ_dtheta**2 + (self.R*dphi_dtheta)**2)
         self.l_par = np.append(0, integrate.cumtrapz(dl_dtheta, x=self.theta))
+
+        logging.info('Finished calculating parallel length.')
+
+    def calculate_par_corr(self):
+        """
+        Calculate the parallel correlation function and apply normalization mask.
+
+        Interpolation onto a regular parallel grid, correlation calculation,
+        and normalization are done in one function to avoid unnecessary looping 
+        over x, y, and theta.
+        """
+        logging.info('Start calculating parallel correlation function...')
+
+        x = np.ones([self.ntheta])
+        mask = sig.correlate(x, x, 'same')
+
+        self.par_corr = np.empty([self.nt, self.nx, self.ny, self.ntheta], 
+                                 dtype=float)
+        l_par_reg = np.linspace(0, self.l_par[-1], self.ntheta)
+        for it in range(self.nt):
+            print(it)
+            for ix in range(self.nx):
+                for iy in range(self.ny):
+                    f = interp.interp1d(self.l_par, 
+                                        self.field_real_space_norm[it,ix,iy,:])
+                    self.field_real_space_norm[it,ix,iy,:] = f(l_par_reg)
+
+                    self.par_corr[it,iy,iy,:] = \
+                        sig.correlate(self.field_real_space_norm[it,ix,iy,:], 
+                                      self.field_real_space_norm[it,ix,iy,:],
+                                      mode='same')/mask
+
+        self.l_par = l_par_reg
+
+        logging.info('Finished calculating parallel correlation function.')
 
     def write_field(self):
         """
