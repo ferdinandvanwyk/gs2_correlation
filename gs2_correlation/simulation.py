@@ -393,7 +393,6 @@ class Simulation(object):
         if self.analysis != 'par':
             self.field_real_space = self.field_real_space[:,:,:,0]
 
-
     def read_config(self):
         """
         Reads analysis and normalization parameters from self.config_file.
@@ -796,6 +795,18 @@ class Simulation(object):
 
         logging.info('Finished reading input file.')
 
+    def field_to_complex(self):
+        """
+        Converts field to a complex array.
+
+        Field is in the following format: field[t, kx, ky, ri] where ri
+        represents a dimension of length 2.
+
+        * ri = 0 - Real part of the field.
+        * ri = 1 - Imaginary part of the field.
+        """
+        self.field = self.field[:,:,:,:,0] + 1j*self.field[:,:,:,:,1]
+
     def fourier_correction(self):
         """
         Correction to GS2s Fourier components to regular Fourier components.
@@ -812,8 +823,7 @@ class Simulation(object):
         Therfore converting to regular fourier components simply means dividing
         all non-zonal components by 2.
         """
-        
-        self.field[:,:,:,1:] = self.field[:,:,:,1:]/2
+        self.field[:,:,1:,:] = self.field[:,:,1:,:]/2
 
     def time_interpolate(self):
         """
@@ -883,18 +893,6 @@ class Simulation(object):
                 for ith in range(self.ntheta):
                     self.field[:,ix,iy,ith] = self.field[:,ix,iy,ith]*np.exp(1j * \
                                                 n0 * iy * self.omega * self.t)
-
-    def field_to_complex(self):
-        """
-        Converts field to a complex array.
-
-        Field is in the following format: field[t, kx, ky, ri] where ri
-        represents a dimension of length 2.
-
-        * ri = 0 - Real part of the field.
-        * ri = 1 - Imaginary part of the field.
-        """
-        self.field = self.field[:,:,:,:,0] + 1j*self.field[:,:,:,:,1]
 
     def field_to_real_space(self):
         """
@@ -1630,7 +1628,7 @@ class Simulation(object):
         self.calculate_par_corr()
 
         self.par_corr.dump('corr.dmp')
-        self.field_real_space.dump('n_real.dmp')
+        self.field_real_space.dump('n.dmp')
         self.field.dump('field.dmp')
 
         logging.info("Finished par_analysis...")
@@ -1639,19 +1637,16 @@ class Simulation(object):
         """
         Defines normalized field for the parallel correlation by subtracting 
         the mean and dividing by the RMS value.
+
+        We need to be more careful with memory here than for other types of
+        analysis since the full density arrays can be big and we don't want
+        multiple copies. Therefore, unlike previous normalizations, we will 
+        overwrite the field with it's normalized version.
         """
         logging.info('Normalizing the real space field...')
 
-        self.field_real_space_norm = \
-            np.empty([self.nt,self.nx,self.ny,self.ntheta],dtype=float)
-        for ix in range(self.nx):
-            for iy in range(self.ny):
-                for ith in range(self.ntheta):
-                    self.field_real_space_norm[:,ix,iy,ith] = \
-                                    self.field_real_space[:,ix,iy,ith] - \
-                                    np.mean(self.field_real_space[:,ix,iy,ith])
-                    self.field_real_space_norm[:,ix,iy,ith] /= \
-                                np.std(self.field_real_space_norm[:,ix,iy,ith])
+        self.field_real_space -= np.mean(self.field_real_space, axis=0)
+        self.field_real_space /= np.std(self.field_real_space, axis=0)
 
         logging.info('Finished normalizing the real space field.')
 
@@ -1692,12 +1687,12 @@ class Simulation(object):
             for ix in range(self.nx):
                 for iy in range(self.ny):
                     f = interp.interp1d(self.l_par, 
-                                        self.field_real_space_norm[it,ix,iy,:])
-                    self.field_real_space_norm[it,ix,iy,:] = f(l_par_reg)
+                                        self.field_real_space[it,ix,iy,:])
+                    self.field_real_space[it,ix,iy,:] = f(l_par_reg)
 
-                    self.par_corr[it,iy,iy,:] = \
-                        sig.correlate(self.field_real_space_norm[it,ix,iy,:], 
-                                      self.field_real_space_norm[it,ix,iy,:],
+                    self.par_corr[it,ix,iy,:] = \
+                        sig.correlate(self.field_real_space[it,ix,iy,:], 
+                                      self.field_real_space[it,ix,iy,:],
                                       mode='same')/mask
 
         self.l_par = l_par_reg

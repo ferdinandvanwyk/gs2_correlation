@@ -111,6 +111,11 @@ class TestClass(object):
     def test_field_to_complex(self, run):
         assert np.iscomplexobj(run.field) == True 
 
+    def test_fourier_correction(self, run):
+        run.field = np.ones([51, 5, 5, 9])
+        run.fourier_correction()
+        assert ((run.field[:,:,1:,:] - 0.5) < 1e-5).all()
+
     def test_field_to_real_space(self, run):
         assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
         
@@ -226,7 +231,7 @@ class TestClass(object):
         run.field_real_space = np.ones([51,5,5,9])
         run.ntheta = 9
         run.field_normalize_par()
-        assert run.field_real_space_norm.shape == (run.nt, run.nx, run.ny, run.ntheta)
+        assert run.field_real_space.shape == (run.nt, run.nx, run.ny, run.ntheta)
 
     def test_calculate_l_par(self, run):
         run.calculate_l_par()
