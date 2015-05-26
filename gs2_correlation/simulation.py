@@ -276,6 +276,10 @@ class Simulation(object):
         Magnitude of the magnetic field at the location of the flux tube.
     r_geo : float
         Radial location of the reference magnetic field.
+    l_par : array_like
+        Regular real space parallel grid. 
+    dl_par : array_like
+        Values of parallel separation in real space.
     """
 
     def __init__(self, config_file):
@@ -1625,7 +1629,9 @@ class Simulation(object):
         self.calculate_l_par()
         self.calculate_par_corr()
 
-        print(self.par_corr.shape)
+        self.par_corr.dump('corr.dmp')
+        self.field_real_space.dump('n_real.dmp')
+        self.field.dump('field.dmp')
 
         logging.info("Finished par_analysis...")
 
@@ -1695,6 +1701,8 @@ class Simulation(object):
                                       mode='same')/mask
 
         self.l_par = l_par_reg
+        self.dl_par = np.linspace(-self.l_par[-1]/2, self.l_par[-1]/2, 
+                                  self.ntheta)
 
         logging.info('Finished calculating parallel correlation function.')
 
