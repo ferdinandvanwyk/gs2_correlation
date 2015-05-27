@@ -1039,6 +1039,16 @@ class Simulation(object):
         self.field_normalize_perp()
         self.calculate_perp_corr()
         self.perp_norm_mask()
+
+        #TEST!!!!!!!!!!!!!!!!!!!!!!!!!!
+        self.field_real_space.dump('n.dmp')
+        plt.plot(self.perp_corr[0,:,int(self.ny/2)])
+        plt.show()
+        plt.contourf(np.transpose(self.perp_corr[0,:,:]), cmap='coolwarm')
+        plt.colorbar()
+        plt.show()
+        #TEST!!!!!!!!!!!!!!!!!!!!!!!!!!
+
         self.perp_fit_params = np.empty([self.nt_slices, 4], dtype=float)
         self.perp_fit_params_err = np.empty([self.nt_slices, 4], dtype=float)
 
