@@ -350,6 +350,11 @@ class Simulation(object):
         if self.time_range[1] == -1:
             self.time_range[1] = None
 
+        self.par_guess = str(config_parse.get('analysis',
+                                              'par_guess', fallback='[1,0.1]'))
+        self.par_guess = self.par_guess[1:-1].split(',')
+        self.par_guess = [float(s) for s in self.par_guess]
+
         ###################
         # Output Namelist #
         ###################
@@ -1324,8 +1329,10 @@ class Simulation(object):
         self.calculate_l_par()
         self.calculate_par_corr()
 
-        self.par_fit_params = np.empty([self.nt_slices, 2], dtype=float)
-        self.par_fit_params_err = np.empty([self.nt_slices, 2], dtype=float)
+        self.par_fit_params = np.empty([self.nt_slices, self.nx, self.ny, 2], 
+                                       dtype=float)
+        self.par_fit_params_err = np.empty([self.nt_slices, self.nx, self.ny, 2], 
+                                           dtype=float)
 
         for it in range(self.nt_slices):
             self.par_corr_fit(it)
@@ -1365,7 +1372,7 @@ class Simulation(object):
                                  dtype=float)
         l_par_reg = np.linspace(0, self.l_par[-1], self.ntheta)
         for it in range(self.nt):
-            print(it)
+            logging.info('Parallel correlation function: %d of %d'%(it,self.nt))
             for ix in range(self.nx):
                 for iy in range(self.ny):
                     f = interp.interp1d(self.l_par, 
@@ -1388,21 +1395,6 @@ class Simulation(object):
 
         logging.info('Finished calculating parallel correlation function.')
 
-    def par_norm_mask(self):
-        """
-        Apply the appropriate normalization in the parallel direction after
-        calculating correlation function.
-
-        Note: par_corr is a tensor while mask is a vector, however Python is 
-        smart enough to add new dimensions to vector and duplicate as required
-        so that the operation tensor/vector -> tensor/tensor operation (which 
-        occurs element wise)
-        """
-        x = np.ones([self.ntheta])
-        mask = sig.correlate(x,x,'same')
-
-        self.par_corr /= mask
-
     def par_corr_fit(self, it):
         """
         Fit the parallel correlation function with an oscillatory Gaussian 
@@ -1418,6 +1410,22 @@ class Simulation(object):
 
         # Average corr_fn over time
         avg_corr = np.mean(corr_fn, axis=0)
+        
+        for ix in range(self.nx):
+            for iy in range(self.ny):
+                try:
+                    popt, pcov = opt.curve_fit(fit.osc_exp, self.dl_par,
+                                 avg_corr[ix,iy,:].ravel(), p0=self.par_guess)
+                    
+                    self.par_fit_params[it, ix, iy, :] = popt
+                    self.par_fit_params_err[it, ix, iy, :] = np.sqrt(np.diag(pcov))
+                except RuntimeError:
+                    logging.info("(" + str(it) + "," + str(ix) + ","+str(iy)") "
+                            "RuntimeError - max fitting iterations reached, "
+                            "skipping this case with (l_par, k_par) = NaN\n")
+                    self.corr_time[it, ix, iy, :] = np.nan
+
+
 
     def write_field(self):
         """

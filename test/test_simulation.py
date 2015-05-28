@@ -49,6 +49,7 @@ class TestClass(object):
         assert type(run.time_guess) == float
         assert type(run.box_size) == list
         assert type(run.time_range) == list
+        assert type(run.par_guess) == list
 
         assert type(run.amin) == float
         assert type(run.vth) == float
@@ -240,8 +241,6 @@ class TestClass(object):
         assert np.abs(np.abs(run.l_par[1] - run.l_par[0]) - 
                 np.abs(run.l_par[-1]/(run.ntheta-1))) < 1e-5
         assert run.par_corr.shape == (51,5,5,9)
-
-    def test_par_corr_fit(self, run):
 
     def test_write_field(self, run):
         run.write_field()

@@ -215,12 +215,15 @@ Instance Variables of Simulation Class
        Magnitude of the magnetic field at the location of the flux tube.
    r_geo : float
        Radial location of the reference magnetic field.
+   par_corr : array_like
+      Parallel correlation function C(t,x,y,dtheta)
    l_par : array_like
        Regular real space parallel grid. 
    dl_par : array_like
        Values of parallel separation in real space.
-   par_corr : array_like
-      Parallel correlation function C(t,x,y,dtheta)
+   par_guess : array_like, [1,0.1]
+      Initial guess for the parallel fitting in SI units in the form 
+      [l_par, k_par].
    
 
 Configuration Variables 
@@ -296,6 +299,9 @@ Configuration Variables
    geom_file : str
        Location of the geometry file. By default searches the run folder
        for a '.g' file and loads the first one found.
+   par_guess : array_like, [1,0.1]
+      Initial guess for the parallel fitting in SI units in the form 
+      [l_par, k_par].
    amin : float
        Minor radius of device in *m*.
    vth : float
