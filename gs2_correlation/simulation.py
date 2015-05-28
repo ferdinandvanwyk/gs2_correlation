@@ -1040,15 +1040,6 @@ class Simulation(object):
         self.calculate_perp_corr()
         self.perp_norm_mask()
 
-        #TEST!!!!!!!!!!!!!!!!!!!!!!!!!!
-        self.field_real_space.dump('n.dmp')
-        plt.plot(self.perp_corr[0,:,int(self.ny/2)])
-        plt.show()
-        plt.contourf(np.transpose(self.perp_corr[0,:,:]), cmap='coolwarm')
-        plt.colorbar()
-        plt.show()
-        #TEST!!!!!!!!!!!!!!!!!!!!!!!!!!
-
         self.perp_fit_params = np.empty([self.nt_slices, 4], dtype=float)
         self.perp_fit_params_err = np.empty([self.nt_slices, 4], dtype=float)
 
@@ -1157,7 +1148,8 @@ class Simulation(object):
                                      int(self.ny/2) - self.perp_fit_length + 1 :
                                      int(self.ny/2) + self.perp_fit_length]
         elif self.domain == 'middle':
-            corr_fn = self.perp_corr
+            corr_fn = \
+                self.perp_corr[it*self.time_slice:(it+1)*self.time_slice,:,:]
 
         # Average corr_fn over time
         avg_corr = np.mean(corr_fn, axis=0)
@@ -1636,10 +1628,13 @@ class Simulation(object):
         self.field_normalize_par()
         self.calculate_l_par()
         self.calculate_par_corr()
+        self.par_norm_mask()
 
-        self.par_corr.dump('corr.dmp')
-        self.field_real_space.dump('n.dmp')
-        self.field.dump('field.dmp')
+        self.par_fit_params = np.empty([self.nt_slices, 2], dtype=float)
+        self.par_fit_params_err = np.empty([self.nt_slices, 2], dtype=float)
+
+        for it in range(self.nt_slices):
+            self.par_corr_fit(it)
 
         logging.info("Finished par_analysis...")
 
@@ -1652,11 +1647,15 @@ class Simulation(object):
         analysis since the full density arrays can be big and we don't want
         multiple copies. Therefore, unlike previous normalizations, we will 
         overwrite the field with it's normalized version.
+
+        We use the np.newaxis trick here which will add a dimension of size 1
+        and duplicate array as many times as needed to match array it is 
+        operating on.
         """
         logging.info('Normalizing the real space field...')
 
-        self.field_real_space -= np.mean(self.field_real_space, axis=0)
-        self.field_real_space /= np.std(self.field_real_space, axis=0)
+        self.field_real_space -= np.mean(self.field_real_space, axis=3)[:,:,:,np.newaxis]
+        self.field_real_space /= np.std(self.field_real_space, axis=3)[:,:,:,np.newaxis]
 
         logging.info('Finished normalizing the real space field.')
 
@@ -1710,6 +1709,39 @@ class Simulation(object):
                                   self.ntheta)
 
         logging.info('Finished calculating parallel correlation function.')
+
+    def par_norm_mask(self):
+        """
+        Apply the appropriate normalization in the parallel direction after
+        calculating correlation function.
+
+        Note: par_corr is a tensor while mask is a vector, however Python is 
+        smart enough to add new dimensions to vector and duplicate as required
+        so that the operation tensor/vector -> tensor/tensor operation (which 
+        occurs element wise)
+        """
+        x = np.ones([self.ntheta])
+        mask = sig.correlate(x,x,'same')
+
+        self.par_corr /= mask
+
+    def par_corr_fit(self, it):
+        """
+        Fit the parallel correlation function with an oscillatory Gaussian 
+        function for time slice it.
+
+        Parameters
+        ----------
+
+        it : int
+            Time slice to average over and fit.
+        """     
+        corr_fn = self.par_corr[it*self.time_slice:(it+1)*self.time_slice,:,:,:]
+
+        # Average corr_fn over time
+        avg_corr = np.mean(corr_fn, axis=0)
+
+
 
     def write_field(self):
         """
