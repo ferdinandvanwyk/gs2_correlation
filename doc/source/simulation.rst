@@ -219,6 +219,9 @@ Instance Variables of Simulation Class
        Regular real space parallel grid. 
    dl_par : array_like
        Values of parallel separation in real space.
+   par_corr : array_like
+      Parallel correlation function C(t,x,y,dtheta)
+   
 
 Configuration Variables 
 -----------------------

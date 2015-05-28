@@ -227,12 +227,6 @@ class TestClass(object):
         run.par_analysis()
         assert run.par_corr.shape == (51,5,5,9)
 
-    def test_field_normalize_par(self, run):
-        run.field_real_space = np.ones([51,5,5,9])
-        run.ntheta = 9
-        run.field_normalize_par()
-        assert run.field_real_space.shape == (run.nt, run.nx, run.ny, run.ntheta)
-
     def test_calculate_l_par(self, run):
         run.calculate_l_par()
         assert run.l_par.shape[0] == len(run.theta)
@@ -246,6 +240,8 @@ class TestClass(object):
         assert np.abs(np.abs(run.l_par[1] - run.l_par[0]) - 
                 np.abs(run.l_par[-1]/(run.ntheta-1))) < 1e-5
         assert run.par_corr.shape == (51,5,5,9)
+
+    def test_par_corr_fit(self, run):
 
     def test_write_field(self, run):
         run.write_field()

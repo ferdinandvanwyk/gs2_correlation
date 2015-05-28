@@ -55,6 +55,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 plt.rcParams.update({'figure.autolayout': True})
 mpl.rcParams['axes.unicode_minus']=False
 import f90nml as nml
+import pickle as pkl
 
 # Local
 import gs2_correlation.fitting_functions as fit
@@ -1320,10 +1321,8 @@ class Simulation(object):
         """
         logging.info("Starting par_analysis...")
 
-        self.field_normalize_par()
         self.calculate_l_par()
         self.calculate_par_corr()
-        self.par_norm_mask()
 
         self.par_fit_params = np.empty([self.nt_slices, 2], dtype=float)
         self.par_fit_params_err = np.empty([self.nt_slices, 2], dtype=float)
@@ -1332,27 +1331,6 @@ class Simulation(object):
             self.par_corr_fit(it)
 
         logging.info("Finished par_analysis...")
-
-    def field_normalize_par(self):
-        """
-        Defines normalized field for the parallel correlation by subtracting 
-        the mean and dividing by the RMS value.
-
-        We need to be more careful with memory here than for other types of
-        analysis since the full density arrays can be big and we don't want
-        multiple copies. Therefore, unlike previous normalizations, we will 
-        overwrite the field with it's normalized version.
-
-        We use the np.newaxis trick here which will add a dimension of size 1
-        and duplicate array as many times as needed to match array it is 
-        operating on.
-        """
-        logging.info('Normalizing the real space field...')
-
-        self.field_real_space -= np.mean(self.field_real_space, axis=3)[:,:,:,np.newaxis]
-        self.field_real_space /= np.std(self.field_real_space, axis=3)[:,:,:,np.newaxis]
-
-        logging.info('Finished normalizing the real space field.')
 
     def calculate_l_par(self):
         """
@@ -1393,6 +1371,11 @@ class Simulation(object):
                     f = interp.interp1d(self.l_par, 
                                         self.field_real_space[it,ix,iy,:])
                     self.field_real_space[it,ix,iy,:] = f(l_par_reg)
+
+                    self.field_real_space[it,ix,iy] -= \
+                                       np.mean(self.field_real_space[it,ix,iy])
+                    self.field_real_space[it,ix,iy] /= \
+                                       np.std(self.field_real_space[it,ix,iy])
 
                     self.par_corr[it,ix,iy,:] = \
                         sig.correlate(self.field_real_space[it,ix,iy,:], 
@@ -1435,8 +1418,6 @@ class Simulation(object):
 
         # Average corr_fn over time
         avg_corr = np.mean(corr_fn, axis=0)
-
-
 
     def write_field(self):
         """

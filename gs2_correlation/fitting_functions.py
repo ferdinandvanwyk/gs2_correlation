@@ -66,9 +66,9 @@ def growing_exp(t, tau_c):
     # fitting function only works on 1D data, reshape later to plot
     return exp_fn.ravel()
 
-#Growing exponential for time correlation with negative flow
-def osc_exp(t, tau_c, omega):
-    fit_fn = np.exp(- (t / tau_c)**2) * np.cos(omega * t)
+#General function for an oscillating Gaussian function
+def osc_exp(x, lx, kx):
+    fit_fn = np.exp(- (x / lx)**2) * np.cos(kx * x)
     # fitting function only works on 1D data, reshape later to plot
     return fit_fn.ravel() 
 
