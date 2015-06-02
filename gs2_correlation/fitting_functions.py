@@ -72,6 +72,12 @@ def osc_exp(x, lx, kx):
     # fitting function only works on 1D data, reshape later to plot
     return fit_fn.ravel() 
 
+#General function for an oscillating Gaussian function
+def gaussian(x, lx):
+    fit_fn = np.exp(- (x / lx)**2)
+    # fitting function only works on 1D data, reshape later to plot
+    return fit_fn.ravel() 
+
 ###################
 # Misc Procedures #
 ###################

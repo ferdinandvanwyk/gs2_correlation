@@ -1406,24 +1406,31 @@ class Simulation(object):
         it : int
             Time slice to average over and fit.
         """     
-        corr_fn = self.par_corr[it*self.time_slice:(it+1)*self.time_slice,:,:,:]
+        corr_fn = np.mean(self.par_corr[it*self.time_slice:(it+1)*self.time_slice,:,:,:], axis=0)
 
-        # Average corr_fn over time
-        avg_corr = np.mean(corr_fn, axis=0)
-        
+        # TEST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+        plt.plot(self.dl_par, corr_fn[0,0,:])
+        popt, pcov = opt.curve_fit(fit.gaussian, self.dl_par,
+                     corr_fn[0,0,:].ravel(), p0=(1))
+        plt.plot(np.linspace(-10,10,501), fit.gaussian(np.linspace(-10,10,501), popt[0]))
+        plt.show()
+        sys.exit()
+        #TEST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11
+
         for ix in range(self.nx):
             for iy in range(self.ny):
                 try:
                     popt, pcov = opt.curve_fit(fit.osc_exp, self.dl_par,
-                                 avg_corr[ix,iy,:].ravel(), p0=self.par_guess)
+                                 corr_fn[ix,iy,:].ravel(), p0=self.par_guess)
                     
                     self.par_fit_params[it, ix, iy, :] = popt
                     self.par_fit_params_err[it, ix, iy, :] = np.sqrt(np.diag(pcov))
                 except RuntimeError:
-                    logging.info("(" + str(it) + "," + str(ix) + ","+str(iy)") "
-                            "RuntimeError - max fitting iterations reached, "
+                    logging.info("(" + str(it) + "," + str(ix) + "," + str(iy) + 
+                            ") RuntimeError - max fitting iterations reached, "
                             "skipping this case with (l_par, k_par) = NaN\n")
-                    self.corr_time[it, ix, iy, :] = np.nan
+                    self.par_fit_params[it, ix, iy, :] = np.nan
+                    self.par_fit_params_err[it, ix, iy, :] = np.nan
 
 
 

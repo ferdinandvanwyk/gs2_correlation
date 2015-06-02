@@ -235,7 +235,6 @@ class TestClass(object):
     def test_calculate_par_corr(self, run):
         run.field_real_space = np.ones([51,5,5,9])
         run.ntheta = 9
-        run.field_normalize_par()
         run.calculate_l_par()
         run.calculate_par_corr()
         assert np.abs(np.abs(run.l_par[1] - run.l_par[0]) - 
