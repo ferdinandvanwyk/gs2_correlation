@@ -224,7 +224,14 @@ Instance Variables of Simulation Class
    par_guess : array_like, [1,0.1]
       Initial guess for the parallel fitting in SI units in the form 
       [l_par, k_par].
-   
+   par_fit_params : array_like
+      Array which stores parallel correlation fitting parameters. It is a 
+      function of time slice and contains both l and k which define an
+      oscillating Gaussian.
+   par_fit_params_err : array_like
+      Stores errors associated with fitting the parallel correlation function.
+      These are calculated by taking the square root of the diagonal terms in
+      the covariance matrix and give the error in each fitting parameter.
 
 Configuration Variables 
 -----------------------

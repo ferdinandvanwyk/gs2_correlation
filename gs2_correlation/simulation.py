@@ -940,6 +940,24 @@ class Simulation(object):
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_comparison.pdf')
 
+        plt.clf()
+        plot_style.white()
+        fig, ax = plt.subplots(1, 1)
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,0]), 
+                     label=r'$l_x (m)$', yerr=self.perp_fit_params_err[:,0])
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,1]), 
+                     label=r'$l_y (m)$', yerr=self.perp_fit_params_err[:,1])
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,2]), 
+                     label=r'$|k_x| (m^{-1})$', yerr=self.perp_fit_params_err[:,2])
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,3]), 
+                     label=r'$|k_y| (m^{-1})$', yerr=self.perp_fit_params_err[:,3])
+        plt.legend()
+        plt.xlabel('Time Window')
+        plot_style.minor_grid(ax)
+        plot_style.ticks_bottom_left(ax)
+        plt.yscale('log')
+        plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_params_vs_time_slice.pdf')
+
         logging.info("Finished writing perp_analysis plots...")
 
     def perp_analysis_summary(self):
@@ -951,20 +969,6 @@ class Simulation(object):
         * Writes summary to a text file.
         """
         logging.info("Writing perp_analysis summary...")
-
-        plt.clf()
-        plot_style.white()
-        fig, ax = plt.subplots(1, 1)
-        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,0]), label=r'$l_x (m)$', yerr=self.perp_fit_params_err[:,0])
-        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,1]), label=r'$l_y (m)$', yerr=self.perp_fit_params_err[:,1])
-        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,2]), label=r'$|k_x| (m^{-1})$', yerr=self.perp_fit_params_err[:,2])
-        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,3]), label=r'$|k_y| (m^{-1})$', yerr=self.perp_fit_params_err[:,3])
-        plt.legend()
-        plt.xlabel('Time Window')
-        plot_style.minor_grid(ax)
-        plot_style.ticks_bottom_left(ax)
-        plt.yscale('log')
-        plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_params_vs_time_slice.pdf')
 
         summary_file = open(self.out_dir + '/'+self.perp_dir+'/perp_fit_summary.dat', 'w')
         summary_file.write('#lx(m), ly(m), kx(m^-1), ky(m^-1), theta(rad)\n')
@@ -1035,7 +1039,6 @@ class Simulation(object):
         if 'corr_fns' not in os.listdir(self.out_dir+'/'+self.time_dir):
             os.system("mkdir " + self.out_dir + '/'+self.time_dir+'/corr_fns')
         os.system('rm ' + self.out_dir + '/'+self.time_dir+'/corr_fns/*')
-
         
         self.time_corr = np.empty([self.nt_slices, self.time_slice, self.nx,
                                    self.ny], dtype=float)
@@ -1326,16 +1329,25 @@ class Simulation(object):
         """
         logging.info("Starting par_analysis...")
 
+        if 'parallel' not in os.listdir(self.out_dir):
+            os.system("mkdir " + self.out_dir + '/parallel')
+
         self.calculate_l_par()
         self.calculate_par_corr()
 
-        self.par_fit_params = np.empty([self.nt_slices, self.nx, self.ny, 2], 
+        self.par_fit_params = np.empty([self.nt_slices, 2], 
                                        dtype=float)
-        self.par_fit_params_err = np.empty([self.nt_slices, self.nx, self.ny, 2], 
+        self.par_fit_params_err = np.empty([self.nt_slices, 2], 
                                            dtype=float)
 
         for it in range(self.nt_slices):
             self.par_corr_fit(it)
+        
+        np.savetxt(self.out_dir + '/parallel/par_fit_params.csv', 
+                   (self.par_fit_params), delimiter=',', fmt='%1.3f')
+
+        self.par_plots()
+        #self.par_analysis_summary()
 
         logging.info("Finished par_analysis...")
 
@@ -1372,7 +1384,7 @@ class Simulation(object):
                                  dtype=float)
         l_par_reg = np.linspace(0, self.l_par[-1], self.ntheta)
         for it in range(self.nt):
-            logging.info('Parallel correlation function: %d of %d'%(it,self.nt))
+            logging.info('Parallel correlation timestep: %d of %d'%(it,self.nt))
             for ix in range(self.nx):
                 for iy in range(self.ny):
                     f = interp.interp1d(self.l_par, 
@@ -1405,34 +1417,55 @@ class Simulation(object):
 
         it : int
             Time slice to average over and fit.
+
+        Before fitting average over time, x, and y.
         """     
         corr_fn = np.mean(self.par_corr[it*self.time_slice:(it+1)*self.time_slice,:,:,:], axis=0)
+        corr_fn = np.mean(corr_fn, axis=0)
+        corr_fn = np.mean(corr_fn, axis=0)
 
-        # TEST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
-        plt.plot(self.dl_par, corr_fn[0,0,:])
-        popt, pcov = opt.curve_fit(fit.gaussian, self.dl_par,
-                     corr_fn[0,0,:].ravel(), p0=(1))
-        plt.plot(np.linspace(-10,10,501), fit.gaussian(np.linspace(-10,10,501), popt[0]))
-        plt.show()
-        sys.exit()
-        #TEST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11
+        try:
+            popt, pcov = opt.curve_fit(fit.osc_exp, self.dl_par,
+                         corr_fn.ravel(), p0=self.par_guess)
+            
+            self.par_fit_params[it, :] = popt
+            self.par_fit_params_err[it, :] = np.sqrt(np.diag(pcov))
+        except RuntimeError:
+            logging.info("(" + str(it) + ") RuntimeError - max fitting iterations reached, "
+                    "skipping this case with (l_par, k_par) = NaN\n")
+            self.par_fit_params[it, :] = np.nan
+            self.par_fit_params_err[it, :] = np.nan
 
-        for ix in range(self.nx):
-            for iy in range(self.ny):
-                try:
-                    popt, pcov = opt.curve_fit(fit.osc_exp, self.dl_par,
-                                 corr_fn[ix,iy,:].ravel(), p0=self.par_guess)
-                    
-                    self.par_fit_params[it, ix, iy, :] = popt
-                    self.par_fit_params_err[it, ix, iy, :] = np.sqrt(np.diag(pcov))
-                except RuntimeError:
-                    logging.info("(" + str(it) + "," + str(ix) + "," + str(iy) + 
-                            ") RuntimeError - max fitting iterations reached, "
-                            "skipping this case with (l_par, k_par) = NaN\n")
-                    self.par_fit_params[it, ix, iy, :] = np.nan
-                    self.par_fit_params_err[it, ix, iy, :] = np.nan
+        self.par_guess = popt
 
+    def par_plots(self):
+        """
+        Plot parallel correlation fitting parameters along with associated 
+        errors.
+        """
+        plot_style.white()
 
+        plt.clf()
+        fig, ax = plt.subplots(1, 1)
+        plt.errorbar(range(self.nt_slices), np.abs(self.par_fit_params[:,0]), 
+                     yerr=self.par_fit_params_err[:,0])
+        plt.xlabel('Time Window')
+        plt.ylabel(r'Parallel Correlation Length $l_{\parallel} (m)$')
+        plt.ylim(0)
+        plot_style.minor_grid(ax)
+        plot_style.ticks_bottom_left(ax)
+        plt.savefig(self.out_dir + '/parallel/par_fit_length_vs_time_slice.pdf')
+
+        plt.clf()
+        fig, ax = plt.subplots(1, 1)
+        plt.errorbar(range(self.nt_slices), np.abs(self.par_fit_params[:,1]), 
+                     yerr=self.par_fit_params_err[:,1])
+        plt.xlabel('Time Window')
+        plt.ylabel(r'Parallel Correlation Wavenumber $k_{\parallel} (m^{-1})$')
+        plt.ylim(0)
+        plot_style.minor_grid(ax)
+        plot_style.ticks_bottom_left(ax)
+        plt.savefig(self.out_dir + '/parallel/par_fit_wavenumber_vs_time_slice.pdf')
 
     def write_field(self):
         """

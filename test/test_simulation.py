@@ -223,7 +223,7 @@ class TestClass(object):
         assert np.abs(run.time_corr[0,4,0,2] - 1./45.) < 1e-5
 
     def test_par_analysis(self, run):
-        run.field_real_space = np.ones([51,5,5,9])
+        run.field_real_space = np.random.randint(0,10,size=[51,5,5,9])
         run.ntheta = 9
         run.par_analysis()
         assert run.par_corr.shape == (51,5,5,9)
