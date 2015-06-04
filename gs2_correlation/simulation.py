@@ -471,7 +471,6 @@ class Simulation(object):
         except KeyError:
             self.bpol = self.geometry[:,7]*self.bref
 
-
         self.ncfile.close()
 
         logging.info('Finished reading from NetCDf file.')
@@ -543,8 +542,7 @@ class Simulation(object):
         for ikx in range(self.nkx):
             for iky in range(self.nky):
                 for ith in range(self.ntheta):
-                    f = interp.interp1d(self.t, self.field[:, ikx, iky, ith], 
-                                        axis=0)
+                    f = interp.interp1d(self.t, self.field[:, ikx, iky, ith])
                     tmp_field[:, ikx, iky, ith] = f(t_reg)
         self.t = t_reg
         self.nt = len(self.t)
@@ -606,16 +604,25 @@ class Simulation(object):
           normalization by multiplying by the size of the arrays.
         * GS2 fluctuations are O(rho_star) and must be multiplied by rho_star
           to get their true values.
+        * In order to avoid memory overloads, the fourier space field is
+          cleared after the real space field is calculated.
         """
+        logging.info('Calculating real space field...')
 
         self.field_real_space = np.empty([self.nt,self.nx,self.ny,self.ntheta],
                                          dtype=float)
         self.field_real_space = np.fft.irfft2(self.field, axes=[1,2])
+
+        self.field = None
+        gc.collect()
+
         self.field_real_space = np.roll(self.field_real_space,
                                                 int(self.nx/2), axis=1)
 
         self.field_real_space = self.field_real_space*self.nx*self.ny
         self.field_real_space = self.field_real_space*self.rho_star
+        
+        logging.info('Finished calculating real space field.')
 
     def domain_reduce(self):
         """
@@ -1342,12 +1349,9 @@ class Simulation(object):
 
         for it in range(self.nt_slices):
             self.par_corr_fit(it)
+            self.par_plot(it)
         
-        np.savetxt(self.out_dir + '/parallel/par_fit_params.csv', 
-                   (self.par_fit_params), delimiter=',', fmt='%1.3f')
-
-        self.par_plots()
-        #self.par_analysis_summary()
+        self.par_analysis_summary()
 
         logging.info("Finished par_analysis...")
 
@@ -1428,7 +1432,7 @@ class Simulation(object):
             popt, pcov = opt.curve_fit(fit.osc_exp, self.dl_par,
                          corr_fn.ravel(), p0=self.par_guess)
             
-            self.par_fit_params[it, :] = popt
+            self.par_fit_params[it, :] = np.abs(popt)
             self.par_fit_params_err[it, :] = np.sqrt(np.diag(pcov))
         except RuntimeError:
             logging.info("(" + str(it) + ") RuntimeError - max fitting iterations reached, "
@@ -1438,12 +1442,43 @@ class Simulation(object):
 
         self.par_guess = popt
 
-    def par_plots(self):
+    def par_plot(self, it):
         """
-        Plot parallel correlation fitting parameters along with associated 
-        errors.
+        Plots and saves the parallel correlation function and its fit for each
+        time window.
+
+        Parameters
+        ----------
+        it : int
+            Time window being plotted.
         """
         plot_style.white()
+
+        if (np.isnan(self.par_fit_params[it,:]).all()): 
+            logging.info("(" + str(it) + "), one of (l_par, k_par) == NaN."
+                         "Not plotting this case.\n")
+        else:
+            plt.clf()
+            fig, ax = plt.subplots(1, 1)
+
+    def par_analysis_summary(self):
+        """
+        Summarize parallel correlation analysis by plotting parallel correlation 
+        fitting parameters along with associated errors and writing to a .csv
+        file.
+        """
+        plot_style.white()
+
+        np.savetxt(self.out_dir + '/parallel/par_fit_params.csv', 
+                   (self.par_fit_params), delimiter=',', fmt='%1.3f')
+
+        summary_file = open(self.out_dir + '/parallel/par_fit_summary.dat', 'w')
+        summary_file.write('#l_par, err(l_par), k_par, err(k_par)\n')
+        summary_file.write(str(np.nanmean(self.par_fit_params[:,0])) + ' ' + 
+                           str(np.nanmean(self.par_fit_params_err[:,0])) + ' ' +
+                           str(np.nanmean(self.par_fit_params[:,1])) + ' ' + 
+                           str(np.nanmean(self.par_fit_params_err[:,1])))
+        summary_file.close()
 
         plt.clf()
         fig, ax = plt.subplots(1, 1)
@@ -1455,6 +1490,7 @@ class Simulation(object):
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/parallel/par_fit_length_vs_time_slice.pdf')
+        plt.close(fig)
 
         plt.clf()
         fig, ax = plt.subplots(1, 1)
@@ -1466,6 +1502,7 @@ class Simulation(object):
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/parallel/par_fit_wavenumber_vs_time_slice.pdf')
+        plt.close(fig)
 
     def write_field(self):
         """
