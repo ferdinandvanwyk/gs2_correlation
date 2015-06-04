@@ -613,8 +613,9 @@ class Simulation(object):
                                          dtype=float)
         self.field_real_space = np.fft.irfft2(self.field, axes=[1,2])
 
-        self.field = None
-        gc.collect()
+        if self.analysis == 'par':
+            self.field = None
+            gc.collect()
 
         self.field_real_space = np.roll(self.field_real_space,
                                                 int(self.nx/2), axis=1)
@@ -1220,7 +1221,7 @@ class Simulation(object):
                                                       max(self.time_corr[it,:,ix,mid_idx])
                     init_guess = (self.time_guess, 1.0)
                     tau_and_omega, pcov = opt.curve_fit(
-                                              fit.osc_exp, 
+                                              fit.osc_gauss, 
                                               (self.dt), 
                                               (self.time_corr[it,:,ix,mid_idx]).ravel(), 
                                               p0=init_guess)
@@ -1280,7 +1281,7 @@ class Simulation(object):
                      label=r'$\exp[|\Delta t_{peak} / \tau_c|]$')
             plt.legend()
         if plot_type == 'oscillating':
-            plt.plot(self.dt*1e6, fit.osc_exp(self.dt,self.corr_time[it,ix], 
+            plt.plot(self.dt*1e6, fit.osc_gauss(self.dt,self.corr_time[it,ix], 
                      kwargs['omega']), color='#000000', lw=2, 
                      label=r'$\exp[- (\Delta t_{peak} / \tau_c)^2] '
                             '\cos(\omega \Delta t) $')
@@ -1338,6 +1339,8 @@ class Simulation(object):
 
         if 'parallel' not in os.listdir(self.out_dir):
             os.system("mkdir " + self.out_dir + '/parallel')
+        if 'corr_fns' not in os.listdir(self.out_dir + '/parallel'):
+            os.system("mkdir " + self.out_dir + '/parallel/corr_fns')
 
         self.calculate_l_par()
         self.calculate_par_corr()
@@ -1349,7 +1352,6 @@ class Simulation(object):
 
         for it in range(self.nt_slices):
             self.par_corr_fit(it)
-            self.par_plot(it)
         
         self.par_analysis_summary()
 
@@ -1429,11 +1431,12 @@ class Simulation(object):
         corr_fn = np.mean(corr_fn, axis=0)
 
         try:
-            popt, pcov = opt.curve_fit(fit.osc_exp, self.dl_par,
+            popt, pcov = opt.curve_fit(fit.osc_gauss, self.dl_par,
                          corr_fn.ravel(), p0=self.par_guess)
             
             self.par_fit_params[it, :] = np.abs(popt)
             self.par_fit_params_err[it, :] = np.sqrt(np.diag(pcov))
+            self.par_plot(it, corr_fn)
         except RuntimeError:
             logging.info("(" + str(it) + ") RuntimeError - max fitting iterations reached, "
                     "skipping this case with (l_par, k_par) = NaN\n")
@@ -1442,7 +1445,7 @@ class Simulation(object):
 
         self.par_guess = popt
 
-    def par_plot(self, it):
+    def par_plot(self, it, corr):
         """
         Plots and saves the parallel correlation function and its fit for each
         time window.
@@ -1451,15 +1454,25 @@ class Simulation(object):
         ----------
         it : int
             Time window being plotted.
+        corr : array_like
+            Parallel correlation averaged in t, x, and y.
         """
         plot_style.white()
 
-        if (np.isnan(self.par_fit_params[it,:]).all()): 
-            logging.info("(" + str(it) + "), one of (l_par, k_par) == NaN."
-                         "Not plotting this case.\n")
-        else:
-            plt.clf()
-            fig, ax = plt.subplots(1, 1)
+        plt.clf()
+        fig, ax = plt.subplots(1, 1)
+        plt.plot(self.dl_par, corr, label=r'$C(\Delta t = 0, \Delta x = 0, '
+                                           '\Delta y = 0, \Delta z)$')
+        plt.plot(self.dl_par, fit.osc_gauss(self.dl_par, self.par_fit_params[it,0], 
+                 self.par_fit_params[it,1]), '--' ,
+                 label=r'$\exp[- (\Delta z / l_{\parallel})^2] '
+                        '\cos(k_{\parallel} \Delta z) $')
+        plt.legend()
+        plot_style.minor_grid(ax)
+        plot_style.ticks_bottom_left(ax)
+        plt.savefig(self.out_dir + '/parallel/corr_fns/par_fit_it_' + 
+                    str(it) + '.pdf')
+        plt.close(fig)
 
     def par_analysis_summary(self):
         """
