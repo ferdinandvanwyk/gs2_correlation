@@ -169,7 +169,8 @@ class TestClass(object):
 
     def test_field_normalize_perp(self, run):
         run.field_normalize_perp()
-        assert run.field_real_space_norm.shape == (run.nt, run.nx, run.ny)
+        assert run.field_real_space_norm_x.shape == (run.nt, run.nx, run.ny)
+        assert run.field_real_space_norm_y.shape == (run.nt, run.nx, run.ny)
 
     def test_perp_norm_mask(self, run):
         run.perp_corr = np.ones([51,5,5])

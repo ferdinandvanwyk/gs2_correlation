@@ -788,15 +788,24 @@ class Simulation(object):
         """
         logging.info('Normalizing the real space field...')
 
-        self.field_real_space_norm = \
+        self.field_real_space_norm_x = \
                                 np.empty([self.nt,self.nx,self.ny],dtype=float)
-        for ix in range(self.nx):
+        self.field_real_space_norm_y = \
+                                np.empty([self.nt,self.nx,self.ny],dtype=float)
+        for it in range(self.nt):
             for iy in range(self.ny):
-                self.field_real_space_norm[:,ix,iy] = \
-                                        self.field_real_space[:,ix,iy] - \
-                                        np.mean(self.field_real_space[:,ix,iy])
-                self.field_real_space_norm[:,ix,iy] /= \
-                                        np.std(self.field_real_space_norm[:,ix,iy])
+                self.field_real_space_norm_x[it,:,iy] = \
+                                    self.field_real_space[it,:,iy] - \
+                                    np.mean(self.field_real_space[it,:,iy])
+                self.field_real_space_norm_x[it,:,iy] /= \
+                                    np.std(self.field_real_space_norm[it,:,iy])
+
+            for ix in range(self.ny):
+                self.field_real_space_norm_y[it,ix,:] = \
+                                    self.field_real_space[it,ix,:] - \
+                                    np.mean(self.field_real_space[it,ix,:])
+                self.field_real_space_norm_y[it,ix,:] /= \
+                                    np.std(self.field_real_space_norm[it,ix,:])
 
         logging.info('Finished normalizing the real space field.')
 
