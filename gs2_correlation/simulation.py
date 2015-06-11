@@ -104,12 +104,15 @@ class Simulation(object):
 
         The configuration file should contain the following namelists:
 
-        * 'analysis': information such as the analysis to be performed and
+        * 'general': information such as the analysis to be performed and
           where to find the NetCDF file.
+        * 'perp' : parameters relating to the perpendicular correlation analysis.
+        * 'time' : parameters relating to the time analysis.
+        * 'par' : parameters relating to the parallel analysis.
         * 'normalization': normalization parameters for the simulation/experiment.
         * 'output': parameters which relate to the output produced by the code.
 
-        The exact parameters read in are documented in the Attributes above.
+        The exact parameters read in are documented in the documentation.
         """
 
         self.config_file = config_file
@@ -213,11 +216,11 @@ class Simulation(object):
         self.dpsi_da = float(config_parse.get('normalization', 'dpsi_da', 
                                               fallback=0))
 
-        #####################
-        # Analysis Namelist #
-        #####################
+        ####################
+        # General Namelist #
+        ####################
 
-        self.domain = config_parse.get('analysis', 'domain', 
+        self.domain = config_parse.get('general', 'domain', 
                                         fallback='full')
 
         if self.domain == 'full':
@@ -225,15 +228,15 @@ class Simulation(object):
         elif self.domain == 'middle':
             self.out_dir = 'middle_analysis'
 
-        self.out_dir = config_parse.get('analysis', 'out_dir',
+        self.out_dir = config_parse.get('general', 'out_dir',
                                          fallback=self.out_dir)
 
-        self.file_ext = config_parse.get('analysis', 'file_ext',
+        self.file_ext = config_parse.get('general', 'file_ext',
                                          fallback='.cdf')
 
         # Automatically find .out.nc file if only directory specified
-        self.run_folder = str(config_parse['analysis']['run_folder'])
-        self.cdf_file = config_parse.get('analysis', 'cdf_file', fallback='None')
+        self.run_folder = str(config_parse['general']['run_folder'])
+        self.cdf_file = config_parse.get('general', 'cdf_file', fallback='None')
         if self.cdf_file == "None":
             dir_files = os.listdir(self.run_folder)
             found = False
@@ -246,7 +249,7 @@ class Simulation(object):
             if not found:
                 raise NameError('No file found ending in ' + self.file_ext)
 
-        self.g_file = config_parse.get('analysis', 'g_file', fallback='None')
+        self.g_file = config_parse.get('general', 'g_file', fallback='None')
         if self.g_file == 'None':
             dir_files = os.listdir(self.run_folder)
             found = False
@@ -259,7 +262,7 @@ class Simulation(object):
             if not found:
                 raise NameError('No file found ending in .g')
 
-        self.in_file = config_parse.get('analysis', 'in_file', fallback='None')
+        self.in_file = config_parse.get('general', 'in_file', fallback='None')
         if self.in_file == 'None':
             dir_files = os.listdir(self.run_folder)
             found = False
@@ -272,39 +275,39 @@ class Simulation(object):
             if not found:
                 raise NameError('No file found ending in .in')
 
-        self.in_field = str(config_parse['analysis']['field'])
+        self.in_field = str(config_parse['general']['field'])
 
-        self.analysis = config_parse.get('analysis', 'analysis',
+        self.analysis = config_parse.get('general', 'analysis',
                                          fallback='all')
         if self.analysis not in ['all', 'perp', 'par', 'time', 'write_field', 
                                  'film']:
             raise ValueError('Analysis must be one of (perp, time, par, '
                              'write_field, make_film)')
 
-        self.time_interpolate_bool = config_parse.getboolean('analysis', 
+        self.time_interpolate_bool = config_parse.getboolean('general', 
                                                              'time_interpolate',
                                                              fallback=True)
 
-        self.time_interp_fac = int(config_parse.get('analysis', 
+        self.time_interp_fac = int(config_parse.get('general', 
                                                     'time_interp_fac',
                                                     fallback=1))
 
-        self.zero_bes_scales_bool = config_parse.getboolean('analysis',
+        self.zero_bes_scales_bool = config_parse.getboolean('general',
                                    'zero_bes_scales', fallback=False)
 
-        self.zero_zf_scales_bool = config_parse.getboolean('analysis',
+        self.zero_zf_scales_bool = config_parse.getboolean('general',
                                    'zero_zf_scales', fallback=False)
 
-        self.lab_frame = config_parse.getboolean('analysis',
+        self.lab_frame = config_parse.getboolean('general',
                                    'lab_frame', fallback=False)
 
-        self.spec_idx = str(config_parse['analysis']['species_index'])
+        self.spec_idx = str(config_parse['general']['species_index'])
         if self.spec_idx == "None":
             self.spec_idx = None
         else:
             self.spec_idx = int(self.spec_idx)
 
-        self.theta_idx = str(config_parse['analysis']['theta_index'])
+        self.theta_idx = str(config_parse['general']['theta_index'])
         if self.theta_idx == "None":
             self.theta_idx = None
         elif self.theta_idx == "-1":
@@ -317,13 +320,29 @@ class Simulation(object):
             warnings.warn('Analysis = par, change to reading full theta grid.')
             self.theta_idx = [0, None]
 
-        self.time_slice = int(config_parse.get('analysis', 'time_slice',
+        self.time_slice = int(config_parse.get('general', 'time_slice',
                                                fallback=50))
 
-        self.perp_fit_length = int(config_parse.get('analysis',
+        self.box_size = str(config_parse.get('general',
+                                               'box_size', fallback='[0.2,0.2]'))
+        self.box_size = self.box_size[1:-1].split(',')
+        self.box_size = [float(s) for s in self.box_size]
+
+        self.time_range = str(config_parse.get('general',
+                                               'time_range', fallback='[0,-1]'))
+        self.time_range = self.time_range[1:-1].split(',')
+        self.time_range = [float(s) for s in self.time_range]
+        if self.time_range[1] == -1:
+            self.time_range[1] = None
+
+        #################
+        # Perp Namelist #
+        #################
+
+        self.perp_fit_length = int(config_parse.get('perp',
                                                'perp_fit_length', fallback=20))
 
-        self.perp_guess = str(config_parse['analysis']['perp_guess'])
+        self.perp_guess = str(config_parse['perp']['perp_guess'])
         self.perp_guess = self.perp_guess[1:-1].split(',')
         self.perp_guess = [float(s) for s in self.perp_guess]
         if len(self.perp_guess) == 4:
@@ -334,25 +353,21 @@ class Simulation(object):
                                                  1/self.rho_ref])
         self.perp_guess = list(self.perp_guess)
 
-        self.npeaks_fit = int(config_parse.get('analysis',
+        #################
+        # Time Namelist #
+        #################
+
+        self.npeaks_fit = int(config_parse.get('time',
                                                'npeaks_fit', fallback=5))
-        self.time_guess = int(config_parse.get('analysis',
+        self.time_guess = int(config_parse.get('time',
                                                'time_guess', fallback=10))
         self.time_guess = self.time_guess*self.amin/self.vth
 
-        self.box_size = str(config_parse.get('analysis',
-                                               'box_size', fallback='[0.2,0.2]'))
-        self.box_size = self.box_size[1:-1].split(',')
-        self.box_size = [float(s) for s in self.box_size]
+        ################
+        # Par Namelist #
+        ################
 
-        self.time_range = str(config_parse.get('analysis',
-                                               'time_range', fallback='[0,-1]'))
-        self.time_range = self.time_range[1:-1].split(',')
-        self.time_range = [float(s) for s in self.time_range]
-        if self.time_range[1] == -1:
-            self.time_range[1] = None
-
-        self.par_guess = str(config_parse.get('analysis',
+        self.par_guess = str(config_parse.get('par',
                                               'par_guess', fallback='[1,0.1]'))
         self.par_guess = self.par_guess[1:-1].split(',')
         self.par_guess = [float(s) for s in self.par_guess]
