@@ -53,7 +53,6 @@ import seaborn as sns
 from PIL import Image
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import f90nml as nml
-import pickle as pkl
 import lmfit as lm
 plt.rcParams.update({'figure.autolayout': True})
 mpl.rcParams['axes.unicode_minus']=False
