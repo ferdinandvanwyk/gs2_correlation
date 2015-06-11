@@ -57,9 +57,11 @@ Instance Variables of Simulation Class
        Number of points radially and poloidally to fit Gaussian over. Fitting
        over the whole domain usually does not produce a very good fit. Default
         = 20.
-   perp_guess : array_like
-       Initial guess for perpendicular correlation function fitting. Of the
-       form [lx, ly, kx, ky] all in normalized rho_ref units.
+   perp_guess_x : array_like
+       Initial guess for radial correlation length in normalized rho_ref units.
+   perp_guess_x : array_like
+       Initial guess for poloidal correlation length in normalized rho_ref 
+       units.
    time_guess : int
        Initial guess for the correlation time in normalized GS2 units.
    box_size : array_like, [0.2,0.2]
@@ -127,12 +129,18 @@ Instance Variables of Simulation Class
        Radial correlation function calculated from field_real_space_norm_x.
    perp_corr_y : array_like
        Poloidal correlation function calculated from field_real_space_norm_y.
-   perp_fit_params_x : array_like
-       Parameters obtained from perp fitting procedure. Of size (nt_slices, 2) 
-       since radial fitting finds lx, kx.
-   perp_fit_params_y : array_like
-       Parameters obtained from perp fitting procedure. Of size (nt_slices, 2) 
-       since poloidal fitting finds ly, ky.
+   perp_fit_len_x : array_like
+       Radial correlation length obtained from perp fitting procedure. Of size 
+       (nt_slices).
+   perp_fit_len_err_x : array_like
+       Error in the radial correlation length obtained from perp fitting 
+       procedure, calculated from the covariance matrix. Of size (nt_slices).
+   perp_fit_len_y : array_like
+       Poloidal correlation length obtained from perp fitting procedure. Of size 
+       (nt_slices).
+   perp_fit_len_err_y : array_like
+       Error in the poloidal correlation length obtained from perp fitting 
+       procedure, calculated from the covariance matrix. Of size (nt_slices).
    time_corr : array_like
        Correlation function used to calculate the correlation function. It is
        of size (nt_slices, time_slice, nx, ny), owing to the 2D 
@@ -290,9 +298,9 @@ Configuration Variables
        Number of points radially and poloidally to fit Gaussian over. 
        Fitting over the whole domain usually does not produce a very good 
        fit.
-   perp_guess : array_like, [1,1,1,1]
-       Initial guess for perpendicular correlation function fitting. Of the
-       form [lx, ly, kx, ky] all in normalized rho_ref units.
+   perp_guess : array_like, [1,1]
+       Initial guess for the radial and poloidal correlation lengths. Of the
+       form [lx, ly] in normalized rho_ref units.
    time_guess : int, 10
        Initial guess for the correlation time in normalized GS2 units.
    box_size : array_like, [0.2,0.2]

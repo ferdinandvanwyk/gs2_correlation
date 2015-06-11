@@ -341,16 +341,11 @@ class Simulation(object):
         self.perp_fit_length = int(config_parse.get('perp',
                                                'perp_fit_length', fallback=20))
 
-        self.perp_guess = str(config_parse['perp']['perp_guess'])
-        self.perp_guess = self.perp_guess[1:-1].split(',')
-        self.perp_guess = [float(s) for s in self.perp_guess]
-        if len(self.perp_guess) == 4:
-            self.perp_guess = self.perp_guess * np.array([self.rho_ref, self.rho_ref,
-                                                 1/self.rho_ref, 1/self.rho_ref])
-        elif len(self.perp_guess) == 3:
-            self.perp_guess = self.perp_guess * np.array([self.rho_ref, self.rho_ref,
-                                                 1/self.rho_ref])
-        self.perp_guess = list(self.perp_guess)
+        perp_guess = str(config_parse['perp']['perp_guess'])
+        perp_guess = self.perp_guess[1:-1].split(',')
+        perp_guess = [float(s) for s in self.perp_guess]
+        self.perp_guess_x = perp_guess[0]*self.rho_ref
+        self.perp_guess_y = perp_guess[1]*self.rho_ref
 
         #################
         # Time Namelist #
@@ -759,11 +754,7 @@ class Simulation(object):
 
         logging.info('Start perpendicular correlation analysis...')
 
-        if len(self.perp_guess) == 3:
-            self.perp_dir = 'perp_ky_fixed'
-        elif len(self.perp_guess) == 4:
-            self.perp_dir = 'perp'
-
+        self.perp_dir = 'perp'
         if self.perp_dir not in os.listdir(self.out_dir):
             os.system("mkdir " + self.out_dir + '/' + self.perp_dir)
 
@@ -771,16 +762,18 @@ class Simulation(object):
         self.calculate_perp_corr()
         self.perp_norm_mask()
 
-        self.perp_fit_params_x = np.empty([self.nt_slices, 2], dtype=float)
-        self.perp_fit_params_err_x = np.empty([self.nt_slices, 2], dtype=float)
-        self.perp_fit_params_y = np.empty([self.nt_slices, 2], dtype=float)
-        self.perp_fit_params_err_y = np.empty([self.nt_slices, 2], dtype=float)
+        self.perp_fit_len_x = np.empty([self.nt_slices], dtype=float)
+        self.perp_fit_len_err_x = np.empty([self.nt_slices], dtype=float)
+        self.perp_fit_len_y = np.empty([self.nt_slices], dtype=float)
+        self.perp_fit_len_err_y = np.empty([self.nt_slices], dtype=float)
 
         for it in range(self.nt_slices):
             self.perp_corr_fit(it)
 
         np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_params.csv', 
-                   (self.perp_fit_params), delimiter=',', fmt='%1.3f')
+                   (self.perp_fit_len_x, self.perp_fit_len_err_x, 
+                    self.perp_fit_len_y, self.perp_fit_len_err_y), 
+                   delimiter=',', fmt='%1.3f')
 
         self.perp_plots()
         self.perp_analysis_summary()
@@ -894,36 +887,53 @@ class Simulation(object):
         """
 
         if self.domain == 'full':
-            corr_fn = self.perp_corr[it*self.time_slice:(it+1)*self.time_slice,
+            corr_fn_x = self.perp_corr_x[it*self.time_slice:(it+1)*self.time_slice,
+                                     int(self.nx/2) - self.perp_fit_length + 1 :
+                                     int(self.nx/2) + self.perp_fit_length,
+                                     int(self.ny/2) - self.perp_fit_length + 1 :
+                                     int(self.ny/2) + self.perp_fit_length]
+            corr_fn_y = self.perp_corr_y[it*self.time_slice:(it+1)*self.time_slice,
                                      int(self.nx/2) - self.perp_fit_length + 1 :
                                      int(self.nx/2) + self.perp_fit_length,
                                      int(self.ny/2) - self.perp_fit_length + 1 :
                                      int(self.ny/2) + self.perp_fit_length]
         elif self.domain == 'middle':
-            corr_fn = \
-                self.perp_corr[it*self.time_slice:(it+1)*self.time_slice,:,:]
+            corr_fn_x = \
+                self.perp_corr_x[it*self.time_slice:(it+1)*self.time_slice,:,:]
+            corr_fn_y = \
+                self.perp_corr_y[it*self.time_slice:(it+1)*self.time_slice,:,:]
 
         # Average corr_fn over time
-        avg_corr = np.mean(corr_fn, axis=0)
+        corr_std_x = np.empty([self.nx])
+        corr_std_y = np.empty([self.ny])
+        for ix in range(self.nx):
+            corr_std_x[ix] = np.std(corr_fn_x[:,ix,:])
+        for iy in range(self.ny):
+            corr_std_y[iy] = np.std(corr_fn_x[:,:,iy])
+        avg_corr_x = np.mean(np.mean(corr_fn, axis=0), axis=0)
+        avg_corr_y = np.mean(np.mean(corr_fn, axis=0), axis=0)
 
-        if len(self.perp_guess) == 4:
-            popt, pcov = opt.curve_fit(fit.tilted_gauss, (self.fit_dx_mesh,
-                                                          self.fit_dy_mesh),
-                                       avg_corr.ravel(), p0=self.perp_guess)
-            
-            self.perp_fit_params[it, :] = popt
-            self.perp_fit_params_err[it, :] = np.sqrt(np.diag(pcov))
+        gmod_gauss = lm.Model(fit.gauss)
+        gmod_osc_gauss = lm.Model(fit.osc_gauss)
 
-        elif len(self.perp_guess) == 3:
-            popt, pcov = opt.curve_fit(fit.tilted_gauss_ky_fixed, 
-                                                            (self.fit_dx_mesh,
-                                                             self.fit_dy_mesh),
-                                       avg_corr.ravel(), p0=self.perp_guess)
+        params_x = lm.Parameters()                                                    
+        params_x.add('l', value=self.perp_guess_x)                                                  
+        params_x.add('px', value=0.0)                                                 
+        fit_x = gmod_gauss.fit(avg_corr_x, params_x, x=self.dx)
+        
+        params_y = lm.Parameters()                                                    
+        params_y.add('l', value=self.perp_guess_y)                                                  
+        params_y.add('k', value=1, expr='2*3.141592653589793/l')
+        params_y.add('px', value=0.0)                                                 
+        fit_y = gmod_osc_gauss.fit(avg_corr_y, params_y, x=self.dy)
 
-            self.perp_fit_params[it, :] = np.append(popt, 2*np.pi/popt[1])
-            self.perp_fit_params_err[it, :] = np.append(np.sqrt(np.diag(pcov)), (2*np.pi/popt[1])*(np.sqrt(pcov[1,1])/popt[1]))
+        self.perp_fit_len_x[it] = fit_x.best_values['l']
+        self.perp_fit_len_err_x[it] = np.sqrt(fit_x.covar[0,0])
+        self.perp_fit_len_y[it] = fit_y.best_values['l']
+        self.perp_fit_len_err_y[it] = np.sqrt(fit_y.covar[1,1])
 
-        self.perp_guess = popt
+        self.perp_guess_x = fit_x.best_values['l']
+        self.perp_guess_y = fit_y.best_values['l']
 
     def perp_plots(self):
         """
@@ -991,6 +1001,18 @@ class Simulation(object):
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_comparison.pdf')
 
+        logging.info("Finished writing perp_analysis plots...")
+
+    def perp_analysis_summary(self):
+        """
+        Prints out a summary of the perpendicular analysis.
+
+        * Plots fitting parameters as a function of time window.
+        * Averages them in time and calculates a standard deviation.
+        * Writes summary to a text file.
+        """
+        logging.info("Writing perp_analysis summary...")
+
         plt.clf()
         plot_style.white()
         fig, ax = plt.subplots(1, 1)
@@ -1008,18 +1030,6 @@ class Simulation(object):
         plot_style.ticks_bottom_left(ax)
         plt.yscale('log')
         plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_params_vs_time_slice.pdf')
-
-        logging.info("Finished writing perp_analysis plots...")
-
-    def perp_analysis_summary(self):
-        """
-        Prints out a summary of the perpendicular analysis.
-
-        * Plots fitting parameters as a function of time window.
-        * Averages them in time and calculates a standard deviation.
-        * Writes summary to a text file.
-        """
-        logging.info("Writing perp_analysis summary...")
 
         summary_file = open(self.out_dir + '/'+self.perp_dir+'/perp_fit_summary.dat', 'w')
         summary_file.write('#lx(m), ly(m), kx(m^-1), ky(m^-1), theta(rad)\n')

@@ -38,7 +38,8 @@ class TestClass(object):
         assert type(run.out_dir) == str
         assert type(run.time_slice) == int
         assert type(run.perp_fit_length) == int
-        assert type(run.perp_guess) == list
+        assert type(run.perp_guess_x) == float
+        assert type(run.perp_guess_y) == float
         assert type(run.time_interpolate_bool) == bool
         assert type(run.time_interp_fac) == int
         assert type(run.zero_bes_scales_bool) == bool
@@ -145,17 +146,6 @@ class TestClass(object):
         assert len(run.dy)%2 == 1
         assert len(run.fit_dx)%2 == 1
         assert len(run.fit_dy)%2 == 1
-
-    def test_perp_analysis_3(self, run):
-        run.perp_guess = [5,1,0.1]
-        run.perp_analysis()
-        assert run.perp_fit_params.shape == (5,4)
-        assert ('perp_fit_params.csv' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
-        assert ('time_avg_correlation.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
-        assert ('perp_corr_fit.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
-        assert ('perp_fit_comparison.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
-        assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
-        assert ('perp_fit_summary.dat' in os.listdir('test/test_run/v/id_1/analysis/perp_ky_fixed'))
 
     def test_perp_analysis(self, run):
         run.perp_analysis()
