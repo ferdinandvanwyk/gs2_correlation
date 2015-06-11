@@ -227,6 +227,14 @@ class TestClass(object):
         run.ntheta = 9
         run.par_analysis()
         assert run.par_corr.shape == (51,5,5,9)
+        assert ('par_fit_params.csv' in os.listdir('test/test_run/v/id_1/analysis/parallel'))
+        assert ('par_fit_summary.dat' in os.listdir('test/test_run/v/id_1/analysis/parallel'))
+        assert ('par_fit_length_vs_time_slice.pdf' in 
+                os.listdir('test/test_run/v/id_1/analysis/parallel'))
+        assert ('par_fit_wavenumber_vs_time_slice.pdf' in 
+                os.listdir('test/test_run/v/id_1/analysis/parallel'))
+        assert ('par_fit_it_0.pdf' in 
+                os.listdir('test/test_run/v/id_1/analysis/parallel/corr_fns'))
 
     def test_calculate_l_par(self, run):
         run.calculate_l_par()

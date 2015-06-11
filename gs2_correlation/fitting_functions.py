@@ -67,8 +67,8 @@ def growing_exp(t, tau_c):
     return exp_fn.ravel()
 
 #General function for an oscillating Gaussian function
-def osc_gauss(x, l, k):
-    fit_fn = np.exp(- (x / l)**2) * np.cos(k * x)
+def osc_gauss(x, l, k, px):
+    fit_fn = px + (1 - px) * np.exp(- (x / l)**2) * np.cos(k * x)
     # fitting function only works on 1D data, reshape later to plot
     return fit_fn.ravel() 
 
@@ -79,8 +79,8 @@ def osc_gauss_ky_fixed(x, l):
     return fit_fn.ravel() 
 
 #General function for an oscillating Gaussian function
-def gauss(x, l):
-    fit_fn = np.exp(- (x / l)**2)
+def gauss(x, l, px):
+    fit_fn = px + (1 - px) * np.exp(- (x / l)**2)
     # fitting function only works on 1D data, reshape later to plot
     return fit_fn.ravel() 
 

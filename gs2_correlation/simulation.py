@@ -52,10 +52,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from PIL import Image
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-plt.rcParams.update({'figure.autolayout': True})
-mpl.rcParams['axes.unicode_minus']=False
 import f90nml as nml
 import pickle as pkl
+import lmfit as lm
+plt.rcParams.update({'figure.autolayout': True})
+mpl.rcParams['axes.unicode_minus']=False
+pal = sns.color_palette('deep')  
 
 # Local
 import gs2_correlation.fitting_functions as fit
@@ -635,7 +637,7 @@ class Simulation(object):
         * Reduce extent of real space field using this index.
         * Recalculate some real space arrays such as x, y, dx, dy, etc.
         """
-        logging.info('Reducing domain size to %f x %f cm'%(self.box_size[0],
+        logging.info('Reducing domain size to %f x %f m'%(self.box_size[0],
                                                           self.box_size[1]))
 
         # Switch box size to length either side of 0
@@ -1219,7 +1221,7 @@ class Simulation(object):
                     # a decaying oscillating exponential to the central peak.
                     self.time_corr[it,:,ix,mid_idx] = self.time_corr[it,:,ix,mid_idx]/ \
                                                       max(self.time_corr[it,:,ix,mid_idx])
-                    init_guess = (self.time_guess, 1.0)
+                    init_guess = (self.time_guess, 1.0, 0.0)
                     tau_and_omega, pcov = opt.curve_fit(
                                               fit.osc_gauss, 
                                               (self.dt), 
@@ -1282,7 +1284,7 @@ class Simulation(object):
             plt.legend()
         if plot_type == 'oscillating':
             plt.plot(self.dt*1e6, fit.osc_gauss(self.dt,self.corr_time[it,ix], 
-                     kwargs['omega']), color='#000000', lw=2, 
+                     kwargs['omega'], 0), color='#000000', lw=2, 
                      label=r'$\exp[- (\Delta t_{peak} / \tau_c)^2] '
                             '\cos(\omega \Delta t) $')
             plt.legend()
@@ -1397,19 +1399,18 @@ class Simulation(object):
                                         self.field_real_space[it,ix,iy,:])
                     self.field_real_space[it,ix,iy,:] = f(l_par_reg)
 
-                    self.field_real_space[it,ix,iy] -= \
-                                       np.mean(self.field_real_space[it,ix,iy])
-                    self.field_real_space[it,ix,iy] /= \
-                                       np.std(self.field_real_space[it,ix,iy])
+                    self.field_real_space[it,ix,iy,:] -= \
+                            np.mean(self.field_real_space[it,ix,iy,:])
+                    self.field_real_space[it,ix,iy,:] /= \
+                            np.std(self.field_real_space[it,ix,iy,:])
 
                     self.par_corr[it,ix,iy,:] = \
                         sig.correlate(self.field_real_space[it,ix,iy,:], 
                                       self.field_real_space[it,ix,iy,:],
-                                      mode='same')/mask
+                                      'same')/mask
 
         self.l_par = l_par_reg
-        self.dl_par = np.linspace(-self.l_par[-1]/2, self.l_par[-1]/2, 
-                                  self.ntheta)
+        self.dl_par = np.linspace(-self.l_par[-1]/2, self.l_par[-1]/2, self.ntheta)
 
         logging.info('Finished calculating parallel correlation function.')
 
@@ -1426,26 +1427,35 @@ class Simulation(object):
 
         Before fitting average over time, x, and y.
         """     
-        corr_fn = np.mean(self.par_corr[it*self.time_slice:(it+1)*self.time_slice,:,:,:], axis=0)
-        corr_fn = np.mean(corr_fn, axis=0)
-        corr_fn = np.mean(corr_fn, axis=0)
+        corr_fn = self.par_corr[it*self.time_slice:(it+1)*self.time_slice,:,:,:]
+        corr_std = np.empty([self.ntheta]) 
+        for i in range(self.ntheta):                                                        
+                corr_std[i] = np.std(corr_fn[:,:,:,i])
+        corr_fn = np.mean(np.mean(np.mean(corr_fn, axis=0), axis=0), axis=0)
 
         try:
-            popt, pcov = opt.curve_fit(fit.osc_gauss, self.dl_par,
-                         corr_fn.ravel(), p0=self.par_guess)
+            gmod_osc = lm.Model(fit.osc_gauss)
+            params = lm.Parameters()
+            params.add('l', value=self.par_guess[0], min=self.l_par[1], 
+                       max=100)
+            params.add('k', value=self.par_guess[1], 
+                       max=(2*np.pi/self.dl_par[-1]*len(self.dl_par)/2))
+            params.add('px', value=0, vary=False)
+            par_fit = gmod_osc.fit(corr_fn, params, x=self.dl_par)
             
-            self.par_fit_params[it, :] = np.abs(popt)
-            self.par_fit_params_err[it, :] = np.sqrt(np.diag(pcov))
-            self.par_plot(it, corr_fn)
+            self.par_fit_params[it, :] = np.abs([par_fit.best_values['l'], 
+                                                 par_fit.best_values['k']])
+            self.par_fit_params_err[it, :] = np.sqrt(np.diag(par_fit.covar))
+            self.par_plot(it, corr_fn, corr_std)
         except RuntimeError:
             logging.info("(" + str(it) + ") RuntimeError - max fitting iterations reached, "
                     "skipping this case with (l_par, k_par) = NaN\n")
             self.par_fit_params[it, :] = np.nan
             self.par_fit_params_err[it, :] = np.nan
 
-        self.par_guess = popt
+        self.par_guess = self.par_fit_params[it, :] 
 
-    def par_plot(self, it, corr):
+    def par_plot(self, it, corr, corr_std):
         """
         Plots and saves the parallel correlation function and its fit for each
         time window.
@@ -1456,18 +1466,25 @@ class Simulation(object):
             Time window being plotted.
         corr : array_like
             Parallel correlation averaged in t, x, and y.
+        corr_std : array_like
+            Standard deviation in the correlation function as a function of 
+            dl_par.
         """
         plot_style.white()
 
         plt.clf()
         fig, ax = plt.subplots(1, 1)
-        plt.plot(self.dl_par, corr, label=r'$C(\Delta t = 0, \Delta x = 0, '
-                                           '\Delta y = 0, \Delta z)$')
+        plt.errorbar(self.dl_par, corr, c=pal[0], yerr=corr_std, fmt='.', 
+                    label=r'$C(\Delta t = 0, \Delta x = 0, \Delta y = 0, \Delta z)$')
         plt.plot(self.dl_par, fit.osc_gauss(self.dl_par, self.par_fit_params[it,0], 
-                 self.par_fit_params[it,1]), '--' ,
-                 label=r'$\exp[- (\Delta z / l_{\parallel})^2] '
+                 self.par_fit_params[it,1], 0), c=pal[2] ,
+                 label=r'$p_\parallel + (1-p_\parallel)\exp[- (\Delta z / l_{\parallel})^2] '
                         '\cos(k_{\parallel} \Delta z) $')
+        plt.plot(self.dl_par, np.exp(-(self.dl_par/self.par_fit_params[it,0])**2),
+                 'k--', label='Gaussian Envelope')
         plt.legend()
+        plt.xlabel(r'$\Delta z$ (m)')
+        plt.ylabel(r'$C(\Delta z)$')
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/parallel/corr_fns/par_fit_it_' + 
@@ -1496,7 +1513,7 @@ class Simulation(object):
         plt.clf()
         fig, ax = plt.subplots(1, 1)
         plt.errorbar(range(self.nt_slices), np.abs(self.par_fit_params[:,0]), 
-                     yerr=self.par_fit_params_err[:,0])
+                     yerr=self.par_fit_params_err[:,0], fmt='.')
         plt.xlabel('Time Window')
         plt.ylabel(r'Parallel Correlation Length $l_{\parallel} (m)$')
         plt.ylim(0)
@@ -1508,7 +1525,7 @@ class Simulation(object):
         plt.clf()
         fig, ax = plt.subplots(1, 1)
         plt.errorbar(range(self.nt_slices), np.abs(self.par_fit_params[:,1]), 
-                     yerr=self.par_fit_params_err[:,1])
+                     yerr=self.par_fit_params_err[:,1], fmt='.')
         plt.xlabel('Time Window')
         plt.ylabel(r'Parallel Correlation Wavenumber $k_{\parallel} (m^{-1})$')
         plt.ylim(0)
