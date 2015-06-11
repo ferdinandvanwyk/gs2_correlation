@@ -124,6 +124,17 @@ Parallel Correlation
 
 .. image:: par_corr.png
 
+The parallel correlation function fitting is illustrated by the above plot. It 
+involves the following steps:
+
+* Loop over x, y, and t to calculate *C(t, x, y, dz)*.
+* Average over x, y, and t.
+* Fit C(dz) with an oscillating Gaussian function.
+
+The initial guess for the parallel fit length and wavenumber is set in the `par` 
+namelist as `par_guess`. Importantly these numbers should be in metres and 
+metres^-1 since there is no normalized unit in the parallel direction.
+
 Create a Film
 -------------
 
