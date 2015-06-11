@@ -180,7 +180,8 @@ class TestClass(object):
     def test_calculate_perp_corr(self, run):
         run.field_normalize_perp()
         run.calculate_perp_corr()
-        assert run.perp_corr.shape == (run.nt, run.nx, run.ny)
+        assert run.perp_corr_x.shape == (run.nt, run.nx, run.ny)
+        assert run.perp_corr_y.shape == (run.nt, run.nx, run.ny)
 
     def test_fluctuation_level(self, run):
         run.field_real_space = np.random.randint(0,10,size=[5,5,5])

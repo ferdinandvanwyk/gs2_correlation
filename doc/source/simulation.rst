@@ -119,8 +119,14 @@ Instance Variables of Simulation Class
        array.
    field_real_space : array_like
        Field in real space coordinates (x,y)
-   perp_corr : array_like
-       Perpendicular correlation function calculated from the field array.
+   field_real_space_norm_x : array_like
+       Field in real space coordinates (x,y) normalized in the x dimension.
+   field_real_space_norm_y : array_like
+       Field in real space coordinates (x,y) normalized in the y dimension.
+   perp_corr_x : array_like
+       Radial correlation function calculated from field_real_space_norm_x.
+   perp_corr_y : array_like
+       Poloidal correlation function calculated from field_real_space_norm_y.
    perp_fit_params : array_like
        Parameters obtained from perp fitting procedure. Of size (nt_slices, 4) 
        since fitting finds lx, ly, kx, ky.
