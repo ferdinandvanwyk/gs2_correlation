@@ -122,7 +122,7 @@ The following options are relevant to the fitting procedure:
 Parallel Correlation
 --------------------
 
-
+.. image:: par_corr.png
 
 Create a Film
 -------------
