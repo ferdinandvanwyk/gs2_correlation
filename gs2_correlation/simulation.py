@@ -443,7 +443,6 @@ class Simulation(object):
                           'zero_zf_scales_bool to True')
             self.zero_zf_scales_bool = True
 
-
     def read_netcdf(self):
         """
         Read array from NetCDF file.
@@ -772,8 +771,10 @@ class Simulation(object):
         self.calculate_perp_corr()
         self.perp_norm_mask()
 
-        self.perp_fit_params = np.empty([self.nt_slices, 4], dtype=float)
-        self.perp_fit_params_err = np.empty([self.nt_slices, 4], dtype=float)
+        self.perp_fit_params_x = np.empty([self.nt_slices, 2], dtype=float)
+        self.perp_fit_params_err_x = np.empty([self.nt_slices, 2], dtype=float)
+        self.perp_fit_params_y = np.empty([self.nt_slices, 2], dtype=float)
+        self.perp_fit_params_err_y = np.empty([self.nt_slices, 2], dtype=float)
 
         for it in range(self.nt_slices):
             self.perp_corr_fit(it)
@@ -887,12 +888,9 @@ class Simulation(object):
         Notes
         -----
 
-        Have option of fixing ky or not. This is controlled based on whether
-        the perp_guess configuration parameter has 3 or 4 values:
-
-        * perp_guess = (lx, ly, kx, ky) - use tilted_gauss
-        * perp_guess = (lx, ly, kx) - use tilted_gauss_ky_fixed and set 
-          ky = 2*pi/ly 
+        * The radial correlation function is fitted with a Gaussian.
+        * The poloidal correlation function is fitted with an oscillating 
+          Gaussian.
         """
 
         if self.domain == 'full':

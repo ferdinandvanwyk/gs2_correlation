@@ -127,9 +127,12 @@ Instance Variables of Simulation Class
        Radial correlation function calculated from field_real_space_norm_x.
    perp_corr_y : array_like
        Poloidal correlation function calculated from field_real_space_norm_y.
-   perp_fit_params : array_like
-       Parameters obtained from perp fitting procedure. Of size (nt_slices, 4) 
-       since fitting finds lx, ly, kx, ky.
+   perp_fit_params_x : array_like
+       Parameters obtained from perp fitting procedure. Of size (nt_slices, 2) 
+       since radial fitting finds lx, kx.
+   perp_fit_params_y : array_like
+       Parameters obtained from perp fitting procedure. Of size (nt_slices, 2) 
+       since poloidal fitting finds ly, ky.
    time_corr : array_like
        Correlation function used to calculate the correlation function. It is
        of size (nt_slices, time_slice, nx, ny), owing to the 2D 
