@@ -437,6 +437,13 @@ class Simulation(object):
                              'than one theta point. Can only handle one theta '
                              'value at the moment!')
 
+        if self.analysis == 'perp' and self.zero_zf_scales_bool:
+            warnings.warn('Doing perp analysis but not zeroing ZF scales. This '
+                          'is required for radial correlation. Changing '
+                          'zero_zf_scales_bool to True')
+            self.zero_zf_scales_bool = True
+
+
     def read_netcdf(self):
         """
         Read array from NetCDF file.
@@ -868,7 +875,8 @@ class Simulation(object):
 
     def perp_corr_fit(self, it):
         """
-        Fits tilted Gaussian to perpendicular correlation function.
+        Fits the appropriate Gaussian to the radial and poloidal correlation 
+        functions.
 
         Parameters
         ----------
