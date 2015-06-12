@@ -144,18 +144,20 @@ class Simulation(object):
         self.dR_drho = self.geometry[:,4]*self.amin
         self.dZ_drho = self.geometry[:,5]*self.amin
         self.dalpha_drho = self.geometry[:,6]*self.amin
+        theta_len = len(self.R)
 
-        self.rmaj = self.R[int(self.ntheta/2)]*self.amin 
-        self.pitch_angle = np.arctan(self.Z[int(self.ntheta/2)+1]/ \
-                           (self.R[int(self.ntheta/2)] * \
-                           self.tor_phi[int(self.ntheta/2)+1]))
+        self.rmaj = self.R[int(theta_len/2)]*self.amin 
+        self.pitch_angle = np.arctan(self.Z[int(theta_len/2)+1]/ \
+                           (self.R[int(theta_len/2)] * \
+                           self.tor_phi[int(theta_len/2)+1]))
 
         self.t = self.t*self.amin/self.vth
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx, endpoint=False)* \
                      self.rho_ref
         self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny, endpoint=False)* \
                      self.rho_ref * np.abs(np.tan(self.pitch_angle))* \
-                     (self.rmaj/self.amin) * (self.drho_dpsi)
+                     (self.rmaj/self.amin) * (self.drho_dpsi) * \
+                     np.cos(self.pitch_angle)
         
         self.r_geo = self.input_file['theta_grid_parameters']['R_geo']*self.amin
 
@@ -338,14 +340,13 @@ class Simulation(object):
         # Perp Namelist #
         #################
 
-        self.perp_fit_length = int(config_parse.get('perp',
-                                               'perp_fit_length', fallback=20))
-
         perp_guess = str(config_parse['perp']['perp_guess'])
-        perp_guess = self.perp_guess[1:-1].split(',')
-        perp_guess = [float(s) for s in self.perp_guess]
+        perp_guess = perp_guess[1:-1].split(',')
+        perp_guess = [float(s) for s in perp_guess]
         self.perp_guess_x = perp_guess[0]*self.rho_ref
         self.perp_guess_y = perp_guess[1]*self.rho_ref
+
+        self.ky_free = config_parse.getboolean('perp','ky_free', fallback=False)
 
         #################
         # Time Namelist #
@@ -397,13 +398,6 @@ class Simulation(object):
         This function contains consistency checks of configurations parameters.
         """
 
-        # Ensure perp_fit_length doesn't extend outside array
-        if (int(self.nx/2) + self.perp_fit_length >= self.nx):
-               raise ValueError('+/- perp_fit_length outside of dx array.')
-
-        if (int(self.ny/2) + self.perp_fit_length >= self.ny):
-            raise ValueError('+/- perp_fit_length outside of dy array.')
-
         if self.time_slice%2 != 1:
             warnings.warn('time_slice should be odd, reducing by one...')
             self.time_slice -= 1
@@ -432,7 +426,7 @@ class Simulation(object):
                              'than one theta point. Can only handle one theta '
                              'value at the moment!')
 
-        if self.analysis == 'perp' and self.zero_zf_scales_bool:
+        if self.analysis == 'perp' and self.zero_zf_scales_bool == False:
             warnings.warn('Doing perp analysis but not zeroing ZF scales. This '
                           'is required for radial correlation. Changing '
                           'zero_zf_scales_bool to True')
@@ -713,26 +707,8 @@ class Simulation(object):
         self.nx = len(self.x)
         self.ny = len(self.y)
 
-        if self.domain == 'middle':
-            self.dx = np.linspace(-self.x[-1]/2, self.x[-1]/2, self.nx)
-            self.dy = np.linspace(-self.y[-1]/2, self.y[-1]/2, self.ny)
-            self.fit_dx = self.dx
-            self.fit_dy = self.dy
-            self.fit_dx_mesh, self.fit_dy_mesh = np.meshgrid(self.fit_dx, self.fit_dy)
-            self.fit_dx_mesh = np.transpose(self.fit_dx_mesh)
-            self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
-        else:
-            self.dx = np.linspace(-np.pi/self.kx[1], np.pi/self.kx[1],
-                                 self.nx)*self.rho_ref
-            self.dy = np.linspace(-np.pi/self.ky[1], np.pi/self.ky[1],
-                                 self.ny)*self.rho_ref*np.tan(self.pitch_angle)
-            self.fit_dx = self.dx[int(self.nx/2) - self.perp_fit_length + 1 :
-                          int(self.nx/2) + self.perp_fit_length]
-            self.fit_dy = self.dy[int(self.ny/2) - self.perp_fit_length + 1 :
-                          int(self.ny/2) + self.perp_fit_length]
-            self.fit_dx_mesh, self.fit_dy_mesh = np.meshgrid(self.fit_dx, self.fit_dy)
-            self.fit_dx_mesh = np.transpose(self.fit_dx_mesh)
-            self.fit_dy_mesh = np.transpose(self.fit_dy_mesh)
+        self.dx = np.linspace(-self.x[-1]/2, self.x[-1]/2, self.nx)
+        self.dy = np.linspace(-self.y[-1]/2, self.y[-1]/2, self.ny)
 
     def perp_analysis(self):
         """
@@ -754,9 +730,18 @@ class Simulation(object):
 
         logging.info('Start perpendicular correlation analysis...')
 
-        self.perp_dir = 'perp'
+        if not self.ky_free:
+            self.perp_dir = 'perp/ky_fixed'
+        else:
+            self.perp_dir = 'perp/ky_free'
         if self.perp_dir not in os.listdir(self.out_dir):
-            os.system("mkdir " + self.out_dir + '/' + self.perp_dir)
+            os.system("mkdir -p " + self.out_dir + '/' + self.perp_dir)
+        if 'corr_fns_x' not in os.listdir(self.out_dir + '/' + self.perp_dir):
+            os.system("mkdir -p " + self.out_dir+'/'+self.perp_dir+'/corr_fns_x')
+        if 'corr_fns_y' not in os.listdir(self.out_dir + '/' + self.perp_dir):
+            os.system("mkdir -p " + self.out_dir+'/'+self.perp_dir+'/corr_fns_y')
+        os.system('rm ' + self.out_dir + '/' + self.perp_dir + '/corr_fns_x/*')
+        os.system('rm ' + self.out_dir + '/' + self.perp_dir + '/corr_fns_y/*')
 
         self.field_normalize_perp()
         self.calculate_perp_corr()
@@ -775,10 +760,9 @@ class Simulation(object):
                     self.perp_fit_len_y, self.perp_fit_len_err_y), 
                    delimiter=',', fmt='%1.3f')
 
-        self.perp_plots()
-        self.perp_analysis_summary()
+        #self.perp_analysis_summary()
 
-        self.fluctuation_levels()
+        #self.fluctuation_levels()
 
         logging.info('Finished perpendicular correlation analysis.')
 
@@ -828,7 +812,7 @@ class Simulation(object):
                                           mode='same')
 
             for ix in range(self.nx):
-                self.perp_corr_x[it,ix,:] = \
+                self.perp_corr_y[it,ix,:] = \
                             sig.correlate(self.field_real_space_norm_x[it,ix,:], 
                                           self.field_real_space_norm_x[it,ix,:],
                                           mode='same')
@@ -886,22 +870,10 @@ class Simulation(object):
           Gaussian.
         """
 
-        if self.domain == 'full':
-            corr_fn_x = self.perp_corr_x[it*self.time_slice:(it+1)*self.time_slice,
-                                     int(self.nx/2) - self.perp_fit_length + 1 :
-                                     int(self.nx/2) + self.perp_fit_length,
-                                     int(self.ny/2) - self.perp_fit_length + 1 :
-                                     int(self.ny/2) + self.perp_fit_length]
-            corr_fn_y = self.perp_corr_y[it*self.time_slice:(it+1)*self.time_slice,
-                                     int(self.nx/2) - self.perp_fit_length + 1 :
-                                     int(self.nx/2) + self.perp_fit_length,
-                                     int(self.ny/2) - self.perp_fit_length + 1 :
-                                     int(self.ny/2) + self.perp_fit_length]
-        elif self.domain == 'middle':
-            corr_fn_x = \
-                self.perp_corr_x[it*self.time_slice:(it+1)*self.time_slice,:,:]
-            corr_fn_y = \
-                self.perp_corr_y[it*self.time_slice:(it+1)*self.time_slice,:,:]
+        corr_fn_x = \
+            self.perp_corr_x[it*self.time_slice:(it+1)*self.time_slice,:,:]
+        corr_fn_y = \
+            self.perp_corr_y[it*self.time_slice:(it+1)*self.time_slice,:,:]
 
         # Average corr_fn over time
         corr_std_x = np.empty([self.nx])
@@ -910,98 +882,87 @@ class Simulation(object):
             corr_std_x[ix] = np.std(corr_fn_x[:,ix,:])
         for iy in range(self.ny):
             corr_std_y[iy] = np.std(corr_fn_x[:,:,iy])
-        avg_corr_x = np.mean(np.mean(corr_fn, axis=0), axis=0)
-        avg_corr_y = np.mean(np.mean(corr_fn, axis=0), axis=0)
+        avg_corr_x = np.mean(np.mean(corr_fn_x, axis=0), axis=1)
+        avg_corr_y = np.mean(np.mean(corr_fn_y, axis=0), axis=0)
 
         gmod_gauss = lm.Model(fit.gauss)
         gmod_osc_gauss = lm.Model(fit.osc_gauss)
 
         params_x = lm.Parameters()                                                    
         params_x.add('l', value=self.perp_guess_x)                                                  
-        params_x.add('px', value=0.0)                                                 
+        params_x.add('px', value=0.0, vary=False)               
         fit_x = gmod_gauss.fit(avg_corr_x, params_x, x=self.dx)
         
         params_y = lm.Parameters()                                                    
         params_y.add('l', value=self.perp_guess_y)                                                  
-        params_y.add('k', value=1, expr='2*3.141592653589793/l')
-        params_y.add('px', value=0.0)                                                 
+        if not self.ky_free:
+            params_y.add('k', value=1, expr='2*3.141592653589793/l')
+        else:
+            params_y.add('k', value=1)
+        params_y.add('px', value=0.0, vary=False) 
         fit_y = gmod_osc_gauss.fit(avg_corr_y, params_y, x=self.dy)
 
         self.perp_fit_len_x[it] = fit_x.best_values['l']
         self.perp_fit_len_err_x[it] = np.sqrt(fit_x.covar[0,0])
         self.perp_fit_len_y[it] = fit_y.best_values['l']
-        self.perp_fit_len_err_y[it] = np.sqrt(fit_y.covar[1,1])
+        self.perp_fit_len_err_y[it] = np.sqrt(fit_y.covar[0,0])
 
         self.perp_guess_x = fit_x.best_values['l']
         self.perp_guess_y = fit_y.best_values['l']
 
-    def perp_plots(self):
+        self.perp_plots_x(it, avg_corr_x, corr_std_x, fit_x)
+        self.perp_plots_y(it, avg_corr_y, corr_std_y, fit_y)
+
+    def perp_plots_x(self, it, corr_fn, corr_std, corr_fit):
         """
-        Function which plots various things relevant to perpendicular analysis.
-
-        * Time-averaged correlation function
-        * Tilted Gaussian using time-averaged fitting parameters
-        * The above two graphs overlayed
+        Plot radial correlation function and fitted Gaussian.
         """
-        logging.info("Writing perp_analysis plots...")
-
-        plot_style.dark()
-
-        if self.domain == 'full':
-            corr_fn = self.perp_corr[:, int(self.nx/2) - self.perp_fit_length + 1 :
-                                        int(self.nx/2) + self.perp_fit_length,
-                                        int(self.ny/2) - self.perp_fit_length + 1:
-                                        int(self.ny/2) + self.perp_fit_length]
-        elif self.domain == 'middle':
-            corr_fn = self.perp_corr
-
-        avg_corr = np.mean(corr_fn, axis=0) # Average over time
+        plot_style.white()
 
         plt.clf()
         fig, ax = plt.subplots(1, 1)
-        plt.contourf(self.fit_dx, self.fit_dy, np.transpose(avg_corr), 11,
-                     levels=np.linspace(-1, 1, 11), cmap='coolwarm')
-        plt.colorbar(ticks=np.linspace(-1, 1, 11))
-        plt.xlabel(r'$\Delta x (m)$')
-        plt.ylabel(r'$\Delta y (m)$')
+        plt.scatter(self.dx, corr_fn, c=pal[0], 
+                     label=r'$C(\Delta x)$')
+        plt.plot(self.dx, corr_fit.best_fit, c=pal[2], 
+                 label=r'$\exp(-(\Delta x / \ell_x)^2)$')
+        plt.fill_between(self.dx, corr_fn-corr_std, corr_fn+corr_std, 
+                         alpha=0.3, label=r'$1 \sigma$')
+        plt.legend()
+        plt.xlabel(r'$\Delta x$ (m)')
+        plt.xlim([self.dx[0], self.dx[-1]])
+        plt.ylabel(r'$C(\Delta x)$')
+        plt.ylim(ymax=1)
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
-        plt.savefig(self.out_dir + '/'+self.perp_dir+'/time_avg_correlation.pdf')
+        plt.savefig(self.out_dir + '/' +self.perp_dir + 
+                    '/corr_fns_x/corr_x_fit_it_' + str(it) + '.pdf')
 
-        # Tilted Gaussian using time-averaged fitting parameters
-        data_fitted = fit.tilted_gauss((self.fit_dx_mesh, self.fit_dy_mesh),
-                                        *np.mean(self.perp_fit_params, axis=0))
+    def perp_plots_y(self, it, corr_fn, corr_std, corr_fit):
+        """
+        Plot radial correlation function and fitted Gaussian.
+        """
+        plot_style.white()
+
         plt.clf()
         fig, ax = plt.subplots(1, 1)
-        plt.contourf(self.fit_dx, self.fit_dy,
-                     np.transpose(data_fitted.reshape(len(self.fit_dx),
-                                                      len(self.fit_dy))),
-                                  11, levels=np.linspace(-1, 1, 11), cmap='coolwarm')
-        plt.title('$C_{fit}(\Delta x, \Delta y)$')
-        plt.colorbar(ticks=np.linspace(-1, 1, 11))
-        plt.xlabel(r'$\Delta x (m)$')
-        plt.ylabel(r'$\Delta y (m)$')
+        plt.scatter(self.dy, corr_fn, c=pal[0], label=r'$C(\Delta y)$')
+        plt.plot(self.dy, np.exp(-(self.dy/corr_fit.best_values['l'])**2), 
+                 'k--', label=r'$\exp(-(\Delta y / \ell_y)^2)$')
+        if not self.ky_free:
+            fit_label=r'$\exp(-(\Delta y / \ell_y)^2) \cos(2 \pi \Delta y/ \ell_y)$' 
+        else:
+            fit_label=r'$\exp(-(\Delta y / \ell_y)^2) \cos(k_y \Delta y)$'
+        plt.plot(self.dy, corr_fit.best_fit, c=pal[2], label=fit_label)
+        plt.fill_between(self.dy, corr_fn-corr_std, corr_fn+corr_std, 
+                         alpha=0.3, label=r'$1 \sigma$')
+        plt.legend()
+        plt.xlabel(r'$\Delta y$ (m)')
+        plt.xlim([self.dy[0], self.dy[-1]])
+        plt.ylabel(r'$C(\Delta y)$')
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
-        plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_corr_fit.pdf')
-
-        # Avg correlation and fitted function overlayed
-        plt.clf()
-        fig, ax = plt.subplots(1, 1)
-        plt.contourf(self.fit_dx, self.fit_dy, np.transpose(avg_corr), 10,
-                     levels=np.linspace(-1, 1, 11), cmap='coolwarm')
-        plt.colorbar(ticks=np.linspace(-1, 1, 11))
-        plt.contour(self.fit_dx, self.fit_dy,
-                     np.transpose(data_fitted.reshape(len(self.fit_dx),
-                                                      len(self.fit_dy))),
-                                  11, levels=np.linspace(-1, 1, 11), colors='k')
-        plt.xlabel(r'$\Delta x (m)$')
-        plt.ylabel(r'$\Delta y (m)$')
-        plot_style.minor_grid(ax)
-        plot_style.ticks_bottom_left(ax)
-        plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_comparison.pdf')
-
-        logging.info("Finished writing perp_analysis plots...")
+        plt.savefig(self.out_dir + '/' +self.perp_dir + 
+                    '/corr_fns_y/corr_y_fit_it_' + str(it) + '.pdf')
 
     def perp_analysis_summary(self):
         """
@@ -1394,6 +1355,7 @@ class Simulation(object):
             os.system("mkdir " + self.out_dir + '/parallel')
         if 'corr_fns' not in os.listdir(self.out_dir + '/parallel'):
             os.system("mkdir " + self.out_dir + '/parallel/corr_fns')
+        os.system('rm ' + self.out_dir + '/par/corr_fns/*')
 
         self.calculate_l_par()
         self.calculate_par_corr()

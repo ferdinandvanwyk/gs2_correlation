@@ -157,6 +157,17 @@ class TestClass(object):
         assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
         assert ('perp_fit_summary.dat' in os.listdir('test/test_run/v/id_1/analysis/perp'))
 
+    def test_perp_analysis_ky_free(self, run):
+        self.ky_free = True
+        run.perp_analysis()
+        assert run.perp_fit_params.shape == (5,4)
+        assert ('perp_fit_params.csv' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert ('time_avg_correlation.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert ('perp_corr_fit.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert ('perp_fit_comparison.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert ('perp_fit_summary.dat' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+
     def test_field_normalize_perp(self, run):
         run.field_normalize_perp()
         assert run.field_real_space_norm_x.shape == (run.nt, run.nx, run.ny)

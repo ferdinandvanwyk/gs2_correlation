@@ -59,9 +59,11 @@ Instance Variables of Simulation Class
         = 20.
    perp_guess_x : array_like
        Initial guess for radial correlation length in normalized rho_ref units.
-   perp_guess_x : array_like
+   perp_guess_y : array_like
        Initial guess for poloidal correlation length in normalized rho_ref 
        units.
+   ky_free : bool, False
+      Determines whether ky is free during the poloidal fitting procedure.
    time_guess : int
        Initial guess for the correlation time in normalized GS2 units.
    box_size : array_like, [0.2,0.2]
@@ -294,13 +296,11 @@ Configuration Variables
        middle part of size *box_size*.
    time_slice : int, 50
        Size of time window for averaging
-   perp_fit_length : int, 20
-       Number of points radially and poloidally to fit Gaussian over. 
-       Fitting over the whole domain usually does not produce a very good 
-       fit.
    perp_guess : array_like, [1,1]
        Initial guess for the radial and poloidal correlation lengths. Of the
        form [lx, ly] in normalized rho_ref units.
+   ky_free : bool, False
+      Determines whether ky is free during the poloidal fitting procedure.
    time_guess : int, 10
        Initial guess for the correlation time in normalized GS2 units.
    box_size : array_like, [0.2,0.2]
