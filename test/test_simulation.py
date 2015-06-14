@@ -37,7 +37,6 @@ class TestClass(object):
         assert type(run.analysis) == str
         assert type(run.out_dir) == str
         assert type(run.time_slice) == int
-        assert type(run.perp_fit_length) == int
         assert type(run.perp_guess_x) == float
         assert type(run.perp_guess_y) == float
         assert type(run.time_interpolate_bool) == bool
@@ -144,29 +143,45 @@ class TestClass(object):
         assert len(run.y)%2 == 1
         assert len(run.dx)%2 == 1
         assert len(run.dy)%2 == 1
-        assert len(run.fit_dx)%2 == 1
-        assert len(run.fit_dy)%2 == 1
 
     def test_perp_analysis(self, run):
         run.perp_analysis()
-        assert run.perp_fit_params.shape == (5,4)
-        assert ('perp_fit_params.csv' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('time_avg_correlation.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('perp_corr_fit.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('perp_fit_comparison.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('perp_fit_summary.dat' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert len(run.perp_fit_len_x) == run.nt_slices
+        assert len(run.perp_fit_len_err_x) == run.nt_slices
+        assert len(run.perp_fit_len_y) == run.nt_slices
+        assert len(run.perp_fit_len_err_y) == run.nt_slices
+        assert ('perp_fit_params.csv' in 
+                os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed'))
+        assert ('corr_x_fit_it_0.pdf' in 
+                os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed/corr_fns_x'))
+        assert ('corr_y_fit_it_0.pdf' in 
+                os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed/corr_fns_y'))
+        assert ('perp_fit_x_vs_time_slice.pdf' in 
+                os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed'))
+        assert ('perp_fit_y_vs_time_slice.pdf' in 
+                os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed'))
+        assert ('perp_fit_summary.csv' in 
+                os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed'))
 
     def test_perp_analysis_ky_free(self, run):
-        self.ky_free = True
+        run.ky_free = True
         run.perp_analysis()
-        assert run.perp_fit_params.shape == (5,4)
-        assert ('perp_fit_params.csv' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('time_avg_correlation.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('perp_corr_fit.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('perp_fit_comparison.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('perp_fit_params_vs_time_slice.pdf' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-        assert ('perp_fit_summary.dat' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert len(run.perp_fit_len_x) == run.nt_slices
+        assert len(run.perp_fit_len_err_x) == run.nt_slices
+        assert len(run.perp_fit_len_y) == run.nt_slices
+        assert len(run.perp_fit_len_err_y) == run.nt_slices
+        assert ('perp_fit_params.csv' in 
+                os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
+        assert ('corr_x_fit_it_0.pdf' in 
+                os.listdir('test/test_run/v/id_1/analysis/perp/ky_free/corr_fns_x'))
+        assert ('corr_y_fit_it_0.pdf' in 
+                os.listdir('test/test_run/v/id_1/analysis/perp/ky_free/corr_fns_y'))
+        assert ('perp_fit_x_vs_time_slice.pdf' in 
+                os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
+        assert ('perp_fit_y_vs_time_slice.pdf' in 
+                os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
+        assert ('perp_fit_summary.csv' in 
+                os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
 
     def test_field_normalize_perp(self, run):
         run.field_normalize_perp()
@@ -174,9 +189,11 @@ class TestClass(object):
         assert run.field_real_space_norm_y.shape == (run.nt, run.nx, run.ny)
 
     def test_perp_norm_mask(self, run):
-        run.perp_corr = np.ones([51,5,5])
+        run.perp_corr_x = np.ones([51,5,5])
+        run.perp_corr_y = np.ones([51,5,5])
         run.perp_norm_mask()
-        assert np.abs(run.perp_corr[0,2,2] - 1./25.) < 1e-5
+        assert np.abs(run.perp_corr_x[0,2,0] - 1./5.) < 1e-5
+        assert np.abs(run.perp_corr_y[0,0,2] - 1./5.) < 1e-5
 
     def test_calculate_perp_corr(self, run):
         run.field_normalize_perp()

@@ -756,11 +756,11 @@ class Simulation(object):
             self.perp_corr_fit(it)
 
         np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_params.csv', 
-                   (self.perp_fit_len_x, self.perp_fit_len_err_x, 
-                    self.perp_fit_len_y, self.perp_fit_len_err_y), 
-                   delimiter=',', fmt='%1.3f')
+                   np.array([self.perp_fit_len_x, self.perp_fit_len_err_x, 
+                    self.perp_fit_len_y, self.perp_fit_len_err_y]).T, 
+                   delimiter=',', fmt='%1.4f', header='lx, std(lx), ly, std(ly)')
 
-        #self.perp_analysis_summary()
+        self.perp_analysis_summary()
 
         #self.fluctuation_levels()
 
@@ -903,9 +903,13 @@ class Simulation(object):
         fit_y = gmod_osc_gauss.fit(avg_corr_y, params_y, x=self.dy)
 
         self.perp_fit_len_x[it] = fit_x.best_values['l']
-        self.perp_fit_len_err_x[it] = np.sqrt(fit_x.covar[0,0])
         self.perp_fit_len_y[it] = fit_y.best_values['l']
-        self.perp_fit_len_err_y[it] = np.sqrt(fit_y.covar[0,0])
+        if fit_x.errorbars and fit_x.errorbars:
+            self.perp_fit_len_err_x[it] = np.sqrt(fit_x.covar[0,0])
+            self.perp_fit_len_err_y[it] = np.sqrt(fit_y.covar[0,0])
+        else:
+            self.perp_fit_len_err_x[it] = 0
+            self.perp_fit_len_err_y[it] = 0
 
         self.perp_guess_x = fit_x.best_values['l']
         self.perp_guess_y = fit_y.best_values['l']
@@ -977,33 +981,33 @@ class Simulation(object):
         plt.clf()
         plot_style.white()
         fig, ax = plt.subplots(1, 1)
-        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,0]), 
-                     label=r'$l_x (m)$', yerr=self.perp_fit_params_err[:,0])
-        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,1]), 
-                     label=r'$l_y (m)$', yerr=self.perp_fit_params_err[:,1])
-        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,2]), 
-                     label=r'$|k_x| (m^{-1})$', yerr=self.perp_fit_params_err[:,2])
-        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_params[:,3]), 
-                     label=r'$|k_y| (m^{-1})$', yerr=self.perp_fit_params_err[:,3])
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_len_x), 
+                     label=r'$l_x$ (m)', yerr=self.perp_fit_len_err_x)
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_len_y), 
+                     label=r'$l_y$ (m)', yerr=self.perp_fit_len_err_y)
         plt.legend()
         plt.xlabel('Time Window')
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
-        plt.yscale('log')
-        plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_params_vs_time_slice.pdf')
+        plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_x_vs_time_slice.pdf')
 
-        summary_file = open(self.out_dir + '/'+self.perp_dir+'/perp_fit_summary.dat', 'w')
-        summary_file.write('#lx(m), ly(m), kx(m^-1), ky(m^-1), theta(rad)\n')
-        for i in range(4):
-            summary_file.write(str(np.mean(self.perp_fit_params[:,i])) + ' ' +
-                               str(np.mean(self.perp_fit_params_err[:,i])))
-            summary_file.write("\n")
+        plt.clf()
+        plot_style.white()
+        fig, ax = plt.subplots(1, 1)
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_len_y), 
+                     label=r'$l_y$ (m)', yerr=self.perp_fit_len_err_y)
+        plt.legend()
+        plt.xlabel('Time Window')
+        plot_style.minor_grid(ax)
+        plot_style.ticks_bottom_left(ax)
+        plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_y_vs_time_slice.pdf')
 
-        summary_file.write(str(np.arctan(np.mean(self.perp_fit_params[:,2]/ \
-                           self.perp_fit_params[:,3]))) + ' ' + 
-                           str(np.std(self.perp_fit_params[:,3]/\
-                           self.perp_fit_params[:,3])))
-        summary_file.close()
+        np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_summary.csv', 
+                   np.mean([self.perp_fit_len_x, 
+                            self.perp_fit_len_err_x, 
+                            self.perp_fit_len_y, 
+                            self.perp_fit_len_err_y], axis=1)[np.newaxis,:], 
+                   delimiter=',', fmt='%1.4f', header='lx, std(lx), ly, std(ly)')
 
         logging.info("Finished writing perp_analysis summary...")
 
