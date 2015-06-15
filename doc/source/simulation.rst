@@ -51,21 +51,26 @@ Instance Variables of Simulation Class
    domain : str, 'full'
        Specifies whether to analyze the full real space domain, or only the 
        middle part of size *box_size*.
-   time_slice : int
+   time_slice : int, 49
        Size of time window for averaging
-   perp_fit_length : int
-       Number of points radially and poloidally to fit Gaussian over. Fitting
-       over the whole domain usually does not produce a very good fit. Default
-        = 20.
-   perp_guess_x : array_like
-       Initial guess for radial correlation length in normalized rho_ref units.
-   perp_guess_y : array_like
-       Initial guess for poloidal correlation length in normalized rho_ref 
-       units.
+   perp_guess_x : array_like, 0.05
+       Initial guess for radial correlation length in metres.
+   perp_guess_y : array_like, 0.1
+       Initial guess for poloidal correlation length in metres.
    ky_free : bool, False
       Determines whether ky is free during the poloidal fitting procedure.
-   time_guess : int
-       Initial guess for the correlation time in normalized GS2 units.
+   time_guess : float, 1e-5
+       Initial guess for the correlation time in seconds read in from the 
+       configuration file.
+   time_guess_dec : float
+       Guess for the time correlation estimated by the decaying exponential.
+   time_guess_grow : float
+       Guess for the time correlation estimated by the growing exponential.
+   time_guess_osc : float
+       Guess for the time correlation estimated by the oscillating exponential.
+   time_max : float, 1
+       Maximum correlation time in seconds. Values above `time_max` will be 
+       excluded.
    box_size : array_like, [0.2,0.2]
        When running correlation analysis in the middle of the full GS2
        domain, this sets the approximate [radial, poloidal] size of this 
@@ -294,15 +299,18 @@ Configuration Variables
    domain : str, 'full'
        Specifies whether to analyze the full real space domain, or only the 
        middle part of size *box_size*.
-   time_slice : int, 50
+   time_slice : int, 49
        Size of time window for averaging
-   perp_guess : array_like, [1,1]
+   perp_guess : array_like, [0.02,0.1]
        Initial guess for the radial and poloidal correlation lengths. Of the
-       form [lx, ly] in normalized rho_ref units.
+       form [lx, ly] in metres.
    ky_free : bool, False
       Determines whether ky is free during the poloidal fitting procedure.
-   time_guess : int, 10
-       Initial guess for the correlation time in normalized GS2 units.
+   time_guess : float, 1e-5
+       Initial guess for the correlation time in seconds.
+   time_max : float, 1
+       Maximum correlation time in seconds. Values above `time_max` will be 
+       excluded.
    box_size : array_like, [0.2,0.2]
        When running correlation analysis in the middle of the full GS2
        domain, this sets the approximate [radial, poloidal] size of this 

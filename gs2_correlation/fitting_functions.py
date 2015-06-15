@@ -56,7 +56,7 @@ def tilted_gauss_ky_fixed(xdata_tuple, lx, ly, kx):
 
 #Decaying exponential for time correlation with positive flow
 def decaying_exp(t, tau_c):
-    exp_fn = np.exp(- abs(t) / tau_c)
+    exp_fn = np.exp(- np.abs(t) / tau_c)
     # fitting function only works on 1D data, reshape later to plot
     return exp_fn.ravel() 
 
@@ -67,8 +67,8 @@ def growing_exp(t, tau_c):
     return exp_fn.ravel()
 
 #General function for an oscillating Gaussian function
-def osc_gauss(x, l, k, px):
-    fit_fn = px + (1 - px) * np.exp(- (x / l)**2) * np.cos(k * x)
+def osc_gauss(x, l, k, p):
+    fit_fn = p + (1 - p) * np.exp(- (x / l)**2) * np.cos(k * x)
     # fitting function only works on 1D data, reshape later to plot
     return fit_fn.ravel() 
 
@@ -79,8 +79,8 @@ def osc_gauss_ky_fixed(x, l):
     return fit_fn.ravel() 
 
 #General function for an oscillating Gaussian function
-def gauss(x, l, px):
-    fit_fn = px + (1 - px) * np.exp(- (x / l)**2)
+def gauss(x, l, p):
+    fit_fn = p + (1 - p) * np.exp(- (x / l)**2)
     # fitting function only works on 1D data, reshape later to plot
     return fit_fn.ravel() 
 

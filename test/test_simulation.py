@@ -218,8 +218,6 @@ class TestClass(object):
         assert run.time_corr.shape == (run.nt_slices, run.time_slice,
                                        run.nx, run.ny)
         assert ('corr_fns' in os.listdir('test/test_run/v/id_1/analysis/time'))
-        assert ('time_fit_it_0_ix_0.pdf' in 
-                os.listdir('test/test_run/v/id_1/analysis/time/corr_fns'))
 
     def test_time_analysis_lab_frame(self, run):
         run.lab_frame = True
@@ -230,8 +228,6 @@ class TestClass(object):
         assert run.time_corr.shape == (run.nt_slices, run.time_slice,
                                        run.nx, run.ny)
         assert ('corr_fns' in os.listdir('test/test_run/v/id_1/analysis/time_lab_frame'))
-        assert ('time_fit_it_0_ix_0.pdf' in 
-                os.listdir('test/test_run/v/id_1/analysis/time_lab_frame/corr_fns'))
 
     def test_field_normalize_time(self, run):
         run.field_normalize_time()

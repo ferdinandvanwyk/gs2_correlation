@@ -322,7 +322,7 @@ class Simulation(object):
             self.theta_idx = [0, None]
 
         self.time_slice = int(config_parse.get('general', 'time_slice',
-                                               fallback=50))
+                                               fallback=49))
 
         self.box_size = str(config_parse.get('general',
                                                'box_size', fallback='[0.2,0.2]'))
@@ -340,11 +340,12 @@ class Simulation(object):
         # Perp Namelist #
         #################
 
-        perp_guess = str(config_parse['perp']['perp_guess'])
+        perp_guess = str(config_parse.get('perp',
+                                          'perp_guess', fallback='[0.05,0.1]'))
         perp_guess = perp_guess[1:-1].split(',')
         perp_guess = [float(s) for s in perp_guess]
-        self.perp_guess_x = perp_guess[0]*self.rho_ref
-        self.perp_guess_y = perp_guess[1]*self.rho_ref
+        self.perp_guess_x = perp_guess[0]
+        self.perp_guess_y = perp_guess[1]
 
         self.ky_free = config_parse.getboolean('perp','ky_free', fallback=False)
 
@@ -354,9 +355,15 @@ class Simulation(object):
 
         self.npeaks_fit = int(config_parse.get('time',
                                                'npeaks_fit', fallback=5))
-        self.time_guess = int(config_parse.get('time',
-                                               'time_guess', fallback=10))
-        self.time_guess = self.time_guess*self.amin/self.vth
+        self.time_guess = float(config_parse.get('time',
+                                                 'time_guess', fallback=1e-5))
+        self.time_guess_dec = np.float64(self.time_guess)
+        self.time_guess_grow = np.float64(self.time_guess)
+        self.time_guess_osc = np.array([self.time_guess, 100, 
+                                        0.0])
+
+        self.time_max = float(config_parse.get('time',
+                                               'time_max', fallback=1))
 
         ################
         # Par Namelist #
@@ -890,7 +897,7 @@ class Simulation(object):
 
         params_x = lm.Parameters()                                                    
         params_x.add('l', value=self.perp_guess_x)                                                  
-        params_x.add('px', value=0.0, vary=False)               
+        params_x.add('p', value=0.0, vary=False)               
         fit_x = gmod_gauss.fit(avg_corr_x, params_x, x=self.dx)
         
         params_y = lm.Parameters()                                                    
@@ -899,7 +906,7 @@ class Simulation(object):
             params_y.add('k', value=1, expr='2*3.141592653589793/l')
         else:
             params_y.add('k', value=1)
-        params_y.add('px', value=0.0, vary=False) 
+        params_y.add('p', value=0.0, vary=False) 
         fit_y = gmod_osc_gauss.fit(avg_corr_y, params_y, x=self.dy)
 
         self.perp_fit_len_x[it] = fit_x.best_values['l']
@@ -1205,15 +1212,23 @@ class Simulation(object):
                 fit.strictly_increasing(max_index[ix,::-1]) == True):
                 if max_index[ix, self.npeaks_fit-1] > max_index[ix, 0]:
                     try:
-                        self.corr_time[it, ix], pcov = opt.curve_fit(
-                                                           fit.decaying_exp, 
-                                                           (self.dt[max_index[ix,:]]), 
-                                                           peaks[ix,:].ravel(), 
-                                                           p0=self.time_guess)
-                        self.time_plot(it, ix, max_index, peaks, 'decaying')
+                        gmod_decay = lm.Model(fit.decaying_exp)
+                        params_t = lm.Parameters()
+                        params_t.add('tau_c', value=self.time_guess_dec)
+                        fit_t = gmod_decay.fit(peaks[ix,:], params_t, 
+                                               t=self.dt[max_index[ix,:]]) 
+
+                        if fit_t.best_values['tau_c'] > self.time_max:
+                            self.corr_time[it,ix] = np.nan
+                        else:
+                            self.corr_time[it,ix] = fit_t.best_values['tau_c']
+                            self.time_guess_dec = self.corr_time[it,ix]
+                            self.time_plot(it, ix, max_index, peaks, 'decaying')
+
                         logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
                                      "with decaying exponential. tau = " 
                                      + str(self.corr_time[it,ix]) + " s\n")
+
                     except RuntimeError:
                         logging.info("(" + str(it) + "," + str(ix) + ") " 
                                 "RuntimeError - max fitting iterations reached, "
@@ -1221,15 +1236,23 @@ class Simulation(object):
                         self.corr_time[it, ix] = np.nan
                 else:
                     try:
-                        self.corr_time[it, ix], pcov = opt.curve_fit(
-                                                           fit.growing_exp, 
-                                                           (self.dt[max_index[ix,:]]), 
-                                                           peaks[ix,:].ravel(), 
-                                                           p0=self.time_guess)
-                        self.time_plot(it, ix, max_index, peaks, 'growing')
+                        gmod_grow = lm.Model(fit.growing_exp)
+                        params_t = lm.Parameters()
+                        params_t.add('tau_c', value=self.time_guess_grow)
+                        fit_t = gmod_grow.fit(peaks[ix,:], params_t, 
+                                              t=self.dt[max_index[ix,:]]) 
+
+                        if fit_t.best_values['tau_c'] > self.time_max:
+                            self.corr_time[it,ix] = np.nan
+                        else:
+                            self.corr_time[it,ix] = fit_t.best_values['tau_c']
+                            self.time_guess_grow = self.corr_time[it,ix]
+                            self.time_plot(it, ix, max_index, peaks, 'growing')
+
                         logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
                                      "with growing exponential. tau = " 
                                      + str(self.corr_time[it,ix]) + " s\n")
+
                     except RuntimeError:
                         logging.info("(" + str(it) + "," + str(ix) + ") "
                                 "RuntimeError - max fitting iterations reached, "
@@ -1241,21 +1264,32 @@ class Simulation(object):
                     # usually means that there is no flow and that the above method
                     # cannot be used to calculate the correlation time. Try fitting
                     # a decaying oscillating exponential to the central peak.
-                    self.time_corr[it,:,ix,mid_idx] = self.time_corr[it,:,ix,mid_idx]/ \
-                                                      max(self.time_corr[it,:,ix,mid_idx])
-                    init_guess = (self.time_guess, 1.0, 0.0)
-                    tau_and_omega, pcov = opt.curve_fit(
-                                              fit.osc_gauss, 
-                                              (self.dt), 
-                                              (self.time_corr[it,:,ix,mid_idx]).ravel(), 
-                                              p0=init_guess)
-                    self.corr_time[it,ix] = tau_and_omega[0]
-                    self.time_plot(it, ix, max_index, peaks, 'oscillating', 
-                                   omega=tau_and_omega[1])
+                    gmod_osc = lm.Model(fit.osc_gauss)
+                    params_t = lm.Parameters()
+                    params_t.add('l', value=self.time_guess_osc[0])
+                    params_t.add('k', value=self.time_guess_osc[1])
+                    params_t.add('p', value=self.time_guess_osc[2], vary=False)
+                    fit_t = gmod_osc.fit(self.time_corr[it,:,ix,mid_idx], 
+                                         params_t, x=self.dt) 
+
+                    # Note l = tau_c sinc fitting function specification is for
+                    # general l, k, p.
+                    if fit_t.best_values['l'] > self.time_max:
+                        self.corr_time[it,ix] = np.nan
+                    else:
+                        self.corr_time[it,ix] = fit_t.best_values['l']
+                        self.time_guess_osc = np.array([fit_t.best_values['l'],
+                                                        fit_t.best_values['k'],
+                                                        fit_t.best_values['p']])
+                        self.time_plot(it, ix, max_index, peaks, 'oscillating', 
+                                       omega=fit_t.best_values['k'])
+
                     logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
                                  "with an oscillating "
                                  "Gaussian to the central peak. (tau, omega) = " 
-                                 + str(tau_and_omega) + "\n")
+                                 + str([fit_t.best_values['l'], 
+                                        fit_t.best_values['k']]) + "\n")
+
                 except RuntimeError:
                     logging.info("(" + str(it) + "," + str(ix) + ") "
                             "RuntimeError - max fitting iterations reached, "
@@ -1287,26 +1321,32 @@ class Simulation(object):
         mid_idx = int(self.ny/2)
         plt.clf()
         fig, ax = plt.subplots(1, 1)
-        plt.plot(self.dt*1e6, self.time_corr[it,:,ix,mid_idx:mid_idx+self.npeaks_fit])
-        plt.hold(True)
-        plt.plot(self.dt[max_index[ix,:]]*1e6, peaks[ix,:], 'o', color='#7A1919')
-        plt.hold(True)
 
         if plot_type == 'decaying':
+            plt.plot(self.dt*1e6, self.time_corr[it,:,ix,mid_idx:mid_idx+self.npeaks_fit])
+            plt.hold(True)
+            plt.plot(self.dt[max_index[ix,:]]*1e6, peaks[ix,:], 'o', color='#7A1919')
+            plt.hold(True)
             plt.plot(self.dt[int(self.time_slice/2):]*1e6, 
                      fit.decaying_exp(self.dt[int(self.time_slice/2):],self.corr_time[it,ix]), 
-                     color='#000000', lw=2, 
+                     'k--', lw=2, 
                      label=r'$\exp[-|\Delta t_{peak} / \tau_c|]$')
             plt.legend()
         if plot_type == 'growing':
+            plt.plot(self.dt*1e6, self.time_corr[it,:,ix,mid_idx:mid_idx+self.npeaks_fit])
+            plt.hold(True)
+            plt.plot(self.dt[max_index[ix,:]]*1e6, peaks[ix,:], 'o', color='#7A1919')
+            plt.hold(True)
             plt.plot(self.dt[:int(self.time_slice/2)]*1e6, 
                      fit.growing_exp(self.dt[:int(self.time_slice/2)],self.corr_time[it,ix]), 
-                     color='#000000', lw=2, 
+                     'k--', lw=2, 
                      label=r'$\exp[|\Delta t_{peak} / \tau_c|]$')
             plt.legend()
         if plot_type == 'oscillating':
+            plt.plot(self.dt*1e6, self.time_corr[it,:,ix,mid_idx])
+            plt.hold(True)
             plt.plot(self.dt*1e6, fit.osc_gauss(self.dt,self.corr_time[it,ix], 
-                     kwargs['omega'], 0), color='#000000', lw=2, 
+                     kwargs['omega'], 0), 'k--', lw=2, 
                      label=r'$\exp[- (\Delta t_{peak} / \tau_c)^2] '
                             '\cos(\omega \Delta t) $')
             plt.legend()
@@ -1463,7 +1503,7 @@ class Simulation(object):
                        max=100)
             params.add('k', value=self.par_guess[1], 
                        max=(2*np.pi/self.dl_par[-1]*len(self.dl_par)/2))
-            params.add('px', value=0, vary=False)
+            params.add('p', value=0, vary=False)
             par_fit = gmod_osc.fit(corr_fn, params, x=self.dl_par)
             
             self.par_fit_params[it, :] = np.abs([par_fit.best_values['l'], 
