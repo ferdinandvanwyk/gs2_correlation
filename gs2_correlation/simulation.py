@@ -1370,7 +1370,8 @@ class Simulation(object):
         logging.info("Writing time_analysis summary...")
 
         np.savetxt(self.out_dir + '/'+self.time_dir+'/corr_time.csv', 
-                   (self.corr_time), delimiter=',', fmt='%.4e')
+                   (self.corr_time), delimiter=',', fmt='%.4e', 
+                   header='rows = radius, columns = time slice')
 
         self.corr_time = np.abs(self.corr_time)
 
