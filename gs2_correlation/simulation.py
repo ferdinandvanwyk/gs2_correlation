@@ -1000,7 +1000,7 @@ class Simulation(object):
                      yerr=self.perp_fit_len_err_y)
         plt.xlabel('Time Window')
         plt.ylabel(r'$l_y$ (m)')
-        plt.ylim(ymin=0, ymax=2*np.abs(self.perp_fit_len_y[0]))
+        plt.ylim(ymin=0, ymax=2*np.mean(self.perp_fit_len_y))
         plt.xticks(range(self.nt_slices))
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
