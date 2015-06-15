@@ -1102,12 +1102,11 @@ class Simulation(object):
             t_max = (it+1)*self.time_slice
             field_window = self.field_real_space[t_min:t_max,:,:]
             for ix in range(self.nx):
-                for iy in range(self.ny):
-                    self.field_real_space_norm[t_min:t_max,ix,iy] = \
-                                            field_window[:,ix,iy] - \
-                                            np.mean(field_window[:,ix,iy])
-                    self.field_real_space_norm[t_min:t_max,ix,iy] /= \
-                        np.std(self.field_real_space_norm[t_min:t_max,ix,iy])
+                self.field_real_space_norm[t_min:t_max,ix,:] = \
+                                        field_window[:,ix,:] - \
+                                        np.mean(field_window[:,ix,:])
+                self.field_real_space_norm[t_min:t_max,ix,:] /= \
+                        np.std(self.field_real_space_norm[t_min:t_max,ix,:])
 
         logging.info('Finished normalizing the real space field.')
 
