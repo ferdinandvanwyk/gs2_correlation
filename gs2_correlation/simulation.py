@@ -996,8 +996,6 @@ class Simulation(object):
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_x_vs_time_slice.pdf')
 
-        print('hello = ', self.perp_fit_len_y)
-        print('hello = ', self.perp_fit_len_err_y)
         plt.clf()
         plot_style.white()
         fig, ax = plt.subplots(1, 1)
