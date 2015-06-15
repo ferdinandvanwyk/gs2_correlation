@@ -1674,9 +1674,13 @@ class Simulation(object):
         if self.film_lim == None:
             contours = np.around(np.linspace(self.field_min, self.field_max, 
                                              self.film_contours),7)
+            cbar_ticks = np.around(np.linspace(self.field_min, self.field_max, 
+                                               5),3)
         else:
             contours = np.around(np.linspace(self.film_lim[0], self.film_lim[1], 
                                              self.film_contours),7)
+            cbar_ticks = np.around(np.linspace(self.film_lim[0], self.film_lim[1], 
+                                               5),3)
 
         plt.clf()
         ax = plt.subplot(111)
@@ -1690,7 +1694,7 @@ class Simulation(object):
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
 
-        plt.colorbar(im, cax=cax, label=r'$\delta n / n (-)$')
+        plt.colorbar(im, cax=cax, label=r'$\delta n / n (-)$', ticks=cbar_ticks)
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.film_dir+'/film_frames/' + 
                     self.in_field + "_spec_" + str(self.spec_idx) + 
