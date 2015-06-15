@@ -813,8 +813,8 @@ class Simulation(object):
 
             for ix in range(self.nx):
                 self.perp_corr_y[it,ix,:] = \
-                            sig.correlate(self.field_real_space_norm_x[it,ix,:], 
-                                          self.field_real_space_norm_x[it,ix,:],
+                            sig.correlate(self.field_real_space_norm_y[it,ix,:], 
+                                          self.field_real_space_norm_y[it,ix,:],
                                           mode='same')
 
         logging.info("Finished calculating perpendicular correlation " 
@@ -871,17 +871,17 @@ class Simulation(object):
         """
 
         corr_fn_x = \
-            self.perp_corr_x[it*self.time_slice:(it+1)*self.time_slice,:,:]
+            np.array(self.perp_corr_x[it*self.time_slice:(it+1)*self.time_slice,:,:])
         corr_fn_y = \
-            self.perp_corr_y[it*self.time_slice:(it+1)*self.time_slice,:,:]
-
+            np.array(self.perp_corr_y[it*self.time_slice:(it+1)*self.time_slice,:,:])
+        
         # Average corr_fn over time
         corr_std_x = np.empty([self.nx])
         corr_std_y = np.empty([self.ny])
         for ix in range(self.nx):
             corr_std_x[ix] = np.std(corr_fn_x[:,ix,:])
         for iy in range(self.ny):
-            corr_std_y[iy] = np.std(corr_fn_x[:,:,iy])
+            corr_std_y[iy] = np.std(corr_fn_y[:,:,iy])
         avg_corr_x = np.mean(np.mean(corr_fn_x, axis=0), axis=1)
         avg_corr_y = np.mean(np.mean(corr_fn_y, axis=0), axis=0)
 
@@ -904,11 +904,14 @@ class Simulation(object):
 
         self.perp_fit_len_x[it] = fit_x.best_values['l']
         self.perp_fit_len_y[it] = fit_y.best_values['l']
-        if fit_x.errorbars and fit_x.errorbars:
+
+        if fit_x.errorbars:
             self.perp_fit_len_err_x[it] = np.sqrt(fit_x.covar[0,0])
-            self.perp_fit_len_err_y[it] = np.sqrt(fit_y.covar[0,0])
         else:
             self.perp_fit_len_err_x[it] = 0
+        if fit_y.errorbars:
+            self.perp_fit_len_err_y[it] = np.sqrt(fit_y.covar[0,0])
+        else:
             self.perp_fit_len_err_y[it] = 0
 
         self.perp_guess_x = fit_x.best_values['l']
@@ -987,12 +990,14 @@ class Simulation(object):
                      yerr=self.perp_fit_len_err_x)
         plt.xlabel('Time Window')
         plt.ylabel(r'$l_x$ (m)')
-        plt.ylim(ymin=0, ymax=2*np.abs(self.perp_fit_len_x[0]))
+        plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.perp_fit_len_x[0])))
         plt.xticks(range(self.nt_slices))
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_x_vs_time_slice.pdf')
 
+        print('hello = ', self.perp_fit_len_y)
+        print('hello = ', self.perp_fit_len_err_y)
         plt.clf()
         plot_style.white()
         fig, ax = plt.subplots(1, 1)
@@ -1000,7 +1005,7 @@ class Simulation(object):
                      yerr=self.perp_fit_len_err_y)
         plt.xlabel('Time Window')
         plt.ylabel(r'$l_y$ (m)')
-        plt.ylim(ymin=0, ymax=2*np.mean(self.perp_fit_len_y))
+        plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.perp_fit_len_y)))
         plt.xticks(range(self.nt_slices))
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
