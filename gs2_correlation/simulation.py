@@ -940,6 +940,7 @@ class Simulation(object):
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/' +self.perp_dir + 
                     '/corr_fns_x/corr_x_fit_it_' + str(it) + '.pdf')
+        plt.close(fig)
 
     def perp_plots_y(self, it, corr_fn, corr_std, corr_fit):
         """
@@ -967,6 +968,7 @@ class Simulation(object):
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/' +self.perp_dir + 
                     '/corr_fns_y/corr_y_fit_it_' + str(it) + '.pdf')
+        plt.close(fig)
 
     def perp_analysis_summary(self):
         """
