@@ -59,15 +59,16 @@ Instance Variables of Simulation Class
        Initial guess for poloidal correlation length in metres.
    ky_free : bool, False
       Determines whether ky is free during the poloidal fitting procedure.
-   time_guess : float, 1e-5
-       Initial guess for the correlation time in seconds read in from the 
-       configuration file.
+   time_guess : array_like, [1e-5,100]
+       Initial guess for the correlation time and wavenumber in seconds read 
+       in from the configuration file.
    time_guess_dec : float
        Guess for the time correlation estimated by the decaying exponential.
    time_guess_grow : float
        Guess for the time correlation estimated by the growing exponential.
    time_guess_osc : float
-       Guess for the time correlation estimated by the oscillating exponential.
+       Guess for the time correlation and wavenumber estimated by the 
+       oscillating exponential.
    time_max : float, 1
        Maximum correlation time in seconds. Values above `time_max` will be 
        excluded.
@@ -306,8 +307,9 @@ Configuration Variables
        form [lx, ly] in metres.
    ky_free : bool, False
       Determines whether ky is free during the poloidal fitting procedure.
-   time_guess : float, 1e-5
-       Initial guess for the correlation time in seconds.
+   time_guess : array_like, [1e-5,100]
+       Initial guess for the correlation time and wavenumber in seconds read 
+       in from the configuration file.
    time_max : float, 1
        Maximum correlation time in seconds. Values above `time_max` will be 
        excluded.

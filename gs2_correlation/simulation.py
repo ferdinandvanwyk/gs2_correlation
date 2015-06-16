@@ -54,6 +54,7 @@ from PIL import Image
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import f90nml as nml
 import lmfit as lm
+import pickle as pkl
 plt.rcParams.update({'figure.autolayout': True})
 mpl.rcParams['axes.unicode_minus']=False
 pal = sns.color_palette('deep')  
@@ -355,11 +356,14 @@ class Simulation(object):
 
         self.npeaks_fit = int(config_parse.get('time',
                                                'npeaks_fit', fallback=5))
-        self.time_guess = float(config_parse.get('time',
-                                                 'time_guess', fallback=1e-5))
+        self.time_guess = str(config_parse.get('time',
+                                          'time_guess', fallback='[1e-5,100]'))
+        self.time_guess = self.time_guess[1:-1].split(',')
+        self.time_guess = [float(s) for s in self.time_guess]
+
         self.time_guess_dec = np.float64(self.time_guess)
         self.time_guess_grow = np.float64(self.time_guess)
-        self.time_guess_osc = np.array([self.time_guess, 100, 
+        self.time_guess_osc = np.array([self.time_guess[0], self.time_guess[1], 
                                         0.0])
 
         self.time_max = float(config_parse.get('time',
@@ -1083,6 +1087,7 @@ class Simulation(object):
         self.time_corr = np.empty([self.nt_slices, self.time_slice, self.nx,
                                    self.ny], dtype=float)
         self.corr_time = np.empty([self.nt_slices, self.nx], dtype=float)
+        self.corr_time_err = np.empty([self.nt_slices, self.nx], dtype=float)
 
         self.field_normalize_time()
         for it in range(self.nt_slices):
@@ -1220,8 +1225,13 @@ class Simulation(object):
 
                         if fit_t.best_values['tau_c'] > self.time_max:
                             self.corr_time[it,ix] = np.nan
+                            self.corr_time_err[it,ix] = np.nan
                         else:
                             self.corr_time[it,ix] = fit_t.best_values['tau_c']
+                            if fit_t.errorbars:
+                                self.corr_time_err[it,ix] = fit_t.covar[0,0]
+                            else:
+                                self.corr_time_err[it,ix] = np.nan
                             self.time_guess_dec = self.corr_time[it,ix]
                             self.time_plot(it, ix, max_index, peaks, 'decaying')
 
@@ -1244,8 +1254,13 @@ class Simulation(object):
 
                         if fit_t.best_values['tau_c'] > self.time_max:
                             self.corr_time[it,ix] = np.nan
+                            self.corr_time_err[it,ix] = np.nan
                         else:
                             self.corr_time[it,ix] = fit_t.best_values['tau_c']
+                            if fit_t.errorbars:
+                                self.corr_time_err[it,ix] = fit_t.covar[0,0]
+                            else:
+                                self.corr_time_err[it,ix] = np.nan
                             self.time_guess_grow = self.corr_time[it,ix]
                             self.time_plot(it, ix, max_index, peaks, 'growing')
 
@@ -1276,8 +1291,13 @@ class Simulation(object):
                     # general l, k, p.
                     if fit_t.best_values['l'] > self.time_max:
                         self.corr_time[it,ix] = np.nan
+                        self.corr_time_err[it,ix] = np.nan
                     else:
                         self.corr_time[it,ix] = fit_t.best_values['l']
+                        if fit_t.errorbars:
+                            self.corr_time_err[it,ix] = fit_t.covar[0,0]
+                        else:
+                            self.corr_time_err[it,ix] = np.nan
                         self.time_guess_osc = np.array([fit_t.best_values['l'],
                                                         fit_t.best_values['k'],
                                                         fit_t.best_values['p']])
@@ -1369,11 +1389,14 @@ class Simulation(object):
         """
         logging.info("Writing time_analysis summary...")
 
+        self.corr_time = np.abs(self.corr_time)
+
         np.savetxt(self.out_dir + '/'+self.time_dir+'/corr_time.csv', 
                    (self.corr_time), delimiter=',', fmt='%.4e', 
                    header='rows = radius, columns = time slice')
-
-        self.corr_time = np.abs(self.corr_time)
+        np.savetxt(self.out_dir + '/'+self.time_dir+'/corr_time_err.csv', 
+                   (self.corr_time_err), delimiter=',', fmt='%.4e', 
+                   header='rows = radius, columns = time slice')
 
         # Plot corr_time as a function of radius, average over time window
         plt.clf()
