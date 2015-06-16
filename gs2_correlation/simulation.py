@@ -1292,6 +1292,11 @@ class Simulation(object):
                     if fit_t.best_values['l'] > self.time_max:
                         self.corr_time[it,ix] = np.nan
                         self.corr_time_err[it,ix] = np.nan
+                        logging.info("(" + str(it) + "," + str(ix) + ") was "
+                                     "fitted with an oscillating Gaussian to "
+                                     "the central peak. (tau, omega) = " 
+                                     + str([np.nan, np.nan]) + "\n")
+
                     else:
                         self.corr_time[it,ix] = fit_t.best_values['l']
                         if fit_t.errorbars:
@@ -1304,11 +1309,11 @@ class Simulation(object):
                         self.time_plot(it, ix, max_index, peaks, 'oscillating', 
                                        omega=fit_t.best_values['k'])
 
-                    logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
-                                 "with an oscillating "
-                                 "Gaussian to the central peak. (tau, omega) = " 
-                                 + str([fit_t.best_values['l'], 
-                                        fit_t.best_values['k']]) + "\n")
+                        logging.info("(" + str(it) + "," + str(ix) + ") was "
+                                     "fitted with an oscillating Gaussian to "
+                                     "the central peak. (tau, omega) = " 
+                                     + str([fit_t.best_values['l'], 
+                                            fit_t.best_values['k']]) + "\n")
 
                 except RuntimeError:
                     logging.info("(" + str(it) + "," + str(ix) + ") "
