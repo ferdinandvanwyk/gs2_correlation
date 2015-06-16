@@ -361,8 +361,8 @@ class Simulation(object):
         self.time_guess = self.time_guess[1:-1].split(',')
         self.time_guess = [float(s) for s in self.time_guess]
 
-        self.time_guess_dec = np.float64(self.time_guess)
-        self.time_guess_grow = np.float64(self.time_guess)
+        self.time_guess_dec = self.time_guess[0]
+        self.time_guess_grow = self.time_guess[0]
         self.time_guess_osc = np.array([self.time_guess[0], self.time_guess[1], 
                                         0.0])
 

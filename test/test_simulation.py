@@ -47,6 +47,9 @@ class TestClass(object):
         assert (type(run.spec_idx) == int or type(run.spec_idx) == type(None))
         assert type(run.npeaks_fit) == int
         assert type(run.time_guess) == list
+        assert type(run.time_guess_grow) == float
+        assert type(run.time_guess_dec) == float
+        assert type(run.time_guess_osc) == np.ndarray
         assert type(run.time_max) == float
         assert type(run.box_size) == list
         assert type(run.time_range) == list
