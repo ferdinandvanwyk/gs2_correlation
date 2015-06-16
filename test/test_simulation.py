@@ -46,7 +46,8 @@ class TestClass(object):
         assert type(run.lab_frame) == bool
         assert (type(run.spec_idx) == int or type(run.spec_idx) == type(None))
         assert type(run.npeaks_fit) == int
-        assert type(run.time_guess) == float
+        assert type(run.time_guess) == list
+        assert type(run.time_max) == float
         assert type(run.box_size) == list
         assert type(run.time_range) == list
         assert type(run.par_guess) == list
