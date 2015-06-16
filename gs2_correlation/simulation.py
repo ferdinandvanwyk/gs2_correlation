@@ -944,7 +944,7 @@ class Simulation(object):
         plt.plot(self.dx, corr_fit.best_fit, c=pal[2], 
                  label=r'$\exp(-(\Delta x / \ell_x)^2)$')
         plt.fill_between(self.dx, corr_fn-corr_std, corr_fn+corr_std, 
-                         alpha=0.3, label=r'$1 \sigma$')
+                         alpha=0.3)
         plt.legend()
         plt.xlabel(r'$\Delta x$ (m)')
         plt.xlim([self.dx[0], self.dx[-1]])
@@ -973,7 +973,7 @@ class Simulation(object):
             fit_label=r'$\exp(-(\Delta y / \ell_y)^2) \cos(k_y \Delta y)$'
         plt.plot(self.dy, corr_fit.best_fit, c=pal[2], label=fit_label)
         plt.fill_between(self.dy, corr_fn-corr_std, corr_fn+corr_std, 
-                         alpha=0.3, label=r'$1 \sigma$')
+                         alpha=0.3)
         plt.legend()
         plt.xlabel(r'$\Delta y$ (m)')
         plt.xlim([self.dy[0], self.dy[-1]])
@@ -1566,8 +1566,10 @@ class Simulation(object):
 
         plt.clf()
         fig, ax = plt.subplots(1, 1)
-        plt.errorbar(self.dl_par, corr, c=pal[0], yerr=corr_std, fmt='.', 
+        plt.scatter(self.dl_par, corr, c=pal[0], 
                     label=r'$C(\Delta t = 0, \Delta x = 0, \Delta y = 0, \Delta z)$')
+        plt.fill_between(self.dl_par, corr-corr_std, corr+corr_std, 
+                         alpha=0.3)
         plt.plot(self.dl_par, fit.osc_gauss(self.dl_par, self.par_fit_params[it,0], 
                  self.par_fit_params[it,1], 0), c=pal[2] ,
                  label=r'$p_\parallel + (1-p_\parallel)\exp[- (\Delta z / l_{\parallel})^2] '
@@ -1605,10 +1607,10 @@ class Simulation(object):
         plt.clf()
         fig, ax = plt.subplots(1, 1)
         plt.errorbar(range(self.nt_slices), np.abs(self.par_fit_params[:,0]), 
-                     yerr=self.par_fit_params_err[:,0], fmt='.')
+                     yerr=self.par_fit_params_err[:,0])
         plt.xlabel('Time Window')
         plt.ylabel(r'Parallel Correlation Length $l_{\parallel} (m)$')
-        plt.ylim(0)
+        plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.par_fit_params[:,0])))
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/parallel/par_fit_length_vs_time_slice.pdf')
@@ -1617,10 +1619,10 @@ class Simulation(object):
         plt.clf()
         fig, ax = plt.subplots(1, 1)
         plt.errorbar(range(self.nt_slices), np.abs(self.par_fit_params[:,1]), 
-                     yerr=self.par_fit_params_err[:,1], fmt='.')
+                     yerr=self.par_fit_params_err[:,1])
         plt.xlabel('Time Window')
         plt.ylabel(r'Parallel Correlation Wavenumber $k_{\parallel} (m^{-1})$')
-        plt.ylim(0)
+        plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.par_fit_params[:,1])))
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/parallel/par_fit_wavenumber_vs_time_slice.pdf')
