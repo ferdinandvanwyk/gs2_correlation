@@ -796,7 +796,7 @@ class Simulation(object):
 
         self.perp_analysis_summary()
 
-        #self.fluctuation_levels()
+        self.fluctuation_levels()
 
         logging.info('Finished perpendicular correlation analysis.')
 
@@ -1057,10 +1057,10 @@ class Simulation(object):
 
         if not self.ky_free:
             np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_summary.csv', 
-                       np.mean([self.perp_fit_x, 
-                                self.perp_fit_x_err, 
-                                self.perp_fit_y, 
-                                self.perp_fit_y_err], axis=1)[np.newaxis,:], 
+                       np.nanmean([self.perp_fit_x, 
+                                   self.perp_fit_x_err, 
+                                   self.perp_fit_y, 
+                                   self.perp_fit_y_err], axis=1)[np.newaxis,:], 
                        delimiter=',', fmt='%1.4f', 
                        header='lx, std(lx), ly, std(ly)')
         else:
@@ -1116,10 +1116,9 @@ class Simulation(object):
         self.fluc_level = np.mean(rms)
         self.fluc_level_std = np.std(rms)
 
-        summary_file = open(self.out_dir + '/'+ self.perp_dir +
-                            '/fluctuation_summary.dat', 'w')
-        summary_file.write('dn/n std(dn/n) \n')
-        summary_file.write(str(self.fluc_level) + ' ' + str(self.fluc_level_std))
+        np.savetxt(self.out_dir + '/'+ self.perp_dir +'/fluctuation_summary.csv',
+                   np.array([self.fluc_level, self.fluc_level_std])[np.newaxis,:],
+                   header='dn/n, std(dn/n)', delimiter=',', fmt='%1.4f')
 
         logging.info("Finished calculating fluctuation level.")
 
@@ -1477,11 +1476,10 @@ class Simulation(object):
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.time_dir+'/corr_time.pdf')
 
-        summary_file = open(self.out_dir + '/'+self.time_dir+'/time_fit_summary.dat', 'w')
-        summary_file.write('#tau_c, std(tau_c)\n')
-        summary_file.write(str(np.nanmean(self.corr_time)*1e6) + ' ' + 
-                           str(np.nanstd(self.corr_time)*1e6))
-        summary_file.close()
+        np.savetxt(self.out_dir + '/'+self.time_dir+'/time_fit_summary.csv',
+                   (np.array([np.nanmean(self.corr_time), 
+                   np.nanstd(self.corr_time)])*1e6)[np.newaxis,:],
+                   header='tau_c, std(tau_c)')
 
         logging.info("Finished writing time_analysis summary...")
 
@@ -1656,15 +1654,15 @@ class Simulation(object):
         plot_style.white()
 
         np.savetxt(self.out_dir + '/parallel/par_fit_params.csv', 
-                   (self.par_fit_params), delimiter=',', fmt='%1.3f')
+                   (self.par_fit_params), delimiter=',', fmt='%1.4f')
 
-        summary_file = open(self.out_dir + '/parallel/par_fit_summary.dat', 'w')
-        summary_file.write('#l_par, err(l_par), k_par, err(k_par)\n')
-        summary_file.write(str(np.nanmean(self.par_fit_params[:,0])) + ' ' + 
-                           str(np.nanmean(self.par_fit_params_err[:,0])) + ' ' +
-                           str(np.nanmean(self.par_fit_params[:,1])) + ' ' + 
-                           str(np.nanmean(self.par_fit_params_err[:,1])))
-        summary_file.close()
+        np.savetxt(self.out_dir + '/parallel/par_fit_summary.csv', 
+                   np.nanmean([self.par_fit_params[:,0],
+                   self.par_fit_params_err[:,0],
+                   self.par_fit_params[:,1],
+                   self.par_fit_params_err[:,1]], axis=1)[np.newaxis,:], 
+                   delimiter=',', fmt='%1.4f',
+                   header='l_par, err(l_par), k_par, err(k_par)')
 
         plt.clf()
         fig, ax = plt.subplots(1, 1)

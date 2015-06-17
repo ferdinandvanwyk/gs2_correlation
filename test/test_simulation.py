@@ -213,10 +213,12 @@ class TestClass(object):
     def test_fluctuation_level(self, run):
         run.field_real_space = np.random.randint(0,10,size=[5,5,5])
         run.perp_dir = 'perp'
+        if 'perp' not in os.listdir(run.out_dir):
+            os.mkdir(run.out_dir + '/perp')
         run.fluctuation_levels()
         assert np.abs(run.fluc_level - np.mean(np.sqrt(np.mean(run.field_real_space**2, axis=0)))) < 1e-5
         assert np.abs(run.fluc_level_std - np.std(np.sqrt(np.mean(run.field_real_space**2, axis=0)))) < 1e-5
-        assert ('fluctuation_summary.dat' in os.listdir('test/test_run/v/id_1/analysis/perp'))
+        assert ('fluctuation_summary.csv' in os.listdir('test/test_run/v/id_1/analysis/perp'))
     
     def test_time_analysis(self, run):
         run.lab_frame = False
@@ -253,7 +255,7 @@ class TestClass(object):
         run.par_analysis()
         assert run.par_corr.shape == (51,5,5,9)
         assert ('par_fit_params.csv' in os.listdir('test/test_run/v/id_1/analysis/parallel'))
-        assert ('par_fit_summary.dat' in os.listdir('test/test_run/v/id_1/analysis/parallel'))
+        assert ('par_fit_summary.csv' in os.listdir('test/test_run/v/id_1/analysis/parallel'))
         assert ('par_fit_length_vs_time_slice.pdf' in 
                 os.listdir('test/test_run/v/id_1/analysis/parallel'))
         assert ('par_fit_wavenumber_vs_time_slice.pdf' in 
