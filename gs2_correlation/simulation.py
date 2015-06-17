@@ -947,8 +947,10 @@ class Simulation(object):
             self.perp_fit_x_err[it] = 0
         if fit_y.errorbars:
             self.perp_fit_y_err[it] = np.sqrt(fit_y.covar[0,0])
+            self.perp_fit_ky_err[it] = np.sqrt(fit_y.covar[1,1])
         else:
             self.perp_fit_y_err[it] = 0
+            self.perp_fit_ky_err[it] = 0
 
         self.perp_guess_x = fit_x.best_values['l']
         self.perp_guess_y = fit_y.best_values['l']
@@ -1065,7 +1067,7 @@ class Simulation(object):
             plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_ky), 
                          yerr=self.perp_fit_ky_err)
             plt.xlabel('Time Window')
-            plt.ylabel(r'$k_y$ (m^{-1})')
+            plt.ylabel(r'$k_y (m^{-1})$')
             plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.perp_fit_ky)))
             plt.xticks(range(self.nt_slices))
             plot_style.minor_grid(ax)
