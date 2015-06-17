@@ -568,7 +568,11 @@ class Simulation(object):
                     tmp_field[:, ikx, iky, ith] = f(t_reg)
         self.t = t_reg
         self.nt = len(self.t)
-        self.field = tmp_field
+        self.field[:] = tmp_field[:]
+
+        tmp_field = None
+        f = None
+        gc.collect()
 
         logging.info('Finished interpolating onto a regular time grid.')
 
