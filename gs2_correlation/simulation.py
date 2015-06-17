@@ -945,12 +945,15 @@ class Simulation(object):
             self.perp_fit_x_err[it] = np.sqrt(fit_x.covar[0,0])
         else:
             self.perp_fit_x_err[it] = 0
+
         if fit_y.errorbars:
             self.perp_fit_y_err[it] = np.sqrt(fit_y.covar[0,0])
-            self.perp_fit_ky_err[it] = np.sqrt(fit_y.covar[1,1])
+            if self.ky_free:
+                self.perp_fit_ky_err[it] = np.sqrt(fit_y.covar[1,1])
         else:
             self.perp_fit_y_err[it] = 0
-            self.perp_fit_ky_err[it] = 0
+            if self.ky_free:
+                self.perp_fit_ky_err[it] = 0
 
         self.perp_guess_x = fit_x.best_values['l']
         self.perp_guess_y = fit_y.best_values['l']
