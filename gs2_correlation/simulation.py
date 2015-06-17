@@ -54,6 +54,7 @@ from PIL import Image
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import f90nml as nml
 import lmfit as lm
+import pyfftw
 plt.rcParams.update({'figure.autolayout': True})
 mpl.rcParams['axes.unicode_minus']=False
 pal = sns.color_palette('deep')  
@@ -644,7 +645,9 @@ class Simulation(object):
 
         self.field_real_space = np.empty([self.nt,self.nx,self.ny,self.ntheta],
                                          dtype=float)
-        self.field_real_space = np.fft.irfft2(self.field, axes=[1,2])
+        pyfftw.n_byte_align(self.field, 16)
+        self.field_real_space = pyfftw.interfaces.numpy_fft.irfft2(self.field, 
+                                                                   axes=[1,2])
 
         if self.analysis == 'par':
             self.field = None
