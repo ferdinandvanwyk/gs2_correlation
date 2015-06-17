@@ -938,6 +938,8 @@ class Simulation(object):
 
         self.perp_fit_x[it] = fit_x.best_values['l']
         self.perp_fit_y[it] = fit_y.best_values['l']
+        if self.ky_free:
+            self.perp_fit_ky[it] = fit_y.best_values['k']
 
         if fit_x.errorbars:
             self.perp_fit_x_err[it] = np.sqrt(fit_x.covar[0,0])
@@ -1031,6 +1033,7 @@ class Simulation(object):
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_x_vs_time_slice.pdf')
+        plt.close(fig)
 
         plt.clf()
         plot_style.white()
@@ -1045,6 +1048,7 @@ class Simulation(object):
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.perp_dir+
                     '/perp_fit_y_vs_time_slice.pdf')
+        plt.close(fig)
 
         if not self.ky_free:
             np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_summary.csv', 
@@ -1055,6 +1059,7 @@ class Simulation(object):
                        delimiter=',', fmt='%1.4f', 
                        header='lx, std(lx), ly, std(ly)')
         else:
+            print(self.perp_fit_ky)
             plt.clf()
             plot_style.white()
             fig, ax = plt.subplots(1, 1)
@@ -1068,6 +1073,7 @@ class Simulation(object):
             plot_style.ticks_bottom_left(ax)
             plt.savefig(self.out_dir + '/'+self.perp_dir+
                         '/perp_fit_ky_vs_time_slice.pdf')
+            plt.close(fig)
 
             np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_summary.csv', 
                        np.mean([self.perp_fit_x, 
