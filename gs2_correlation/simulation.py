@@ -1059,7 +1059,6 @@ class Simulation(object):
                        delimiter=',', fmt='%1.4f', 
                        header='lx, std(lx), ly, std(ly)')
         else:
-            print(self.perp_fit_ky)
             plt.clf()
             plot_style.white()
             fig, ax = plt.subplots(1, 1)
