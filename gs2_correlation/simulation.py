@@ -54,7 +54,6 @@ from PIL import Image
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import f90nml as nml
 import lmfit as lm
-import pickle as pkl
 plt.rcParams.update({'figure.autolayout': True})
 mpl.rcParams['axes.unicode_minus']=False
 pal = sns.color_palette('deep')  
@@ -341,14 +340,22 @@ class Simulation(object):
         # Perp Namelist #
         #################
 
+        self.ky_free = config_parse.getboolean('perp','ky_free', fallback=False)
+
         perp_guess = str(config_parse.get('perp',
-                                          'perp_guess', fallback='[0.05,0.1]'))
+                                          'perp_guess', fallback='[0.05,0.1,1]'))
         perp_guess = perp_guess[1:-1].split(',')
         perp_guess = [float(s) for s in perp_guess]
         self.perp_guess_x = perp_guess[0]
         self.perp_guess_y = perp_guess[1]
+        if self.ky_free:
+            try:
+                self.perp_guess_ky = perp_guess[2]
+            except IndexError:
+                warnings.warn('ky guess not specified in perp_guess, '
+                              'setting perp_guess_ky = 1')
+                self.perp_guess_ky = 1.0
 
-        self.ky_free = config_parse.getboolean('perp','ky_free', fallback=False)
 
         #################
         # Time Namelist #
@@ -762,18 +769,30 @@ class Simulation(object):
         self.calculate_perp_corr()
         self.perp_norm_mask()
 
-        self.perp_fit_len_x = np.empty([self.nt_slices], dtype=float)
-        self.perp_fit_len_err_x = np.empty([self.nt_slices], dtype=float)
-        self.perp_fit_len_y = np.empty([self.nt_slices], dtype=float)
-        self.perp_fit_len_err_y = np.empty([self.nt_slices], dtype=float)
+        self.perp_fit_x = np.empty([self.nt_slices], dtype=float)
+        self.perp_fit_x_err = np.empty([self.nt_slices], dtype=float)
+        self.perp_fit_y = np.empty([self.nt_slices], dtype=float)
+        self.perp_fit_y_err = np.empty([self.nt_slices], dtype=float)
+        if self.ky_free:
+            self.perp_fit_ky = np.empty([self.nt_slices], dtype=float)
+            self.perp_fit_ky_err = np.empty([self.nt_slices], dtype=float)
 
         for it in range(self.nt_slices):
             self.perp_corr_fit(it)
 
-        np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_params.csv', 
-                   np.array([self.perp_fit_len_x, self.perp_fit_len_err_x, 
-                    self.perp_fit_len_y, self.perp_fit_len_err_y]).T, 
-                   delimiter=',', fmt='%1.4f', header='lx, std(lx), ly, std(ly)')
+        if not self.ky_free:
+            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_params.csv', 
+                       np.array([self.perp_fit_x, self.perp_fit_x_err, 
+                        self.perp_fit_y, self.perp_fit_y_err]).T, 
+                       delimiter=',', fmt='%1.4f', 
+                       header='lx, std(lx), ly, std(ly)')
+        else:
+            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_params.csv', 
+                       np.array([self.perp_fit_x, self.perp_fit_x_err, 
+                        self.perp_fit_y, self.perp_fit_y_err, 
+                        self.perp_fit_ky, self.perp_fit_ky]).T, 
+                       delimiter=',', fmt='%1.4f', 
+                       header='lx, std(lx), ly, std(ly), ky, std(ky)')
 
         self.perp_analysis_summary()
 
@@ -913,24 +932,26 @@ class Simulation(object):
         if not self.ky_free:
             params_y.add('k', value=1, expr='2*3.141592653589793/l')
         else:
-            params_y.add('k', value=1)
+            params_y.add('k', value=self.perp_guess_ky)
         params_y.add('p', value=0.0, vary=False) 
         fit_y = gmod_osc_gauss.fit(avg_corr_y, params_y, x=self.dy)
 
-        self.perp_fit_len_x[it] = fit_x.best_values['l']
-        self.perp_fit_len_y[it] = fit_y.best_values['l']
+        self.perp_fit_x[it] = fit_x.best_values['l']
+        self.perp_fit_y[it] = fit_y.best_values['l']
 
         if fit_x.errorbars:
-            self.perp_fit_len_err_x[it] = np.sqrt(fit_x.covar[0,0])
+            self.perp_fit_x_err[it] = np.sqrt(fit_x.covar[0,0])
         else:
-            self.perp_fit_len_err_x[it] = 0
+            self.perp_fit_x_err[it] = 0
         if fit_y.errorbars:
-            self.perp_fit_len_err_y[it] = np.sqrt(fit_y.covar[0,0])
+            self.perp_fit_y_err[it] = np.sqrt(fit_y.covar[0,0])
         else:
-            self.perp_fit_len_err_y[it] = 0
+            self.perp_fit_y_err[it] = 0
 
         self.perp_guess_x = fit_x.best_values['l']
         self.perp_guess_y = fit_y.best_values['l']
+        if self.ky_free:
+            self.perp_guess_ky = fit_y.best_values['k']
 
         self.perp_plots_x(it, avg_corr_x, corr_std_x, fit_x)
         self.perp_plots_y(it, avg_corr_y, corr_std_y, fit_y)
@@ -1001,11 +1022,11 @@ class Simulation(object):
         plt.clf()
         plot_style.white()
         fig, ax = plt.subplots(1, 1)
-        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_len_x), 
-                     yerr=self.perp_fit_len_err_x)
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_x), 
+                     yerr=self.perp_fit_x_err)
         plt.xlabel('Time Window')
         plt.ylabel(r'$l_x$ (m)')
-        plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.perp_fit_len_x[0])))
+        plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.perp_fit_x[0])))
         plt.xticks(range(self.nt_slices))
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
@@ -1014,22 +1035,49 @@ class Simulation(object):
         plt.clf()
         plot_style.white()
         fig, ax = plt.subplots(1, 1)
-        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_len_y), 
-                     yerr=self.perp_fit_len_err_y)
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_y), 
+                     yerr=self.perp_fit_y_err)
         plt.xlabel('Time Window')
         plt.ylabel(r'$l_y$ (m)')
-        plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.perp_fit_len_y)))
+        plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.perp_fit_y)))
         plt.xticks(range(self.nt_slices))
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
-        plt.savefig(self.out_dir + '/'+self.perp_dir+'/perp_fit_y_vs_time_slice.pdf')
+        plt.savefig(self.out_dir + '/'+self.perp_dir+
+                    '/perp_fit_y_vs_time_slice.pdf')
 
-        np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_summary.csv', 
-                   np.mean([self.perp_fit_len_x, 
-                            self.perp_fit_len_err_x, 
-                            self.perp_fit_len_y, 
-                            self.perp_fit_len_err_y], axis=1)[np.newaxis,:], 
-                   delimiter=',', fmt='%1.4f', header='lx, std(lx), ly, std(ly)')
+        if not self.ky_free:
+            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_summary.csv', 
+                       np.mean([self.perp_fit_x, 
+                                self.perp_fit_x_err, 
+                                self.perp_fit_y, 
+                                self.perp_fit_y_err], axis=1)[np.newaxis,:], 
+                       delimiter=',', fmt='%1.4f', 
+                       header='lx, std(lx), ly, std(ly)')
+        else:
+            plt.clf()
+            plot_style.white()
+            fig, ax = plt.subplots(1, 1)
+            plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_ky), 
+                         yerr=self.perp_fit_ky_err)
+            plt.xlabel('Time Window')
+            plt.ylabel(r'$k_y$ (m^{-1})')
+            plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.perp_fit_ky)))
+            plt.xticks(range(self.nt_slices))
+            plot_style.minor_grid(ax)
+            plot_style.ticks_bottom_left(ax)
+            plt.savefig(self.out_dir + '/'+self.perp_dir+
+                        '/perp_fit_ky_vs_time_slice.pdf')
+
+            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_summary.csv', 
+                       np.mean([self.perp_fit_x, 
+                                self.perp_fit_x_err, 
+                                self.perp_fit_y, 
+                                self.perp_fit_y_err,
+                                self.perp_fit_ky,
+                                self.perp_fit_ky_err], axis=1)[np.newaxis,:], 
+                       delimiter=',', fmt='%1.4f', 
+                       header='lx, std(lx), ly, std(ly)')
 
         logging.info("Finished writing perp_analysis summary...")
 

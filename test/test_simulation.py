@@ -150,10 +150,10 @@ class TestClass(object):
 
     def test_perp_analysis(self, run):
         run.perp_analysis()
-        assert len(run.perp_fit_len_x) == run.nt_slices
-        assert len(run.perp_fit_len_err_x) == run.nt_slices
-        assert len(run.perp_fit_len_y) == run.nt_slices
-        assert len(run.perp_fit_len_err_y) == run.nt_slices
+        assert len(run.perp_fit_x) == run.nt_slices
+        assert len(run.perp_fit_x_err) == run.nt_slices
+        assert len(run.perp_fit_y) == run.nt_slices
+        assert len(run.perp_fit_y_err) == run.nt_slices
         assert ('perp_fit_params.csv' in 
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed'))
         assert ('corr_x_fit_it_0.pdf' in 
@@ -169,11 +169,14 @@ class TestClass(object):
 
     def test_perp_analysis_ky_free(self, run):
         run.ky_free = True
+        run.perp_guess_ky = 1
         run.perp_analysis()
-        assert len(run.perp_fit_len_x) == run.nt_slices
-        assert len(run.perp_fit_len_err_x) == run.nt_slices
-        assert len(run.perp_fit_len_y) == run.nt_slices
-        assert len(run.perp_fit_len_err_y) == run.nt_slices
+        assert len(run.perp_fit_x) == run.nt_slices
+        assert len(run.perp_fit_x_err) == run.nt_slices
+        assert len(run.perp_fit_y) == run.nt_slices
+        assert len(run.perp_fit_y_err) == run.nt_slices
+        assert len(run.perp_fit_ky) == run.nt_slices
+        assert len(run.perp_fit_ky_err) == run.nt_slices
         assert ('perp_fit_params.csv' in 
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
         assert ('corr_x_fit_it_0.pdf' in 
@@ -183,6 +186,8 @@ class TestClass(object):
         assert ('perp_fit_x_vs_time_slice.pdf' in 
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
         assert ('perp_fit_y_vs_time_slice.pdf' in 
+                os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
+        assert ('perp_fit_ky_vs_time_slice.pdf' in 
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
         assert ('perp_fit_summary.csv' in 
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))

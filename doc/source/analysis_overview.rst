@@ -44,30 +44,58 @@ parameter is ignored.
 Perpendicular Correlation
 -------------------------
 
-.. image:: perp_corr.png
-
 Briefly, the perpendicular correlation analysis performs the following:
 
-* Calculates the 2D correlation function using the ``scipy.signal.fftconvolve``
-  function.
-* Splits the correlation function into time windows (of length *time_slice*, 
+* Calculates the radial and poloidal correlation functions separately using
+  ``scipy.sig.correlate``.
+* Splits the correlation functions into time windows (of length *time_slice*, 
   as specified in the configuration file).
-* Time averages those windows and fits them with a tilted Gaussian to find the
-  correlation parameters lx, ly, kx, ky, theta.
+* Fits the correlation functions as explained below.
 * Writes correlation parameters into a csv file, with one row per time window.
 * Generates and saves various plots of the true and fitted correlation functions.
 
-The tilted Gaussian fitted to the perpendicular correlation function is given 
-by:
+Radial Fitting
+^^^^^^^^^^^^^^
 
-.. math:: C_{fit}(\Delta x, \Delta y) = \exp \left[ - \left(\frac{\Delta x}{\ell_x}\right)^2 -  \left( \frac{\Delta y}{\ell_y} \right)^2 \right] \cos(k_x \Delta x + k_y \Delta y)  
+The radial correlation function is fitted with a Gaussian after averaging over
+time and *y*:
 
-In order to have the option of reproducing experimental analysis, one can 
-optionally fix the value of :math:`k_y` to :math:`k_y = 2 \pi / l_y` by
-ommiting the final value of the `perp_guess` configuration variable. This 
-analysis will then be written into a separate analysis folder called 
-'perp_ky_fixed'.
+.. math:: C_{fit}(\Delta x) = \exp \left[ - \left(\frac{\Delta x}{\ell_x}\right)^2\right] 
 
+The following is a typical plot resulting from the fit.
+
+.. image:: rad_corr.png
+   :width: 750px
+   :align: center
+
+Poloidal Fitting
+^^^^^^^^^^^^^^^^
+
+The poloidal fitting has two options for fitting controlled using the `ky_free`
+configuation parameter:
+
+* (Default) Fix :math:`k_y` to :math:`k_y = 2 \pi / l_y` and fit using only 
+  :math:`\ell_y` as a free parameter.
+* Setting `ky_free` = True will not constrain *ky* and the fitting procedure
+  will fit using two free parameters.
+
+.. math:: C_{fit}(\Delta y) = \exp \left[ - \left( \frac{\Delta y}{\ell_y} \right)^2 \right] \cos(k_y \Delta y)  
+
+The following two plots are typical plots resulting from the constrained and
+unconstrained *ky* fit, respectively.
+
+.. image:: pol_corr_fixed.png
+   :width: 750px
+   :align: center
+.. image:: pol_corr_free.png
+   :width: 750px
+   :align: center
+
+The configuration parameter `perp_guess` typically takes in an array of floats 
+specifying the initial guess for *lx* and *ly*. When running with *ky* as a 
+free parameter it can take a third float specifying the initial guess for *ky*.
+Note that the parameter `perp_guess` is redefined after the first successful
+fit to be the fitting parameters for that fit.
 
 Time Correlation
 ----------------
@@ -101,6 +129,8 @@ Fitting
 The fitting procedure is best illustrated by the following diagram.
 
 .. image:: time_corr.png
+   :width: 750px
+   :align: center
 
 The coloured lines are the correlation function for several different 
 separations in *y*. The blue line is the decaying exponential fit to the peaks
@@ -123,6 +153,8 @@ Parallel Correlation
 --------------------
 
 .. image:: par_corr.png
+   :width: 750px
+   :align: center
 
 The parallel correlation function fitting is illustrated by the above plot. It 
 involves the following steps:

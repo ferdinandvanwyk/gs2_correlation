@@ -57,6 +57,8 @@ Instance Variables of Simulation Class
        Initial guess for radial correlation length in metres.
    perp_guess_y : array_like, 0.1
        Initial guess for poloidal correlation length in metres.
+   perp_guess_ky : array_like, 1
+       Initial guess for poloidal wavenumber in metres^-1.
    ky_free : bool, False
       Determines whether ky is free during the poloidal fitting procedure.
    time_guess : array_like, [1e-5,100]
@@ -302,9 +304,10 @@ Configuration Variables
        middle part of size *box_size*.
    time_slice : int, 49
        Size of time window for averaging
-   perp_guess : array_like, [0.02,0.1]
+   perp_guess : array_like, [0.02,0.1,1]
        Initial guess for the radial and poloidal correlation lengths. Of the
-       form [lx, ly] in metres.
+       form [lx, ly] in metres. The third parameter is optional and only used
+       when the flag `ky_free` = True.
    ky_free : bool, False
       Determines whether ky is free during the poloidal fitting procedure.
    time_guess : array_like, [1e-5,100]
