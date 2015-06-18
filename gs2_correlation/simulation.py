@@ -1822,8 +1822,9 @@ class Simulation(object):
 
         plt.clf()
         ax = plt.subplot(111)
-        im = ax.contourf(self.x, self.y, np.transpose(self.field_real_space[it,:,:]),
-                     levels=contours, cmap='coolwarm')
+        im = ax.contourf(self.x - self.x[-1]/2, self.y - self.y[-1]/2, 
+                         np.transpose(self.field_real_space[it,:,:]),
+                         levels=contours, cmap='coolwarm')
         ax.set_aspect('equal')
         plt.xlabel(r'$x (m)$')
         plt.ylabel(r'$y (m)$')
