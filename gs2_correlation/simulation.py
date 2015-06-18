@@ -1482,7 +1482,7 @@ class Simulation(object):
         np.savetxt(self.out_dir + '/'+self.time_dir+'/time_fit_summary.csv',
                    (np.array([np.nanmean(self.corr_time), 
                    np.nanstd(self.corr_time)])*1e6)[np.newaxis,:],
-                   header='tau_c, std(tau_c)', fmt='%1.4f')
+                   header='tau_c, std(tau_c)', fmt='%1.4f', delimiter=',')
 
         logging.info("Finished writing time_analysis summary...")
 
