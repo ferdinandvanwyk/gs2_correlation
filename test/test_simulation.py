@@ -287,6 +287,7 @@ class TestClass(object):
 
     def test_make_film(self, run):
         run.film_lim = [1,1]
+        run.nt = 10
         run.make_film()
         assert ('ntot_t_spec_0_0000.png' in os.listdir('test/test_run/v/id_1/analysis/film/film_frames'))
         assert ('ntot_t_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/film/'))
@@ -299,6 +300,7 @@ class TestClass(object):
     def test_make_film_lab_frame(self, run):
         run.film_lim = [1,1]
         run.lab_frame = True
+        run.nt = 10
         run.make_film()
         assert ('ntot_t_spec_0_0000.png' in os.listdir('test/test_run/v/id_1/analysis/film_lab_frame/film_frames'))
         assert ('ntot_t_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/film_lab_frame/'))
