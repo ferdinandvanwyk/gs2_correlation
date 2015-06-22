@@ -974,9 +974,9 @@ class Simulation(object):
 
         plt.clf()
         fig, ax = plt.subplots(1, 1)
-        plt.scatter(self.dx, corr_fn, c=pal[0], 
+        plt.scatter(self.dx, corr_fn, color=pal[0], 
                      label=r'$C(\Delta x)$')
-        plt.plot(self.dx, corr_fit.best_fit, c=pal[2], 
+        plt.plot(self.dx, corr_fit.best_fit, color=pal[2], 
                  label=r'$\exp(-(\Delta x / \ell_x)^2)$')
         plt.fill_between(self.dx, corr_fn-corr_std, corr_fn+corr_std, 
                          alpha=0.3)
@@ -999,14 +999,14 @@ class Simulation(object):
 
         plt.clf()
         fig, ax = plt.subplots(1, 1)
-        plt.scatter(self.dy, corr_fn, c=pal[0], label=r'$C(\Delta y)$')
+        plt.scatter(self.dy, corr_fn, color=pal[0], label=r'$C(\Delta y)$')
         plt.plot(self.dy, np.exp(-(self.dy/corr_fit.best_values['l'])**2), 
                  'k--', label=r'$\exp(-(\Delta y / \ell_y)^2)$')
         if not self.ky_free:
             fit_label=r'$\exp(-(\Delta y / \ell_y)^2) \cos(2 \pi \Delta y/ \ell_y)$' 
         else:
             fit_label=r'$\exp(-(\Delta y / \ell_y)^2) \cos(k_y \Delta y)$'
-        plt.plot(self.dy, corr_fit.best_fit, c=pal[2], label=fit_label)
+        plt.plot(self.dy, corr_fit.best_fit, color=pal[2], label=fit_label)
         plt.fill_between(self.dy, corr_fn-corr_std, corr_fn+corr_std, 
                          alpha=0.3)
         plt.legend()
@@ -1629,12 +1629,12 @@ class Simulation(object):
 
         plt.clf()
         fig, ax = plt.subplots(1, 1)
-        plt.scatter(self.dl_par, corr, c=pal[0], 
+        plt.scatter(self.dl_par, corr, color=pal[0], 
                     label=r'$C(\Delta t = 0, \Delta x = 0, \Delta y = 0, \Delta z)$')
         plt.fill_between(self.dl_par, corr-corr_std, corr+corr_std, 
                          alpha=0.3)
         plt.plot(self.dl_par, fit.osc_gauss(self.dl_par, self.par_fit_params[it,0], 
-                 self.par_fit_params[it,1], 0), c=pal[2] ,
+                 self.par_fit_params[it,1], 0), color=pal[2] ,
                  label=r'$p_\parallel + (1-p_\parallel)\exp[- (\Delta z / l_{\parallel})^2] '
                         '\cos(k_{\parallel} \Delta z) $')
         plt.plot(self.dl_par, np.exp(-(self.dl_par/self.par_fit_params[it,0])**2),
