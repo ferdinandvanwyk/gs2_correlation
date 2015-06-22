@@ -1497,7 +1497,7 @@ class Simulation(object):
             os.system("mkdir " + self.out_dir + '/parallel')
         if 'corr_fns' not in os.listdir(self.out_dir + '/parallel'):
             os.system("mkdir " + self.out_dir + '/parallel/corr_fns')
-        os.system('rm ' + self.out_dir + '/par/corr_fns/*')
+        os.system('rm ' + self.out_dir + '/parallel/corr_fns/*')
 
         self.calculate_l_par()
         self.calculate_par_corr()
