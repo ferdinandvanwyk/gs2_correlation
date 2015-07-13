@@ -1794,7 +1794,6 @@ class Simulation(object):
                                                   self.film_contours),7)
             self.cbar_ticks = np.around(np.linspace(self.film_lim[0],
                                                     self.film_lim[1], 5),7)
-        print(self.contours)
 
         for it in range(self.nt):
             self.plot_real_space_field(it)
