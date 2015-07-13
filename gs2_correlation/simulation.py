@@ -1775,6 +1775,27 @@ class Simulation(object):
 
         self.field_max = np.max(self.field_real_space)
         self.field_min = np.min(self.field_real_space)
+        if self.film_lim == None:
+            if np.abs(self.field_max) > np.abs(self.field_min):
+                self.contours = np.around(np.linspace(-self.field_max, 
+                                                      self.field_max, 
+                                                      self.film_contours),7)
+                self.cbar_ticks = np.around(np.linspace(-self.field_max, 
+                                                        self.field_max, 5),7)
+            else:
+                self.contours = np.around(np.linspace(self.field_min, 
+                                                      -self.field_min, 
+                                                      self.film_contours),2)
+                self.cbar_ticks = np.around(np.linspace(self.field_min, 
+                                                        -self.field_max, 5),7)
+        else:
+            self.contours = np.around(np.linspace(self.film_lim[0], 
+                                                  self.film_lim[1], 
+                                                  self.film_contours),7)
+            self.cbar_ticks = np.around(np.linspace(self.film_lim[0],
+                                                    self.film_lim[1], 5),7)
+        print(self.contours)
+
         for it in range(self.nt):
             self.plot_real_space_field(it)
 
@@ -1809,22 +1830,11 @@ class Simulation(object):
         """
         logging.info('Saving frame %d of %d'%(it,self.nt))
 
-        if self.film_lim == None:
-            contours = np.around(np.linspace(self.field_min, self.field_max, 
-                                             self.film_contours),7)
-            cbar_ticks = np.around(np.linspace(self.field_min, self.field_max, 
-                                               5),3)
-        else:
-            contours = np.around(np.linspace(self.film_lim[0], self.film_lim[1], 
-                                             self.film_contours),7)
-            cbar_ticks = np.around(np.linspace(self.film_lim[0], self.film_lim[1], 
-                                               5),3)
-
         plt.clf()
         ax = plt.subplot(111)
         im = ax.contourf(self.x - self.x[-1]/2, self.y - self.y[-1]/2, 
                          np.transpose(self.field_real_space[it,:,:]),
-                         levels=contours, cmap='seismic')
+                         levels=self.contours, cmap='seismic')
         ax.set_aspect('equal')
         plt.xlabel(r'$x (m)$')
         plt.ylabel(r'$y (m)$')
@@ -1833,11 +1843,12 @@ class Simulation(object):
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
 
-        plt.colorbar(im, cax=cax, label=r'$\delta n / n (-)$', ticks=cbar_ticks)
+        plt.colorbar(im, cax=cax, label=r'$\delta X / X (-)$', 
+                     ticks=self.cbar_ticks, format='%.2f')
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.film_dir+'/film_frames/' + 
                     self.in_field + "_spec_" + str(self.spec_idx) + 
-                    "_%04d.png"%it, dpi=110, bbox_inches='tight')
+                    "_%04d.png"%it, bbox_inches='tight')
 
     def crop_images(self):
         """
