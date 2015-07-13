@@ -1787,7 +1787,7 @@ class Simulation(object):
                                                       -self.field_min, 
                                                       self.film_contours),2)
                 self.cbar_ticks = np.around(np.linspace(self.field_min, 
-                                                        -self.field_max, 5),7)
+                                                        -self.field_min, 5),7)
         else:
             self.contours = np.around(np.linspace(self.film_lim[0], 
                                                   self.film_lim[1], 
