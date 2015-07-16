@@ -188,7 +188,7 @@ class Simulation(object):
 
         self.field_odd_pts()
 
-        if self.analysis != 'par':
+        if self.analysis != 'par' and self.analysis != 'write_field_full':
             self.field_real_space = self.field_real_space[:,:,:,0]
 
     def read_config(self):
@@ -282,9 +282,9 @@ class Simulation(object):
         self.analysis = config_parse.get('general', 'analysis',
                                          fallback='all')
         if self.analysis not in ['all', 'perp', 'par', 'time', 'write_field', 
-                                 'film']:
+                                 'film', 'write_field_full']:
             raise ValueError('Analysis must be one of (perp, time, par, '
-                             'write_field, make_film)')
+                             'write_field, write_field_full, make_film)')
 
         self.time_interpolate_bool = config_parse.getboolean('general', 
                                                              'time_interpolate',
@@ -318,8 +318,10 @@ class Simulation(object):
             self.theta_idx = [int(self.theta_idx), int(self.theta_idx)+1] 
         else:
             raise ValueError("theta_idx can only be one of: None, -1(all), int")
-        if self.analysis == 'par' and self.theta_idx != [0, None]:
-            warnings.warn('Analysis = par, change to reading full theta grid.')
+        if ((self.analysis == 'par' or self.analysis == 'write_field_full') and 
+                self.theta_idx != [0, None]):
+            warnings.warn('Analysis = par/write_field_full, change to reading ' 
+                           'full theta grid.')
             self.theta_idx = [0, None]
 
         self.time_slice = int(config_parse.get('general', 'time_slice',
@@ -440,7 +442,8 @@ class Simulation(object):
                              'left theta_idx=None. Specify theta_idx as -1 '
                              'for full theta info or pick a specific theta.')
 
-        if self.analysis != 'par' and self.ntheta > 1:
+        if ((self.analysis != 'par' and self.analysis != 'write_field_full') and 
+                self.ntheta > 1):
             raise ValueError('You are not doing parallel analysis and have more '
                              'than one theta point. Can only handle one theta '
                              'value at the moment!')
@@ -649,7 +652,7 @@ class Simulation(object):
         self.field_real_space = pyfftw.interfaces.numpy_fft.irfft2(self.field, 
                                                                    axes=[1,2])
 
-        if self.analysis == 'par':
+        if self.analysis == 'par' or self.analysis == 'write_field_full':
             self.field = None
             gc.collect()
 
@@ -1749,6 +1752,71 @@ class Simulation(object):
         nc_file.close()
         
         logging.info("Finished write_field...")
+
+    def write_field_full(self):
+        """
+        Outputs the full 3D field to NetCDF in real space.
+
+        Notes
+        -----
+
+        * The radial, poloidal, and parallel coordinates are centered at 0.
+        * The radial coordinate is interpolated if neccessary to ensure a
+          0.5cm resolution consistent with the BES.
+        """
+        logging.info("Starting write_field_full...")
+        
+        if 'write_field_full' not in os.listdir(self.out_dir):
+            os.system("mkdir " + self.out_dir + '/write_field_full')
+
+        self.calculate_l_par()
+
+        if self.write_field_interp_x:
+            #interpolate radial coordinate to be approx 0.5cm
+            interp_fac = int(np.ceil(self.x[1]/0.005))
+            x_nc = np.linspace(min(self.x), max(self.x), interp_fac*self.nx)
+            field_real_space_nc = np.empty([self.nt, len(x_nc), self.ny, 
+                                            self.ntheta], dtype=float)
+            for it in range(self.nt):
+                for iy in range(self.ny):
+                    for iz in range(self.ntheta):
+                        f = interp.interp1d(self.x, 
+                                            self.field_real_space[it,:,iy,iz])
+                        field_real_space_nc[it,:,iy,iz] = f(x_nc)
+        else:
+            x_nc = self.x
+            field_real_space_nc = self.field_real_space
+
+        if self.lab_frame:
+            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field_full/' + 
+                                         self.in_field +'_lab_frame.cdf', 'w')
+        elif not self.lab_frame:
+            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field_full/' + 
+                                         self.in_field +'.cdf', 'w')
+        nc_file.createDimension('x', len(x_nc))
+        nc_file.createDimension('y', self.ny)
+        nc_file.createDimension('z', self.ntheta)
+        nc_file.createDimension('t', self.nt)
+        nc_file.createDimension('none', 1)
+        nc_nref = nc_file.createVariable('nref','d', ('none',))
+        nc_tref = nc_file.createVariable('tref','d', ('none',))
+        nc_x = nc_file.createVariable('x','d',('x',))
+        nc_y = nc_file.createVariable('y','d',('y',))
+        nc_z = nc_file.createVariable('z','d',('z',))
+        nc_t = nc_file.createVariable('t','d',('t',))
+        nc_field = nc_file.createVariable(self.in_field[:self.in_field.find('_')],
+                                      'd',('t', 'x', 'y', 'z'))
+
+        nc_field[:,:,:,:] = field_real_space_nc[:,:,:,:]
+        nc_nref[:] = self.nref
+        nc_tref[:] = self.tref
+        nc_x[:] = x_nc[:] - x_nc[-1]/2
+        nc_y[:] = self.y[:] - self.y[-1]/2 
+        nc_z[:] = self.l_par[:] - self.l_par[-1]/2 
+        nc_t[:] = self.t[:] - self.t[0]
+        nc_file.close()
+        
+        logging.info("Finished write_field_full...")
 
     def make_film(self):
         """

@@ -280,6 +280,12 @@ class TestClass(object):
         run.write_field()
         assert ('ntot_t.cdf' in os.listdir('test/test_run/v/id_1/analysis/write_field'))
 
+    def test_write_fieldi_full(self, run):
+        run.field_real_space = np.random.randint(0,10,size=[51,5,5,9])
+        run.ntheta = 9
+        run.write_field_full()
+        assert ('ntot_t.cdf' in os.listdir('test/test_run/v/id_1/analysis/write_field_full'))
+
     def test_write_field_lab_frame(self, run):
         run.lab_frame = True
         run.write_field()

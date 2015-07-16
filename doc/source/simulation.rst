@@ -32,7 +32,7 @@ Instance Variables of Simulation Class
        Name of the field to be read in from NetCDF file.
    analysis : str
        Type of analysis to be done. Options are 'all', 'perp', 'par', 'time', 
-       'write_field'.
+       'write_field', 'write_field_full'.
    out_dir : str, 'analysis'
        Output directory for analysis.
    time_interpolate_bool : bool, True
@@ -284,9 +284,9 @@ Configuration Variables
        Path to '.in' file.
    field : str
        Name of the field to be read in from NetCDF file.
-   analysis : str, 'all'
-       Type of analysis to be done. Options are 'all', 'perp', 'par, 
-       'time', 'write_field', 'film'.
+   analysis : str
+       Type of analysis to be done. Options are 'all', 'perp', 'par', 'time', 
+       'write_field', 'write_field_full'.
    out_dir : str, 'analysis'
        Output directory for analysis.
    time_interpolate : bool, True

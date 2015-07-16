@@ -66,6 +66,8 @@ elif run.analysis == 'par':
     run.par_analysis()
 elif run.analysis == 'write_field':
     run.write_field()
+elif run.analysis == 'write_field_full':
+    run.write_field_full()
 elif run.analysis == 'film':
     run.make_film()
 
