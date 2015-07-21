@@ -1945,6 +1945,9 @@ class Simulation(object):
         new_w = int(w_min/2)*2
         new_h = int(h_min/2)*2
         for it in range(self.nt):
+            im = Image.open(self.out_dir + '/'+self.film_dir+'/film_frames/' + 
+                            self.in_field + "_spec_" + str(self.spec_idx) + 
+                            "_%04d.png"%it)
             im_crop = im.crop((0, 0, new_w, new_h))
             im_crop.save(self.out_dir + '/'+self.film_dir+'/film_frames/' + 
                          self.in_field + "_spec_" + str(self.spec_idx) + 
