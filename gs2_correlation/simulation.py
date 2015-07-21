@@ -1866,11 +1866,7 @@ class Simulation(object):
         for it in range(self.nt):
             self.plot_real_space_field(it)
 
-        im = Image.open(self.out_dir + '/'+self.film_dir+'/film_frames/' + 
-                        self.in_field + "_spec_" + str(self.spec_idx) + 
-                        "_0000.png")
-        if im.size[0] % 2 != 0 or im.size[1] % 2 != 0:
-            self.crop_images() 
+        self.crop_images() 
 
         logging.info('avconv command: ')
         logging.info("avconv -threads 2 -y -f image2 -r " + str(self.film_fps) + 
@@ -1931,11 +1927,21 @@ class Simulation(object):
         """
         logging.info("Cropping film images...")
 
+        w = np.empty([self.nt], dtype=int)
+        h = np.empty([self.nt], dtype=int)
         for it in range(self.nt):
             im = Image.open(self.out_dir + '/'+self.film_dir+'/film_frames/' + 
                             self.in_field + "_spec_" + str(self.spec_idx) + 
                             "_%04d.png"%it)
-            im_crop = im.crop((0, 0, int(im.size[0]/2)*2, int(im.size[1]/2)*2))
+            w[it] = im.size[0]
+            h[it] = im.size[1]
+
+        w_min = np.min(w)
+        h_min = np.min(h)
+        new_w = int(w_min/2)*2
+        new_h = int(h_min/2)*2
+        for it in range(self.nt):
+            im_crop = im.crop((0, 0, new_w, new_h))
             im_crop.save(self.out_dir + '/'+self.film_dir+'/film_frames/' + 
                          self.in_field + "_spec_" + str(self.spec_idx) + 
                          "_%04d.png"%it)
