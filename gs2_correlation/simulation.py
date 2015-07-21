@@ -1727,10 +1727,12 @@ class Simulation(object):
 
         if self.lab_frame:
             nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' + 
-                                         self.in_field +'_lab_frame.cdf', 'w')
+                                         self.in_field +'_lab_frame.cdf', 'w',
+                                         version=2)
         elif not self.lab_frame:
             nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' + 
-                                         self.in_field +'.cdf', 'w')
+                                         self.in_field +'.cdf', 'w',
+                                         version=2)
         nc_file.createDimension('x', len(x_nc))
         nc_file.createDimension('y', self.ny)
         nc_file.createDimension('t', self.nt)
@@ -1789,10 +1791,12 @@ class Simulation(object):
 
         if self.lab_frame:
             nc_file = netcdf.netcdf_file(self.out_dir + '/write_field_full/' + 
-                                         self.in_field +'_lab_frame.cdf', 'w')
+                                         self.in_field +'_lab_frame.cdf', 'w',
+                                         version=2)
         elif not self.lab_frame:
             nc_file = netcdf.netcdf_file(self.out_dir + '/write_field_full/' + 
-                                         self.in_field +'.cdf', 'w')
+                                         self.in_field +'.cdf', 'w',
+                                         version=2)
         nc_file.createDimension('x', len(x_nc))
         nc_file.createDimension('y', self.ny)
         nc_file.createDimension('z', self.ntheta)
