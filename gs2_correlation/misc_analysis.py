@@ -24,12 +24,10 @@ def field_to_real_space(field):
     """
 
     field_real_space = np.empty([nt,nx,ny],dtype=float)
-    for it in range(nt):
-        field_real_space[it,:,:] = np.fft.irfft2(field[it,:,:])
-        field_real_space[it,:,:] = np.roll(field_real_space[it,:,:],
-                                                int(nx/2), axis=0)
+    field_real_space = np.fft.irfft2(field, axes=[1,2])
+    field_real_space = np.roll(field_real_space, int(nx/2), axis=1)
 
-    return field_real_space*nx*ny*rho_star
+    return field_real_space*nx*ny
 
 def plot_heat_flux(it):
     """
@@ -42,10 +40,10 @@ def plot_heat_flux(it):
     """
     print('Saving frame %d of %d'%(it,nt))
 
-    contours = np.around(np.linspace(-1,1,41),5)
+    contours = np.around(np.linspace(-0.4,0.4,21),5)
 
     plt.clf()
-    plt.contourf(x, y, np.transpose(q[it,:,:]),levels=contours, cmap='coolwarm')
+    plt.contourf(x, y, np.transpose(q[it,:,:]),levels=contours, cmap='seismic')
     plt.xlabel(r'$x (m)$')
     plt.ylabel(r'$y (m)$')
     plt.title(r'$Q_{ion}$ - Time = %f $\mu s$'%((t[it]-t[0])*1e6))
@@ -67,8 +65,8 @@ pitch_angle = 0.6001
 rmaj = 1.32574
 # Reference density (m^-3)
 nref = 1.3180e+19
-# Reference temperature (eV)
-tref = 2.2054e+02
+# Reference temperature (kT)
+tref = 2.2054e+02 / 8.6173324e-5 * 1.38e-23
 
 # Read NetCDF
 in_file = sys.argv[1]
@@ -82,9 +80,14 @@ phi = phi[:,:,:,0] + 1j*phi[:,:,:,1]
 dens = np.array(ncfile.variables['ntot_igomega_by_mode'][:,0,:,:,:])
 dens = np.swapaxes(dens, 1, 2)
 dens = dens[:,:,:,0] + 1j*dens[:,:,:,1] 
-temp = np.array(ncfile.variables['tperp_igomega_by_mode'][:,0,:,:,:])
-temp = np.swapaxes(temp, 1, 2)
-temp = temp[:,:,:,0] + 1j*temp[:,:,:,1] 
+t_perp = np.array(ncfile.variables['tperp_igomega_by_mode'][:,0,:,:,:])
+t_perp = np.swapaxes(t_perp, 1, 2)
+t_perp = t_perp[:,:,:,0] + 1j*t_perp[:,:,:,1] 
+t_par = np.array(ncfile.variables['tpar_igomega_by_mode'][:,0,:,:,:])
+t_par = np.swapaxes(t_par, 1, 2)
+t_par = t_par[:,:,:,0] + 1j*t_par[:,:,:,1] 
+q_nc = np.array(ncfile.variables['es_heat_flux'][:])
+q_perp = np.array(ncfile.variables['es_heat_flux_perp'][:])
 
 # Calculate sizes and real arrays
 if 'analysis' not in os.listdir():
@@ -130,20 +133,24 @@ plt.ylabel(r'$v_{ZF} (v_{th,i}/kxfac)$')
 plt.savefig('analysis/misc/zf_mean_vs_x.pdf')
 
 # Local Heat Flux 
-v_exb = field_to_real_space(-ky*phi)
+v_exb = field_to_real_space(1j*ky*phi)
 
-dens = field_to_real_space(dens)
-temp = field_to_real_space(temp)
+dens = field_to_real_space(dens)*rho_star
+t_perp = field_to_real_space(t_perp)
+t_par = field_to_real_space(t_par)
 
-q = ((nref*temp*tref + tref*dens*nref)*v_exb).real
+q = rhoref**2 * vth * (nref*tref) / amin**3 * ((dens*np.sqrt(t_perp**2 + t_par**2))*v_exb/2).real
+q_k = np.fft.ifft2(q, axes=[1,2])
+print(q_k[-1,0,0] / (nref * tref * vth * rhoref**2/amin**2), q_nc[-1,0], q_perp[-1,0])
 
+ncfile.close()
+sys.exit()
 # Make film
 
 if 'film_frames' not in os.listdir('analysis/misc/'):
     os.system('mkdir analysis/misc/film_frames')
 os.system("rm analysis/misc/film_frames/*.png")
 
-q = q/np.max(q)
 for it in range(nt):
     plot_heat_flux(it)
 
