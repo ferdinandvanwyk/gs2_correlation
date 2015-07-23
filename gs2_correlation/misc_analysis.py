@@ -88,6 +88,7 @@ t_par = np.swapaxes(t_par, 1, 2)
 t_par = t_par[:,:,:,0] + 1j*t_par[:,:,:,1] 
 q_nc = np.array(ncfile.variables['es_heat_flux'][:])
 q_perp = np.array(ncfile.variables['es_heat_flux_perp'][:])
+q_by_ky = np.array(ncfile.variables['total_es_heat_flux_by_ky'][:])
 
 # Calculate sizes and real arrays
 if 'analysis' not in os.listdir():
@@ -141,7 +142,10 @@ t_par = field_to_real_space(t_par)
 
 q = rhoref**2 * vth * (nref*tref) / amin**3 * ((dens*np.sqrt(t_perp**2 + t_par**2))*v_exb/2).real
 q_k = np.fft.ifft2(q, axes=[1,2])
-print(q_k[-1,0,0] / (nref * tref * vth * rhoref**2/amin**2), q_nc[-1,0], q_perp[-1,0])
+plt.clf()
+plt.plot(q_k[-1,0,0] / (nref * tref * vth * rhoref**2/amin**2))
+plt.plot(q_perp[-1,0])
+plt.show()
 
 ncfile.close()
 sys.exit()
