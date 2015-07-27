@@ -33,7 +33,7 @@ def field_to_real_space(field):
 
     return field_real_space*nx*ny
 
-def plot_heat_flux(it):
+def plot_heat_flux(it, plot_lim):
     """
     Plots real space field and saves as a file indexed by time index.
 
@@ -44,8 +44,8 @@ def plot_heat_flux(it):
     """
     print('Saving frame %d of %d'%(it,nt))
 
-    contours = np.around(np.linspace(-180,180,41),5)
-    cbar_ticks = np.around(np.linspace(-180,180,5),7) 
+    contours = np.around(np.linspace(-plot_lim,plot_lim,41),5)
+    cbar_ticks = np.around(np.linspace(-plot_lim,plot_lim,5),7) 
 
     plt.clf()
     ax = plt.subplot(111)
@@ -61,6 +61,17 @@ def plot_heat_flux(it):
     plt.colorbar(im, cax=cax, label=r'$Q_{ion} (Q_{gB})$', 
                  ticks=cbar_ticks, format='%.2f')
     plt.savefig("analysis/misc/film_frames/q_vs_x_and_y_%04d.png"%it, dpi=110)
+
+def field_to_real_space_no_time(field):
+    """
+    Converts field from (kx, ky) to (x, y) and saves as new array attribute.
+    """
+
+    field_real_space = np.empty([nx,ny,nth])
+    field_real_space = np.fft.irfft2(field, axes=[0,1])
+    #field_real_space = np.roll(field_real_space, int(nx/2), axis=0)
+
+    return field_real_space
 
 # Normalization parameters
 # Outer scale in m
@@ -85,22 +96,50 @@ in_file = sys.argv[1]
 ncfile = netcdf.netcdf_file(in_file, 'r')
 kx = np.array(ncfile.variables['kx'][:])
 ky = np.array(ncfile.variables['ky'][:])
+th = np.array(ncfile.variables['theta'][:])
 t = np.array(ncfile.variables['t'][:])
+gradpar = np.array(ncfile.variables['gradpar'][:])
+grho = np.array(ncfile.variables['grho'][:])
+bmag = np.array(ncfile.variables['bmag'][:])
+dth = np.append(np.diff(th), 0)
+
 phi = np.array(ncfile.variables['phi_igomega_by_mode'][:])
 phi = np.swapaxes(phi, 1, 2)
 phi = phi[:,:,:,0] + 1j*phi[:,:,:,1] 
-dens = np.array(ncfile.variables['ntot_igomega_by_mode'][:,0,:,:,:])
-dens = np.swapaxes(dens, 1, 2)
-dens = dens[:,:,:,0] + 1j*dens[:,:,:,1] 
+
+ntot = np.array(ncfile.variables['ntot_igomega_by_mode'][:,0,:,:,:])
+ntot = np.swapaxes(ntot, 1, 2)
+ntot = ntot[:,:,:,0] + 1j*ntot[:,:,:,1] 
+
 t_perp = np.array(ncfile.variables['tperp_igomega_by_mode'][:,0,:,:,:])
 t_perp = np.swapaxes(t_perp, 1, 2)
 t_perp = t_perp[:,:,:,0] + 1j*t_perp[:,:,:,1] 
+
 t_par = np.array(ncfile.variables['tpar_igomega_by_mode'][:,0,:,:,:])
 t_par = np.swapaxes(t_par, 1, 2)
 t_par = t_par[:,:,:,0] + 1j*t_par[:,:,:,1] 
+
 q_nc = np.array(ncfile.variables['es_heat_flux'][:])
+part_nc = np.array(ncfile.variables['es_part_flux'][:])
 q_perp = np.array(ncfile.variables['es_heat_flux_perp'][:])
+q_par = np.array(ncfile.variables['es_heat_flux_par'][:])
 q_by_ky = np.array(ncfile.variables['total_es_heat_flux_by_ky'][:])
+
+t_perp_final = np.array(ncfile.variables['tperp'][0,:,:,:,:])
+t_perp_final = np.swapaxes(t_perp_final, 0, 1)
+t_perp_final = t_perp_final[:,:,:,0] + 1j*t_perp_final[:,:,:,1] 
+
+t_par_final = np.array(ncfile.variables['tpar'][0,:,:,:,:])
+t_par_final = np.swapaxes(t_par_final, 0, 1)
+t_par_final = t_par_final[:,:,:,0] + 1j*t_par_final[:,:,:,1] 
+
+ntot_final = np.array(ncfile.variables['ntot'][0,:,:,:,:])
+ntot_final = np.swapaxes(ntot_final, 0, 1)
+ntot_final = ntot_final[:,:,:,0] + 1j*ntot_final[:,:,:,1] 
+
+phi_final = np.array(ncfile.variables['phi'][:,:,:,:])
+phi_final = np.swapaxes(phi_final, 0, 1)
+phi_final = phi_final[:,:,:,0] + 1j*phi_final[:,:,:,1] 
 
 # Calculate sizes and real arrays
 if 'analysis' not in os.listdir():
@@ -110,6 +149,7 @@ if 'misc' not in os.listdir('analysis'):
 nt = len(t)
 nkx = len(kx)
 nky = len(ky)
+nth = len(th)
 nx = nkx
 ny = 2*(nky - 1)
 t = t*amin/vth
@@ -145,20 +185,96 @@ plt.xlabel(r'$ x (m)$')
 plt.ylabel(r'$v_{ZF} (v_{th,i}/kxfac)$')
 plt.savefig('analysis/misc/zf_mean_vs_x.pdf')
 
-# Local Heat Flux 
-v_exb = field_to_real_space(1j*ky*phi)
+##################################
+# Repeat GS2 calculation exactly #
+##################################
 
-dens = field_to_real_space(dens)*rho_star
+wgt = np.sum(dth*grho/bmag/gradpar)
+dnorm = dth/bmag/gradpar
+
+part_gs2 = np.empty([nkx, nky])
+for ikx in range(nkx):
+    for iky in range(nky):
+        part_gs2[ikx, iky] = np.sum((ntot_final[ikx,iky,:]* \
+                                np.conj(phi_final[ikx,iky,:])*ky[iky]*dnorm).imag)/wgt
+part_gs2 *= 0.5
+part_gs2[:,1:] /= 2
+
+print('part calc = ', np.sum(part_gs2))
+print('part_nc = ', part_nc[-1,0], '\n')
+
+##################################
+# Repeat GS2 calculation exactly #
+##################################
+
+q_gs2 = np.empty([nkx, nky])
+for ikx in range(nkx):
+    for iky in range(nky):
+        q_gs2[ikx, iky] = np.sum(((t_perp_final[ikx,iky,:] + 
+                          t_par_final[ikx,iky,:]/2 + 3/2*ntot_final[ikx,iky,:])* \
+                                np.conj(phi_final[ikx,iky,:])*ky[iky]*dnorm).imag)/wgt
+q_gs2 *= 0.5
+q_gs2[:,1:] /= 2
+
+print('Q calc = ', np.sum(q_gs2))
+print('q_final_gs2 = ', q_nc[-1,0], q_perp[-1,0], q_par[-1,0]/2, 
+        q_perp[-1,0]+q_par[-1,0]/2, '\n')
+
+####################################
+# Now do calculation in real space #
+####################################
+
+#########################
+# Final time step first #
+#########################
+wgt = np.sum(dth*grho/bmag/gradpar)
+dnorm = dth/bmag/gradpar
+
+phi_final[:,1:,:] = phi_final[:,1:,:]/2
+ntot_final[:,1:,:] = ntot_final[:,1:,:]/2
+t_perp_final[:,1:,:] = t_perp_final[:,1:,:]/2
+t_par_final[:,1:,:] = t_par_final[:,1:,:]/2
+
+v_exb_final_real = field_to_real_space_no_time(1j*ky[np.newaxis,:,np.newaxis]*phi_final)*nx*ny
+ntot_final_real = field_to_real_space_no_time(ntot_final)*nx*ny
+t_perp_final_real = field_to_real_space_no_time(t_perp_final)*nx*ny
+t_par_final_real = field_to_real_space_no_time(t_par_final)*nx*ny
+
+q_final = (t_perp_final_real + t_par_final_real/2 + 3/2*ntot_final_real)*v_exb_final_real
+part_final = ntot_final_real*v_exb_final_real
+
+part_k_final = np.fft.rfft2(part_final, axes=[0,1])/nx/ny
+q_k_final = np.fft.rfft2(q_final, axes=[0,1])/nx/ny
+
+q_k_fsa = np.sum(dnorm * q_k_final, axis=2) / wgt
+part_k_fsa = np.sum(dnorm * part_k_final, axis=2) / wgt
+
+print('part_final(kx=0, ky=0) = ', part_k_fsa[0,0].real/2)
+print('q_final(kx=0, ky=0) = ', q_k_fsa[0,0].real/2, '\n')
+
+#############################
+# Outboard midplane in time #
+#############################
+
+# Fourier correction
+phi[:,:,1:] = phi[:,:,1:]/2
+ntot[:,:,1:] = ntot[:,:,1:]/2
+t_perp[:,:,1:] = t_perp[:,:,1:]/2
+t_par[:,:,1:] = t_par[:,:,1:]/2
+
+# Convert to real space
+v_exb = field_to_real_space(1j*ky*phi)
+ntot = field_to_real_space(ntot)
 t_perp = field_to_real_space(t_perp)
 t_par = field_to_real_space(t_par)
 
-q = rhoref**2 * vth * (nref*tref) / amin**3 * ((dens*np.sqrt(t_perp**2 + t_par**2))*v_exb/2).real
-q_k = np.fft.ifft2(q, axes=[1,2])
+q = ((t_perp + t_par/2 + 3/2*ntot)*v_exb).real/2
 
-# return to Q_gB
-q = q / (nref * tref * vth * rhoref**2/amin**2)
+q_k = np.fft.rfft2(q, axes=[1,2])/nx/ny
+print('q_k(0,0) = ', q_k[-1,0,0])
 # Only look at central third
-q = q[:,int(85/3):int(2*85/3),:]
+q = q[:,int(85/3):int(2*85/3),:]/nx/ny
+print(np.min(q), np.max(q))
 
 # Make film
 
@@ -167,9 +283,9 @@ if 'film_frames' not in os.listdir('analysis/misc/'):
 os.system("rm analysis/misc/film_frames/*.png")
 
 for it in range(nt):
-    plot_heat_flux(it)
+    plot_heat_flux(it, 0.08)
 
-os.system("avconv -threads 2 -y -f image2 -r 10 -i 'analysis/misc/film_frames/q_vs_x_and_y_%04d.png' analysis/misc/q_vs_x_and_y.mp4")
+os.system("avconv -threads 2 -y -f image2 -r 30 -i 'analysis/misc/film_frames/q_vs_x_and_y_%04d.png' -q 1 analysis/misc/q_vs_x_and_y.mp4")
 
 
 
