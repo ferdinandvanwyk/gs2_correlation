@@ -39,6 +39,6 @@ install:
     - python setup.py install
 # command to run tests
 script: 
-    - py.test --cov gs2_correlation
+    - py.test --cov gs2_correlation test
 after_success:
     - coveralls --verbose
