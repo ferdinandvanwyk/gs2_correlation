@@ -163,15 +163,16 @@ y = np.linspace(0, 2*np.pi/ky[1], ny)*rhoref \
 # spectral->real for GS2 variables require no factor. Finally, zf_vel is in 
 # units of (1/kxfac vth) since technically: zf_vel = kxfac*IFT[(kx*phi_imag)] 
 # however kxfac calculation is nontrivial.
+kxfac = 1.9574
 v_zf = np.empty([nt,nx],dtype=float)
 for it in range(nt):
-    v_zf[it,:] = np.fft.ifft(phi[it,:,0]*kx).imag*nx
+    v_zf[it,:] = 0.5*kxfac*np.fft.ifft(phi[it,:,0]*kx).imag*nx
 
 contours = np.around(np.linspace(np.min(v_zf), np.max(v_zf), 
                                  30),2)
 plt.clf()
 plt.contourf(x, t*1e6, v_zf, cmap='coolwarm', levels=contours)
-plt.title('$v_{ZF}(x, t))$')
+plt.title('$v_{ZF}(x, t)$')
 plt.colorbar()
 plt.xlabel(r'$ x (m)$')
 plt.ylabel(r'$t (\mu s)$')
@@ -180,9 +181,10 @@ plt.savefig('analysis/misc/zf_vs_x_t.pdf')
 # Mean ZF vs x
 plt.clf()
 plt.plot(x, np.mean(v_zf, axis=0))
-plt.title('$v_{ZFi, mean}(x))$')
+plt.plot(x, np.mean(v_zf, axis=0) + (x - x[int(nx/2)])/rhoref*0.16)
+plt.title('$v_{ZF, mean}(x)$')
 plt.xlabel(r'$ x (m)$')
-plt.ylabel(r'$v_{ZF} (v_{th,i}/kxfac)$')
+plt.ylabel(r'$v_{ZF} (arb. units)$')
 plt.savefig('analysis/misc/zf_mean_vs_x.pdf')
 
 ##################################
