@@ -11,7 +11,7 @@ def read(fname):
         return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(name='gs2_correlation',
-      version='0.3.0',
+      version='0.3.1',
       description='Calculates temporal and spatial correlation parameters from' 
       'GS2 fluctuation data.',
       author='Ferdinand van Wyk',
@@ -20,6 +20,19 @@ setup(name='gs2_correlation',
       packages=['gs2_correlation', 'test'],
       license='GPL',
       long_description=read('README.md'),
+      setup_requires =['numpy'],
+      install_requires =[
+          'matplotlib',
+          'scipy',
+          'Pillow',
+          'f90nml',
+          'lmfit',
+          'netCDF4',
+          'pyFFTW',
+          'pyfilm',
+          'seaborn',
+          'statsmodels',
+      ],
       classifiers=[                                                               
           "Development Status :: 3 - Alpha",                                      
           "License :: OSI Approved :: GNU General Public License (GPL)",

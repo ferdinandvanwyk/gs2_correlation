@@ -55,6 +55,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import f90nml as nml
 import lmfit as lm
 import pyfftw
+import pyfilm as pf
 plt.rcParams.update({'figure.autolayout': True})
 mpl.rcParams['axes.unicode_minus']=False
 pal = sns.color_palette('deep')  
@@ -1838,13 +1839,6 @@ class Simulation(object):
         elif not self.lab_frame:
             self.film_dir = 'film'
 
-        if self.film_dir not in os.listdir(self.out_dir):
-            os.system("mkdir " + self.out_dir + '/'+self.film_dir)
-        if 'film_frames' not in os.listdir(self.out_dir+'/'+self.film_dir):
-            os.system("mkdir " + self.out_dir + '/'+self.film_dir+'/film_frames')
-        os.system("rm " + self.out_dir + '/'+self.film_dir+'/film_frames/' + 
-                  self.in_field + "_spec_" + str(self.spec_idx) + "*.png")
-
         self.field_max = np.max(self.field_real_space)
         self.field_min = np.min(self.field_real_space)
         if self.film_lim == None:
@@ -1853,7 +1847,7 @@ class Simulation(object):
                                                       self.field_max, 
                                                       self.film_contours),7)
                 self.cbar_ticks = np.around(np.linspace(-self.field_max, 
-                                                        self.field_max, 5),7)
+                                                         self.field_max, 5),7)
             else:
                 self.contours = np.around(np.linspace(self.field_min, 
                                                       -self.field_min, 
@@ -1867,22 +1861,25 @@ class Simulation(object):
             self.cbar_ticks = np.around(np.linspace(self.film_lim[0],
                                                     self.film_lim[1], 5),7)
 
+        plot_options = {'levels':self.contours, 'cmap':'seismic'}
+        options = {'file_name':self.in_field+"_spec_"+str(self.spec_idx),
+                   'film_dir':self.out_dir+'/'+self.film_dir,
+                   'frame_dir':self.out_dir+'/'+self.film_dir+'/film_frames',
+                   'aspect':'equal',
+                   'xlabel':r'$x (m)$',
+                   'ylabel':r'$y (m)$',
+                   'cbar_ticks':self.cbar_ticks,
+                   'cbar_label':r'$\delta X / X (-)$',
+                   'bbox_inches':'tight'}
+
+        options['title'] = []
         for it in range(self.nt):
-            self.plot_real_space_field(it)
+            options['title'].append(r'Time = {0:04d} $\mu s$'.format(
+                                    int(np.round((self.t[it]-self.t[0])*1e6))))
 
-        self.crop_images() 
-
-        logging.info('avconv command: ')
-        logging.info("avconv -threads 2 -y -f image2 -r " + str(self.film_fps) + 
-                  " -i '" + self.out_dir + '/'+self.film_dir+'/film_frames/' + 
-                  self.in_field + "_spec_" + str(self.spec_idx) + 
-                  "_%04d.png' -q 1 " + self.out_dir + '/'+self.film_dir+'/' + 
-                  self.in_field + "_spec_" + str(self.spec_idx) +".mp4")
-        os.system("avconv -threads 2 -y -f image2 -r " + str(self.film_fps) + 
-                  " -i '" + self.out_dir + '/'+self.film_dir+'/film_frames/' + 
-                  self.in_field + "_spec_" + str(self.spec_idx) + "_%04d.png' -q 1 " + 
-                  self.out_dir + '/'+self.film_dir+'/' + self.in_field + "_spec_" + 
-                  str(self.spec_idx) +".mp4")
+        pf.make_film_2d(self.x - self.x[-1]/2, self.y - self.y[-1]/2, 
+                        self.field_real_space, plot_options=plot_options, 
+                        options=options)
 
         logging.info("Finished make_film.")
 

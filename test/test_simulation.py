@@ -294,11 +294,12 @@ class TestClass(object):
     def test_make_film(self, run):
         run.film_lim = [1,1]
         run.nt = 10
+        run.field_real_space = run.field_real_space[:10,:,:]
         run.make_film()
-        assert ('ntot_t_spec_0_0000.png' in os.listdir('test/test_run/v/id_1/analysis/film/film_frames'))
+        assert ('ntot_t_spec_0_00000.png' in os.listdir('test/test_run/v/id_1/analysis/film/film_frames'))
         assert ('ntot_t_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/film/'))
         
-        im = Image.open('test/test_run/v/id_1/analysis/film/film_frames/ntot_t_spec_0_0000.png')
+        im = Image.open('test/test_run/v/id_1/analysis/film/film_frames/ntot_t_spec_0_00000.png')
         size = im.size
         assert size[0] % 2 == 0
         assert size[1] % 2 == 0
@@ -307,11 +308,12 @@ class TestClass(object):
         run.film_lim = [1,1]
         run.lab_frame = True
         run.nt = 10
+        run.field_real_space = run.field_real_space[:10,:,:]
         run.make_film()
-        assert ('ntot_t_spec_0_0000.png' in os.listdir('test/test_run/v/id_1/analysis/film_lab_frame/film_frames'))
+        assert ('ntot_t_spec_0_00000.png' in os.listdir('test/test_run/v/id_1/analysis/film_lab_frame/film_frames'))
         assert ('ntot_t_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/film_lab_frame/'))
         
-        im = Image.open('test/test_run/v/id_1/analysis/film_lab_frame/film_frames/ntot_t_spec_0_0000.png')
+        im = Image.open('test/test_run/v/id_1/analysis/film_lab_frame/film_frames/ntot_t_spec_0_00000.png')
         size = im.size
         assert size[0] % 2 == 0
         assert size[1] % 2 == 0
