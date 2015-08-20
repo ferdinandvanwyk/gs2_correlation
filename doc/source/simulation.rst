@@ -121,11 +121,6 @@ Instance Variables of Simulation Class
    seaborn_context : str
        Context for plot output: paper, notebook, talk, poster. See:
        http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
-   film_fps : int, 40
-       Frames per second of the film.
-   film_contours : int, 30
-       Number of contours to use when making films. More contours => bigger 
-       files.
    field : array_like
        Field read in from the NetCDF file. Automatically converted to a complex
        array.
@@ -358,14 +353,6 @@ Configuration Variables
    seaborn_context : str, 'talk'
        Context for plot output: paper, notebook, talk, poster. See:
        http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
-   film_fps : int, 40
-       Frames per second of the film.
-   film_contours : int, 30
-       Number of contours to use when making films. More contours => bigger 
-       files.
-   film_lim : array_like, None
-       This sets the min and max contour levels when making films. None 
-       means that the contour min and max are automatically calculated.
    write_field_interp_x : bool, True
        Determines whether the radial coordinate is interpolated to match
        the BES resolution when writing to a NetCDF file.

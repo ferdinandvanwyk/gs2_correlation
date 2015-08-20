@@ -167,21 +167,6 @@ The initial guess for the parallel fit length and wavenumber is set in the `par`
 namelist as `par_guess`. Importantly these numbers should be in metres and 
 metres^-1 since there is no normalized unit in the parallel direction.
 
-Create a Film
--------------
-
-Films of the field varying in time is done as follows:
-
-* Convert field to real space: *f(t, x, y)*.
-* Determine max and min values of the field to keep the graph scale constant.
-* Write out each frame of the film as png files.
-* Use avconv to combine png files into a film at a rate of *film_fps* frames
-  per second.
-
-Given that films take a long time to make (especially with added interpolation)
-separate directories are used for the rotating and lab frames: film and 
-film_lab_frame, respectively.
-
 Lab Reference Frame
 -------------------
 

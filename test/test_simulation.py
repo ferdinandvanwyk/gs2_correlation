@@ -6,7 +6,6 @@ import pytest
 import numpy as np
 import matplotlib
 matplotlib.use('Agg') # specifically for Travis CI to avoid backend errors
-from PIL import Image
 import f90nml as nml
 
 # Local
@@ -65,10 +64,6 @@ class TestClass(object):
         assert type(run.dpsi_da) == float
 
         assert type(run.seaborn_context) == str
-        assert type(run.film_fps) == int
-        assert type(run.film_contours) == int
-        assert (type(run.film_lim) == list or type(run.film_lim) == 
-                                               type(None))
         assert type(run.write_field_interp_x) == bool
 
     def test_read_netcdf(self, run):
@@ -280,7 +275,7 @@ class TestClass(object):
         run.write_field()
         assert ('ntot_t.cdf' in os.listdir('test/test_run/v/id_1/analysis/write_field'))
 
-    def test_write_fieldi_full(self, run):
+    def test_write_field_full(self, run):
         run.field_real_space = np.random.randint(0,10,size=[51,5,5,9])
         run.ntheta = 9
         run.write_field_full()
@@ -290,48 +285,3 @@ class TestClass(object):
         run.lab_frame = True
         run.write_field()
         assert ('ntot_t_lab_frame.cdf' in os.listdir('test/test_run/v/id_1/analysis/write_field'))
-
-    def test_make_film(self, run):
-        run.film_lim = [1,1]
-        run.nt = 10
-        run.field_real_space = run.field_real_space[:10,:,:]
-        run.make_film()
-        assert ('ntot_t_spec_0_00000.png' in os.listdir('test/test_run/v/id_1/analysis/film/film_frames'))
-        assert ('ntot_t_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/film/'))
-        
-        im = Image.open('test/test_run/v/id_1/analysis/film/film_frames/ntot_t_spec_0_00000.png')
-        size = im.size
-        assert size[0] % 2 == 0
-        assert size[1] % 2 == 0
-
-    def test_make_film_lab_frame(self, run):
-        run.film_lim = [1,1]
-        run.lab_frame = True
-        run.nt = 10
-        run.field_real_space = run.field_real_space[:10,:,:]
-        run.make_film()
-        assert ('ntot_t_spec_0_00000.png' in os.listdir('test/test_run/v/id_1/analysis/film_lab_frame/film_frames'))
-        assert ('ntot_t_spec_0.mp4' in os.listdir('test/test_run/v/id_1/analysis/film_lab_frame/'))
-        
-        im = Image.open('test/test_run/v/id_1/analysis/film_lab_frame/film_frames/ntot_t_spec_0_00000.png')
-        size = im.size
-        assert size[0] % 2 == 0
-        assert size[1] % 2 == 0
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

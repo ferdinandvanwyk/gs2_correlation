@@ -37,7 +37,6 @@ import gc #garbage collector
 import configparser
 import logging
 import operator #enumerate list
-import multiprocessing
 import warnings
 
 # Third Party
@@ -50,15 +49,13 @@ import scipy.signal as sig
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
-from PIL import Image
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import f90nml as nml
 import lmfit as lm
 import pyfftw
-import pyfilm as pf
 plt.rcParams.update({'figure.autolayout': True})
 mpl.rcParams['axes.unicode_minus']=False
-pal = sns.color_palette('deep')  
+pal = sns.color_palette('deep')
 
 # Local
 import gs2_correlation.fitting_functions as fit
@@ -70,9 +67,9 @@ class Simulation(object):
 
     The class mainly reads from the simulation NetCDF file and operates on the
     field specified in the configuration file, such as performing correlations,
-    FFTs, plotting, making films etc.
+    FFTs, plotting, etc.
 
-    An exhaustive list of instance variables is provided separately in the 
+    An exhaustive list of instance variables is provided separately in the
     documentation since it is very long.
     """
 
@@ -148,7 +145,7 @@ class Simulation(object):
         self.dalpha_drho = self.geometry[:,6]*self.amin
         theta_len = len(self.R)
 
-        self.rmaj = self.R[int(theta_len/2)]*self.amin 
+        self.rmaj = self.R[int(theta_len/2)]*self.amin
         self.pitch_angle = np.arctan(self.Z[int(theta_len/2)+1]/ \
                            (self.R[int(theta_len/2)] * \
                            self.tor_phi[int(theta_len/2)+1]))
@@ -160,11 +157,11 @@ class Simulation(object):
                      self.rho_ref * np.abs(np.tan(self.pitch_angle))* \
                      (self.rmaj/self.amin) * (self.drho_dpsi) * \
                      np.cos(self.pitch_angle)
-        
+
         self.r_geo = self.input_file['theta_grid_parameters']['R_geo']*self.amin
 
         self.btor = self.bref*self.r_geo/self.R[int(self.ntheta/2)]
-        self.bmag = np.sqrt(self.btor**2 + self.bpol**2)  
+        self.bmag = np.sqrt(self.btor**2 + self.bpol**2)
 
         self.field_to_complex()
         self.fourier_correction()
@@ -196,8 +193,8 @@ class Simulation(object):
         """
         Reads analysis and normalization parameters from self.config_file.
 
-        The full list of possible configuration parameters is provided 
-        separately in the documentation since it is quite long and are 
+        The full list of possible configuration parameters is provided
+        separately in the documentation since it is quite long and are
         technically not parameters of this function.
         """
         logging.info('Started read_config...')
@@ -216,14 +213,14 @@ class Simulation(object):
         self.nref = float(config_parse.get('normalization', 'nref', fallback=1))
         self.tref = float(config_parse.get('normalization', 'tref', fallback=1))
         self.omega = float(config_parse.get('normalization', 'omega', fallback=0))
-        self.dpsi_da = float(config_parse.get('normalization', 'dpsi_da', 
+        self.dpsi_da = float(config_parse.get('normalization', 'dpsi_da',
                                               fallback=0))
 
         ####################
         # General Namelist #
         ####################
 
-        self.domain = config_parse.get('general', 'domain', 
+        self.domain = config_parse.get('general', 'domain',
                                         fallback='full')
 
         if self.domain == 'full':
@@ -282,16 +279,16 @@ class Simulation(object):
 
         self.analysis = config_parse.get('general', 'analysis',
                                          fallback='all')
-        if self.analysis not in ['all', 'perp', 'par', 'time', 'write_field', 
-                                 'film', 'write_field_full']:
+        if self.analysis not in ['all', 'perp', 'par', 'time', 'write_field',
+                                 'write_field_full']:
             raise ValueError('Analysis must be one of (perp, time, par, '
-                             'write_field, write_field_full, make_film)')
+                             'write_field, write_field_full)')
 
-        self.time_interpolate_bool = config_parse.getboolean('general', 
+        self.time_interpolate_bool = config_parse.getboolean('general',
                                                              'time_interpolate',
                                                              fallback=True)
 
-        self.time_interp_fac = int(config_parse.get('general', 
+        self.time_interp_fac = int(config_parse.get('general',
                                                     'time_interp_fac',
                                                     fallback=1))
 
@@ -316,12 +313,12 @@ class Simulation(object):
         elif self.theta_idx == "-1":
             self.theta_idx = [0, None]
         elif type(eval(self.theta_idx)) == int:
-            self.theta_idx = [int(self.theta_idx), int(self.theta_idx)+1] 
+            self.theta_idx = [int(self.theta_idx), int(self.theta_idx)+1]
         else:
             raise ValueError("theta_idx can only be one of: None, -1(all), int")
-        if ((self.analysis == 'par' or self.analysis == 'write_field_full') and 
+        if ((self.analysis == 'par' or self.analysis == 'write_field_full') and
                 self.theta_idx != [0, None]):
-            warnings.warn('Analysis = par/write_field_full, change to reading ' 
+            warnings.warn('Analysis = par/write_field_full, change to reading '
                            'full theta grid.')
             self.theta_idx = [0, None]
 
@@ -374,7 +371,7 @@ class Simulation(object):
 
         self.time_guess_dec = self.time_guess[0]
         self.time_guess_grow = self.time_guess[0]
-        self.time_guess_osc = np.array([self.time_guess[0], self.time_guess[1], 
+        self.time_guess_osc = np.array([self.time_guess[0], self.time_guess[1],
                                         0.0])
 
         self.time_max = float(config_parse.get('time',
@@ -395,18 +392,7 @@ class Simulation(object):
 
         self.seaborn_context = str(config_parse.get('output', 'seaborn_context',
                                                     fallback='talk'))
-        self.film_fps = int(config_parse.get('output', 'film_fps', fallback=40))
-        self.film_contours = int(config_parse.get('output', 'film_contours', 
-                                                  fallback=30))
-        self.film_lim = str(config_parse.get('output', 'film_lim', 
-                                                  fallback='None'))
-        if self.film_lim == "None":
-            self.film_lim = None
-        else:
-            self.film_lim = self.film_lim[1:-1].split(',')
-            self.film_lim = [float(s) for s in self.film_lim]
-
-        self.write_field_interp_x = config_parse.getboolean('output', 
+        self.write_field_interp_x = config_parse.getboolean('output',
                                                          'write_field_interp_x',
                                                          fallback=True)
 
@@ -437,13 +423,13 @@ class Simulation(object):
         if not self.lab_frame and self.time_interp_fac > 1:
             warnings.warn('Not transforming to lab frame, but time_interp_fac > 1. '
                           'This is probably not needed.')
-        
+
         if self.theta_idx == None and self.in_field[-2:] == '_t':
             raise ValueError('You have specified a field with theta info but '
                              'left theta_idx=None. Specify theta_idx as -1 '
                              'for full theta info or pick a specific theta.')
 
-        if ((self.analysis != 'par' and self.analysis != 'write_field_full') and 
+        if ((self.analysis != 'par' and self.analysis != 'write_field_full') and
                 self.ntheta > 1):
             raise ValueError('You are not doing parallel analysis and have more '
                              'than one theta point. Can only handle one theta '
@@ -466,7 +452,7 @@ class Simulation(object):
         -----
 
         * An additional axis is added in the case of no theta_idx. This allows
-          usual loops in theta to be kept but have no effect. If only one 
+          usual loops in theta to be kept but have no effect. If only one
           element in dimension initialization will be performed regardless,
           however dimension will be removed for perp and time analysis.
         """
@@ -514,7 +500,7 @@ class Simulation(object):
         Read the geometry file for the GS2 run.
         """
         logging.info('Reading geometry file...')
-        
+
         self.geometry = np.loadtxt(self.g_file)
 
         logging.info('Finished reading geometry file.')
@@ -524,7 +510,7 @@ class Simulation(object):
         Read the input '.inp' file for the GS2 run.
         """
         logging.info('Reading input file...')
-        
+
         self.input_file = nml.read(self.in_file)
 
         logging.info('Finished reading input file.')
@@ -548,7 +534,7 @@ class Simulation(object):
         Notes
         -----
 
-        GS2 fourier components are NOT simple fourier components obtained from 
+        GS2 fourier components are NOT simple fourier components obtained from
         regular FFT functions. Due to GS2's legacy as a linear code, instead
         of just getting fourier components g_k the output is:
 
@@ -565,7 +551,7 @@ class Simulation(object):
 
         Depending on whether the user specified time_interpolate, the time grid
         is interpolated into a regular grid. This is required in order to do
-        FFTs in time. Interpolation is done by default if not specified. 
+        FFTs in time. Interpolation is done by default if not specified.
         time_interp_fac sets the multiple of interpolation.
         """
         logging.info('Started interpolating onto a regular time grid...')
@@ -615,7 +601,7 @@ class Simulation(object):
         Notes
         -----
 
-        The important thing here is that ky is NOT the toroidal wavenumber *n0*. 
+        The important thing here is that ky is NOT the toroidal wavenumber *n0*.
         It is related to n0 by [1]_:
 
         ky_gs2 = n0*(rho_ref/a_min)*dpsi_da
@@ -638,7 +624,7 @@ class Simulation(object):
         Notes
         -----
 
-        * Since python defines x = IFFT[FFT(x)] need to undo the implicit 
+        * Since python defines x = IFFT[FFT(x)] need to undo the implicit
           normalization by multiplying by the size of the arrays.
         * GS2 fluctuations are O(rho_star) and must be multiplied by rho_star
           to get their true values.
@@ -650,7 +636,7 @@ class Simulation(object):
         self.field_real_space = np.empty([self.nt,self.nx,self.ny,self.ntheta],
                                          dtype=float)
         pyfftw.n_byte_align(self.field, 16)
-        self.field_real_space = pyfftw.interfaces.numpy_fft.irfft2(self.field, 
+        self.field_real_space = pyfftw.interfaces.numpy_fft.irfft2(self.field,
                                                                    axes=[1,2])
 
         if self.analysis == 'par' or self.analysis == 'write_field_full':
@@ -662,15 +648,15 @@ class Simulation(object):
 
         self.field_real_space = self.field_real_space*self.nx*self.ny
         self.field_real_space = self.field_real_space*self.rho_star
-        
+
         logging.info('Finished calculating real space field.')
 
     def domain_reduce(self):
         """
-        Initialization consists of: 
-        
+        Initialization consists of:
+
         * Calculating radial and poloidal coordinates r, z.
-        * Using input parameter *box_size* to determine the index range to 
+        * Using input parameter *box_size* to determine the index range to
           perform the correlation analysis on.
         * Reduce extent of real space field using this index.
         * Recalculate some real space arrays such as x, y, dx, dy, etc.
@@ -683,15 +669,15 @@ class Simulation(object):
 
         # Calculate coords r, z
         self.r = self.x[:] - self.x[-1]/2 + self.rmaj
-        self.z = self.y[:] - self.y[-1]/2 
+        self.z = self.y[:] - self.y[-1]/2
 
         # Find index range
-        r_min_idx, r_min = min(enumerate(abs(self.r - (self.box_size[0] + 
-                                                       self.rmaj))), 
+        r_min_idx, r_min = min(enumerate(abs(self.r - (self.box_size[0] +
+                                                       self.rmaj))),
                                key=operator.itemgetter(1))
         r_box_idx = r_min_idx-int(self.nx/2) + 1
 
-        z_min_idx, z_min = min(enumerate(abs(self.z - self.box_size[1])), 
+        z_min_idx, z_min = min(enumerate(abs(self.z - self.box_size[1])),
                                key=operator.itemgetter(1))
         z_box_idx = z_min_idx-int(self.ny/2) + 1
 
@@ -716,22 +702,22 @@ class Simulation(object):
         Ensures real space field has odd number of points in x and y.
 
         This is done so that when ``sig.fftconvolve`` is called on the field
-        with the 'same' option, the resulting correlation function also has an 
-        odd number of points. If this wasn't done, one axis *might* have an 
-        even number of points meaning the correlation function will not have a 
-        convenient middle point to use as the zero separation point, which 
-        would then require more general fitting functions. This way we can 
-        force dx=0, dy=0 at the self.nx/2, self.ny/2 location and avoid extra 
+        with the 'same' option, the resulting correlation function also has an
+        odd number of points. If this wasn't done, one axis *might* have an
+        even number of points meaning the correlation function will not have a
+        convenient middle point to use as the zero separation point, which
+        would then require more general fitting functions. This way we can
+        force dx=0, dy=0 at the self.nx/2, self.ny/2 location and avoid extra
         parameters in the fitting functions.
         """
         logging.info('Ensuring field has odd points in space')
 
         if self.nx%2 != 1:
             self.field_real_space = self.field_real_space[:,:-1,:,:]
-            self.x = self.x[:-1] 
+            self.x = self.x[:-1]
         if self.ny%2 != 1:
             self.field_real_space = self.field_real_space[:,:,:-1,:]
-            self.y = self.y[:-1] 
+            self.y = self.y[:-1]
 
         self.nx = len(self.x)
         self.ny = len(self.y)
@@ -747,7 +733,7 @@ class Simulation(object):
         -----
 
         * Remove theta dimension before doing analysis to avoid pointless code
-          which accounts for a theta information. Will produce error if more 
+          which accounts for a theta information. Will produce error if more
           than one element during config_checks.
         * Uses sig.fftconvolve to calculate the 2D perp correlation function.
         * Splits correlation function into time slices and fits each time
@@ -788,17 +774,17 @@ class Simulation(object):
             self.perp_corr_fit(it)
 
         if not self.ky_free:
-            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_params.csv', 
-                       np.array([self.perp_fit_x, self.perp_fit_x_err, 
-                        self.perp_fit_y, self.perp_fit_y_err]).T, 
-                       delimiter=',', fmt='%1.4f', 
+            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_params.csv',
+                       np.array([self.perp_fit_x, self.perp_fit_x_err,
+                        self.perp_fit_y, self.perp_fit_y_err]).T,
+                       delimiter=',', fmt='%1.4f',
                        header='lx, std(lx), ly, std(ly)')
         else:
-            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_params.csv', 
-                       np.array([self.perp_fit_x, self.perp_fit_x_err, 
-                        self.perp_fit_y, self.perp_fit_y_err, 
-                        self.perp_fit_ky, self.perp_fit_ky]).T, 
-                       delimiter=',', fmt='%1.4f', 
+            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_params.csv',
+                       np.array([self.perp_fit_x, self.perp_fit_x_err,
+                        self.perp_fit_y, self.perp_fit_y_err,
+                        self.perp_fit_ky, self.perp_fit_ky]).T,
+                       delimiter=',', fmt='%1.4f',
                        header='lx, std(lx), ly, std(ly), ky, std(ky)')
 
         self.perp_analysis_summary()
@@ -809,7 +795,7 @@ class Simulation(object):
 
     def field_normalize_perp(self):
         """
-        Defines normalized field for the perpandicular correlation by 
+        Defines normalized field for the perpandicular correlation by
         subtracting the mean and dividing by the RMS value.
         """
         logging.info('Normalizing the real space field...')
@@ -848,22 +834,22 @@ class Simulation(object):
 
             for iy in range(self.ny):
                 self.perp_corr_x[it,:,iy] = \
-                            sig.correlate(self.field_real_space_norm_x[it,:,iy], 
+                            sig.correlate(self.field_real_space_norm_x[it,:,iy],
                                           self.field_real_space_norm_x[it,:,iy],
                                           mode='same')
 
             for ix in range(self.nx):
                 self.perp_corr_y[it,ix,:] = \
-                            sig.correlate(self.field_real_space_norm_y[it,ix,:], 
+                            sig.correlate(self.field_real_space_norm_y[it,ix,:],
                                           self.field_real_space_norm_y[it,ix,:],
                                           mode='same')
 
-        logging.info("Finished calculating perpendicular correlation " 
+        logging.info("Finished calculating perpendicular correlation "
                      "function...")
 
     def perp_norm_mask(self):
         """
-        Applies the appropriate normalization to the perpendicular correlation 
+        Applies the appropriate normalization to the perpendicular correlation
         function.
 
         Notes
@@ -872,29 +858,29 @@ class Simulation(object):
         After calling ``sig.correlate`` to calculate ``perp_corr``, we are
         left with an unnormalized correlation function as a function of dx
         or dy. This function applies a nomalization mask to ``perp_corr_x`` and
-        ``perp_corr_y`` which is dependent on the number of points that 
-        ``field_real_space_norm`` has in common with itself for a given dx or dy. 
-        ``field_real_space_norm`` is already normalized to the standard 
-        deviation of the time signal, so the only difference between correlate 
-        and np.corrcoef is the number of points in common in the convolution 
-        (that aren't the zero padded values and after averaging over many time 
+        ``perp_corr_y`` which is dependent on the number of points that
+        ``field_real_space_norm`` has in common with itself for a given dx or dy.
+        ``field_real_space_norm`` is already normalized to the standard
+        deviation of the time signal, so the only difference between correlate
+        and np.corrcoef is the number of points in common in the convolution
+        (that aren't the zero padded values and after averaging over many time
         steps).
         """
         logging.info('Applying perp normalization mask...')
 
-        x = np.ones([self.nx]) 
-        y = np.ones([self.ny]) 
+        x = np.ones([self.nx])
+        y = np.ones([self.ny])
         mask_x = sig.correlate(x,x,'same')
         mask_y = sig.correlate(y,y,'same')
 
-        self.perp_corr_x /= mask_x[np.newaxis, :, np.newaxis] 
+        self.perp_corr_x /= mask_x[np.newaxis, :, np.newaxis]
         self.perp_corr_y /= mask_y
 
         logging.info('Finised applying perp normalization mask...')
 
     def perp_corr_fit(self, it):
         """
-        Fits the appropriate Gaussian to the radial and poloidal correlation 
+        Fits the appropriate Gaussian to the radial and poloidal correlation
         functions.
 
         Parameters
@@ -907,7 +893,7 @@ class Simulation(object):
         -----
 
         * The radial correlation function is fitted with a Gaussian.
-        * The poloidal correlation function is fitted with an oscillating 
+        * The poloidal correlation function is fitted with an oscillating
           Gaussian.
         """
 
@@ -915,7 +901,7 @@ class Simulation(object):
             np.array(self.perp_corr_x[it*self.time_slice:(it+1)*self.time_slice,:,:])
         corr_fn_y = \
             np.array(self.perp_corr_y[it*self.time_slice:(it+1)*self.time_slice,:,:])
-        
+
         # Average corr_fn over time
         corr_std_x = np.empty([self.nx])
         corr_std_y = np.empty([self.ny])
@@ -929,18 +915,18 @@ class Simulation(object):
         gmod_gauss = lm.Model(fit.gauss)
         gmod_osc_gauss = lm.Model(fit.osc_gauss)
 
-        params_x = lm.Parameters()                                                    
-        params_x.add('l', value=self.perp_guess_x)                                                  
-        params_x.add('p', value=0.0, vary=False)               
+        params_x = lm.Parameters()
+        params_x.add('l', value=self.perp_guess_x)
+        params_x.add('p', value=0.0, vary=False)
         fit_x = gmod_gauss.fit(avg_corr_x, params_x, x=self.dx)
-        
-        params_y = lm.Parameters()                                                    
-        params_y.add('l', value=self.perp_guess_y)                                                  
+
+        params_y = lm.Parameters()
+        params_y.add('l', value=self.perp_guess_y)
         if not self.ky_free:
             params_y.add('k', value=1, expr='2*3.141592653589793/l')
         else:
             params_y.add('k', value=self.perp_guess_ky)
-        params_y.add('p', value=0.0, vary=False) 
+        params_y.add('p', value=0.0, vary=False)
         fit_y = gmod_osc_gauss.fit(avg_corr_y, params_y, x=self.dy)
 
         self.perp_fit_x[it] = fit_x.best_values['l']
@@ -978,11 +964,11 @@ class Simulation(object):
 
         plt.clf()
         fig, ax = plt.subplots(1, 1)
-        plt.scatter(self.dx, corr_fn, color=pal[0], 
+        plt.scatter(self.dx, corr_fn, color=pal[0],
                      label=r'$C(\Delta x)$')
-        plt.plot(self.dx, corr_fit.best_fit, color=pal[2], 
+        plt.plot(self.dx, corr_fit.best_fit, color=pal[2],
                  label=r'$\exp(-(\Delta x / \ell_x)^2)$')
-        plt.fill_between(self.dx, corr_fn-corr_std, corr_fn+corr_std, 
+        plt.fill_between(self.dx, corr_fn-corr_std, corr_fn+corr_std,
                          alpha=0.3)
         plt.legend()
         plt.xlabel(r'$\Delta x$ (m)')
@@ -991,7 +977,7 @@ class Simulation(object):
         plt.ylim(ymax=1)
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
-        plt.savefig(self.out_dir + '/' +self.perp_dir + 
+        plt.savefig(self.out_dir + '/' +self.perp_dir +
                     '/corr_fns_x/corr_x_fit_it_' + str(it) + '.pdf')
         plt.close(fig)
 
@@ -1004,14 +990,14 @@ class Simulation(object):
         plt.clf()
         fig, ax = plt.subplots(1, 1)
         plt.scatter(self.dy, corr_fn, color=pal[0], label=r'$C(\Delta y)$')
-        plt.plot(self.dy, np.exp(-(self.dy/corr_fit.best_values['l'])**2), 
+        plt.plot(self.dy, np.exp(-(self.dy/corr_fit.best_values['l'])**2),
                  'k--', label=r'$\exp(-(\Delta y / \ell_y)^2)$')
         if not self.ky_free:
-            fit_label=r'$\exp(-(\Delta y / \ell_y)^2) \cos(2 \pi \Delta y/ \ell_y)$' 
+            fit_label=r'$\exp(-(\Delta y / \ell_y)^2) \cos(2 \pi \Delta y/ \ell_y)$'
         else:
             fit_label=r'$\exp(-(\Delta y / \ell_y)^2) \cos(k_y \Delta y)$'
         plt.plot(self.dy, corr_fit.best_fit, color=pal[2], label=fit_label)
-        plt.fill_between(self.dy, corr_fn-corr_std, corr_fn+corr_std, 
+        plt.fill_between(self.dy, corr_fn-corr_std, corr_fn+corr_std,
                          alpha=0.3)
         plt.legend()
         plt.xlabel(r'$\Delta y$ (m)')
@@ -1019,7 +1005,7 @@ class Simulation(object):
         plt.ylabel(r'$C(\Delta y)$')
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
-        plt.savefig(self.out_dir + '/' +self.perp_dir + 
+        plt.savefig(self.out_dir + '/' +self.perp_dir +
                     '/corr_fns_y/corr_y_fit_it_' + str(it) + '.pdf')
         plt.close(fig)
 
@@ -1036,7 +1022,7 @@ class Simulation(object):
         plt.clf()
         plot_style.white()
         fig, ax = plt.subplots(1, 1)
-        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_x), 
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_x),
                      yerr=self.perp_fit_x_err)
         plt.xlabel('Time Window')
         plt.ylabel(r'$l_x$ (m)')
@@ -1050,7 +1036,7 @@ class Simulation(object):
         plt.clf()
         plot_style.white()
         fig, ax = plt.subplots(1, 1)
-        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_y), 
+        plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_y),
                      yerr=self.perp_fit_y_err)
         plt.xlabel('Time Window')
         plt.ylabel(r'$l_y$ (m)')
@@ -1063,18 +1049,18 @@ class Simulation(object):
         plt.close(fig)
 
         if not self.ky_free:
-            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_summary.csv', 
-                       np.nanmean([self.perp_fit_x, 
-                                   self.perp_fit_x_err, 
-                                   self.perp_fit_y, 
-                                   self.perp_fit_y_err], axis=1)[np.newaxis,:], 
-                       delimiter=',', fmt='%1.4f', 
+            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_summary.csv',
+                       np.nanmean([self.perp_fit_x,
+                                   self.perp_fit_x_err,
+                                   self.perp_fit_y,
+                                   self.perp_fit_y_err], axis=1)[np.newaxis,:],
+                       delimiter=',', fmt='%1.4f',
                        header='lx, std(lx), ly, std(ly)')
         else:
             plt.clf()
             plot_style.white()
             fig, ax = plt.subplots(1, 1)
-            plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_ky), 
+            plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_ky),
                          yerr=self.perp_fit_ky_err)
             plt.xlabel('Time Window')
             plt.ylabel(r'$k_y (m^{-1})$')
@@ -1086,21 +1072,21 @@ class Simulation(object):
                         '/perp_fit_ky_vs_time_slice.pdf')
             plt.close(fig)
 
-            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_summary.csv', 
-                       np.mean([self.perp_fit_x, 
-                                self.perp_fit_x_err, 
-                                self.perp_fit_y, 
+            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_summary.csv',
+                       np.mean([self.perp_fit_x,
+                                self.perp_fit_x_err,
+                                self.perp_fit_y,
                                 self.perp_fit_y_err,
                                 self.perp_fit_ky,
-                                self.perp_fit_ky_err], axis=1)[np.newaxis,:], 
-                       delimiter=',', fmt='%1.4f', 
+                                self.perp_fit_ky_err], axis=1)[np.newaxis,:],
+                       delimiter=',', fmt='%1.4f',
                        header='lx, std(lx), ly, std(ly)')
 
         logging.info("Finished writing perp_analysis summary...")
 
     def fluctuation_levels(self):
         """
-        Caculates mean fluctuation level and standard deviation and writes 
+        Caculates mean fluctuation level and standard deviation and writes
         results.
 
         Notes
@@ -1109,7 +1095,7 @@ class Simulation(object):
         More precisely the following is calculated
 
         * At each grid point the RMS value is calculated in time.
-        * The mean and std of the fluctuation levels are then the mean and 
+        * The mean and std of the fluctuation levels are then the mean and
           std of these RMS values.
 
         This is done since the standard deviation of a quantity with a mean of
@@ -1119,7 +1105,7 @@ class Simulation(object):
         logging.info("Calculating fluctuation level...")
 
         rms = np.sqrt(np.mean(self.field_real_space**2, axis=0))
-    
+
         self.fluc_level = np.mean(rms)
         self.fluc_level_std = np.std(rms)
 
@@ -1136,7 +1122,7 @@ class Simulation(object):
         Notes
         -----
 
-        * Split into time windows and perform correlation analysis on each 
+        * Split into time windows and perform correlation analysis on each
           window separately.
         """
         logging.info("Starting time_analysis...")
@@ -1151,7 +1137,7 @@ class Simulation(object):
         if 'corr_fns' not in os.listdir(self.out_dir+'/'+self.time_dir):
             os.system("mkdir " + self.out_dir + '/'+self.time_dir+'/corr_fns')
         os.system('rm ' + self.out_dir + '/'+self.time_dir+'/corr_fns/*')
-        
+
         self.time_corr = np.empty([self.nt_slices, self.time_slice, self.nx,
                                    self.ny], dtype=float)
         self.corr_time = np.empty([self.nt_slices, self.nx], dtype=float)
@@ -1169,7 +1155,7 @@ class Simulation(object):
 
     def field_normalize_time(self):
         """
-        Defines normalized field for the time correlation by subtracting the 
+        Defines normalized field for the time correlation by subtracting the
         mean and dividing by the RMS value.
         """
         logging.info('Normalizing the real space field...')
@@ -1200,12 +1186,12 @@ class Simulation(object):
         it : int
             This is the index of the time slice currently being calculated.
         """
-        
+
         field_window = self.field_real_space_norm[it*self.time_slice:(it+1)*
                                                   self.time_slice,:,:]
 
         for ix in range(self.nx):
-            self.time_corr[it,:,ix,:] = sig.fftconvolve(field_window[:,ix,:], 
+            self.time_corr[it,:,ix,:] = sig.fftconvolve(field_window[:,ix,:],
                                                         field_window[::-1,ix,::-1],
                                                         'same')
 
@@ -1220,11 +1206,11 @@ class Simulation(object):
         left with an unnormalized correlation function as a function of dt
         and dy. This function applies a 2D nomalization mask to ``time_corr``
         which is dependent on the number of points that ``field_real_space_norm``
-        has in common with itself for a given dt, dy, and time window. 
-        ``field_real_space_norm`` is already normalized to the standard 
-        deviation of the time signal, so the only difference between fftconvolve 
-        and np.corrcoef is the number of points in common in the convolution 
-        (that aren't the zero padded values and after averaging over many time 
+        has in common with itself for a given dt, dy, and time window.
+        ``field_real_space_norm`` is already normalized to the standard
+        deviation of the time signal, so the only difference between fftconvolve
+        and np.corrcoef is the number of points in common in the convolution
+        (that aren't the zero padded values and after averaging over many time
         steps).
 
         Parameters
@@ -1235,11 +1221,11 @@ class Simulation(object):
         """
         logging.info('Applying time normalization mask...')
 
-        x = np.ones([self.time_slice, self.ny]) 
+        x = np.ones([self.time_slice, self.ny])
         mask = sig.fftconvolve(x,x,'same')
 
         for ix in range(self.nx):
-            self.time_corr[it,:,ix,:] /= mask 
+            self.time_corr[it,:,ix,:] /= mask
 
         logging.info('Finised applying time normalization mask.')
 
@@ -1252,7 +1238,7 @@ class Simulation(object):
         -----
 
         The fitting procedure consists of the following steps:
-        
+
         * Loop over radial points
         * Identify the time correlation function peaks
         * Determine what type of function to fit to the peaks
@@ -1278,18 +1264,18 @@ class Simulation(object):
         for ix in range(self.nx):
             for iy in range(mid_idx,mid_idx+self.npeaks_fit):
                 max_index[ix, iy-mid_idx], peaks[ix, iy-mid_idx] = \
-                    max(enumerate(self.time_corr[it,:,ix,iy]), 
+                    max(enumerate(self.time_corr[it,:,ix,iy]),
                         key=operator.itemgetter(1))
 
-            if (fit.strictly_increasing(max_index[ix,:]) == True or 
+            if (fit.strictly_increasing(max_index[ix,:]) == True or
                 fit.strictly_increasing(max_index[ix,::-1]) == True):
                 if max_index[ix, self.npeaks_fit-1] > max_index[ix, 0]:
                     try:
                         gmod_decay = lm.Model(fit.decaying_exp)
                         params_t = lm.Parameters()
                         params_t.add('tau_c', value=self.time_guess_dec)
-                        fit_t = gmod_decay.fit(peaks[ix,:], params_t, 
-                                               t=self.dt[max_index[ix,:]]) 
+                        fit_t = gmod_decay.fit(peaks[ix,:], params_t,
+                                               t=self.dt[max_index[ix,:]])
 
                         if fit_t.best_values['tau_c'] > self.time_max:
                             self.corr_time[it,ix] = np.nan
@@ -1304,11 +1290,11 @@ class Simulation(object):
                             self.time_plot(it, ix, max_index, peaks, 'decaying')
 
                         logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
-                                     "with decaying exponential. tau = " 
+                                     "with decaying exponential. tau = "
                                      + str(self.corr_time[it,ix]) + " s\n")
 
                     except RuntimeError:
-                        logging.info("(" + str(it) + "," + str(ix) + ") " 
+                        logging.info("(" + str(it) + "," + str(ix) + ") "
                                 "RuntimeError - max fitting iterations reached, "
                                 "skipping this case with tau = NaN\n")
                         self.corr_time[it, ix] = np.nan
@@ -1317,8 +1303,8 @@ class Simulation(object):
                         gmod_grow = lm.Model(fit.growing_exp)
                         params_t = lm.Parameters()
                         params_t.add('tau_c', value=self.time_guess_grow)
-                        fit_t = gmod_grow.fit(peaks[ix,:], params_t, 
-                                              t=self.dt[max_index[ix,:]]) 
+                        fit_t = gmod_grow.fit(peaks[ix,:], params_t,
+                                              t=self.dt[max_index[ix,:]])
 
                         if fit_t.best_values['tau_c'] > self.time_max:
                             self.corr_time[it,ix] = np.nan
@@ -1333,7 +1319,7 @@ class Simulation(object):
                             self.time_plot(it, ix, max_index, peaks, 'growing')
 
                         logging.info("(" + str(it) + "," + str(ix) + ") was fitted "
-                                     "with growing exponential. tau = " 
+                                     "with growing exponential. tau = "
                                      + str(self.corr_time[it,ix]) + " s\n")
 
                     except RuntimeError:
@@ -1343,7 +1329,7 @@ class Simulation(object):
                         self.corr_time[it, ix] = np.nan
             else:
                 try:
-                    # If abs(max_index) is not monotonically increasing, this 
+                    # If abs(max_index) is not monotonically increasing, this
                     # usually means that there is no flow and that the above method
                     # cannot be used to calculate the correlation time. Try fitting
                     # a decaying oscillating exponential to the central peak.
@@ -1352,8 +1338,8 @@ class Simulation(object):
                     params_t.add('l', value=self.time_guess_osc[0])
                     params_t.add('k', value=self.time_guess_osc[1])
                     params_t.add('p', value=self.time_guess_osc[2], vary=False)
-                    fit_t = gmod_osc.fit(self.time_corr[it,:,ix,mid_idx], 
-                                         params_t, x=self.dt) 
+                    fit_t = gmod_osc.fit(self.time_corr[it,:,ix,mid_idx],
+                                         params_t, x=self.dt)
 
                     # Note l = tau_c sinc fitting function specification is for
                     # general l, k, p.
@@ -1362,7 +1348,7 @@ class Simulation(object):
                         self.corr_time_err[it,ix] = np.nan
                         logging.info("(" + str(it) + "," + str(ix) + ") was "
                                      "fitted with an oscillating Gaussian to "
-                                     "the central peak. (tau, omega) = " 
+                                     "the central peak. (tau, omega) = "
                                      + str([np.nan, np.nan]) + "\n")
 
                     else:
@@ -1374,13 +1360,13 @@ class Simulation(object):
                         self.time_guess_osc = np.array([fit_t.best_values['l'],
                                                         fit_t.best_values['k'],
                                                         fit_t.best_values['p']])
-                        self.time_plot(it, ix, max_index, peaks, 'oscillating', 
+                        self.time_plot(it, ix, max_index, peaks, 'oscillating',
                                        omega=fit_t.best_values['k'])
 
                         logging.info("(" + str(it) + "," + str(ix) + ") was "
                                      "fitted with an oscillating Gaussian to "
-                                     "the central peak. (tau, omega) = " 
-                                     + str([fit_t.best_values['l'], 
+                                     "the central peak. (tau, omega) = "
+                                     + str([fit_t.best_values['l'],
                                             fit_t.best_values['k']]) + "\n")
 
                 except RuntimeError:
@@ -1391,12 +1377,12 @@ class Simulation(object):
 
     def time_plot(self, it, ix, max_index, peaks, plot_type, **kwargs):
         """
-        Plots the time correlation peaks as well as the apprpriate fitting 
+        Plots the time correlation peaks as well as the apprpriate fitting
         function.
 
         Parameters
         ----------
-        
+
         it : int
             Time slice currently being fitted.
         ix : int
@@ -1410,7 +1396,7 @@ class Simulation(object):
             'oscillating'
         """
         plot_style.white()
-            
+
         mid_idx = int(self.ny/2)
         plt.clf()
         fig, ax = plt.subplots(1, 1)
@@ -1420,9 +1406,9 @@ class Simulation(object):
             plt.hold(True)
             plt.plot(self.dt[max_index[ix,:]]*1e6, peaks[ix,:], 'o', color='#7A1919')
             plt.hold(True)
-            plt.plot(self.dt[int(self.time_slice/2):]*1e6, 
-                     fit.decaying_exp(self.dt[int(self.time_slice/2):],self.corr_time[it,ix]), 
-                     'k--', lw=2, 
+            plt.plot(self.dt[int(self.time_slice/2):]*1e6,
+                     fit.decaying_exp(self.dt[int(self.time_slice/2):],self.corr_time[it,ix]),
+                     'k--', lw=2,
                      label=r'$\exp[-|\Delta t_{peak} / \tau_c|]$')
             plt.legend()
         if plot_type == 'growing':
@@ -1430,16 +1416,16 @@ class Simulation(object):
             plt.hold(True)
             plt.plot(self.dt[max_index[ix,:]]*1e6, peaks[ix,:], 'o', color='#7A1919')
             plt.hold(True)
-            plt.plot(self.dt[:int(self.time_slice/2)]*1e6, 
-                     fit.growing_exp(self.dt[:int(self.time_slice/2)],self.corr_time[it,ix]), 
-                     'k--', lw=2, 
+            plt.plot(self.dt[:int(self.time_slice/2)]*1e6,
+                     fit.growing_exp(self.dt[:int(self.time_slice/2)],self.corr_time[it,ix]),
+                     'k--', lw=2,
                      label=r'$\exp[|\Delta t_{peak} / \tau_c|]$')
             plt.legend()
         if plot_type == 'oscillating':
             plt.plot(self.dt*1e6, self.time_corr[it,:,ix,mid_idx])
             plt.hold(True)
-            plt.plot(self.dt*1e6, fit.osc_gauss(self.dt,self.corr_time[it,ix], 
-                     kwargs['omega'], 0), 'k--', lw=2, 
+            plt.plot(self.dt*1e6, fit.osc_gauss(self.dt,self.corr_time[it,ix],
+                     kwargs['omega'], 0), 'k--', lw=2,
                      label=r'$\exp[- (\Delta t_{peak} / \tau_c)^2] '
                             '\cos(\omega \Delta t) $')
             plt.legend()
@@ -1464,11 +1450,11 @@ class Simulation(object):
 
         self.corr_time = np.abs(self.corr_time)
 
-        np.savetxt(self.out_dir + '/'+self.time_dir+'/corr_time.csv', 
-                   (self.corr_time), delimiter=',', fmt='%.4e', 
+        np.savetxt(self.out_dir + '/'+self.time_dir+'/corr_time.csv',
+                   (self.corr_time), delimiter=',', fmt='%.4e',
                    header='rows = radius, columns = time slice')
-        np.savetxt(self.out_dir + '/'+self.time_dir+'/corr_time_err.csv', 
-                   (self.corr_time_err), delimiter=',', fmt='%.4e', 
+        np.savetxt(self.out_dir + '/'+self.time_dir+'/corr_time_err.csv',
+                   (self.corr_time_err), delimiter=',', fmt='%.4e',
                    header='rows = radius, columns = time slice')
 
         # Plot corr_time as a function of radius, average over time window
@@ -1484,7 +1470,7 @@ class Simulation(object):
         plt.savefig(self.out_dir + '/'+self.time_dir+'/corr_time.pdf')
 
         np.savetxt(self.out_dir + '/'+self.time_dir+'/time_fit_summary.csv',
-                   (np.array([np.nanmean(self.corr_time), 
+                   (np.array([np.nanmean(self.corr_time),
                    np.nanstd(self.corr_time)])*1e6)[np.newaxis,:],
                    header='tau_c, std(tau_c)', fmt='%1.4f', delimiter=',')
 
@@ -1506,21 +1492,21 @@ class Simulation(object):
         self.calculate_l_par()
         self.calculate_par_corr()
 
-        self.par_fit_params = np.empty([self.nt_slices, 2], 
+        self.par_fit_params = np.empty([self.nt_slices, 2],
                                        dtype=float)
-        self.par_fit_params_err = np.empty([self.nt_slices, 2], 
+        self.par_fit_params_err = np.empty([self.nt_slices, 2],
                                            dtype=float)
 
         for it in range(self.nt_slices):
             self.par_corr_fit(it)
-        
+
         self.par_analysis_summary()
 
         logging.info("Finished par_analysis...")
 
     def calculate_l_par(self):
         """
-        Calculates the real space parallel grid. 
+        Calculates the real space parallel grid.
         """
         logging.info('Start calculating parallel length...')
 
@@ -1539,7 +1525,7 @@ class Simulation(object):
         Calculate the parallel correlation function and apply normalization mask.
 
         Interpolation onto a regular parallel grid, correlation calculation,
-        and normalization are done in one function to avoid unnecessary looping 
+        and normalization are done in one function to avoid unnecessary looping
         over x, y, and theta.
         """
         logging.info('Start calculating parallel correlation function...')
@@ -1547,14 +1533,14 @@ class Simulation(object):
         x = np.ones([self.ntheta])
         mask = sig.correlate(x, x, 'same')
 
-        self.par_corr = np.empty([self.nt, self.nx, self.ny, self.ntheta], 
+        self.par_corr = np.empty([self.nt, self.nx, self.ny, self.ntheta],
                                  dtype=float)
         l_par_reg = np.linspace(0, self.l_par[-1], self.ntheta)
         for it in range(self.nt):
             logging.info('Parallel correlation timestep: %d of %d'%(it,self.nt))
             for ix in range(self.nx):
                 for iy in range(self.ny):
-                    f = interp.interp1d(self.l_par, 
+                    f = interp.interp1d(self.l_par,
                                         self.field_real_space[it,ix,iy,:])
                     self.field_real_space[it,ix,iy,:] = f(l_par_reg)
 
@@ -1564,7 +1550,7 @@ class Simulation(object):
                             np.std(self.field_real_space[it,ix,iy,:])
 
                     self.par_corr[it,ix,iy,:] = \
-                        sig.correlate(self.field_real_space[it,ix,iy,:], 
+                        sig.correlate(self.field_real_space[it,ix,iy,:],
                                       self.field_real_space[it,ix,iy,:],
                                       'same')/mask
 
@@ -1575,7 +1561,7 @@ class Simulation(object):
 
     def par_corr_fit(self, it):
         """
-        Fit the parallel correlation function with an oscillatory Gaussian 
+        Fit the parallel correlation function with an oscillatory Gaussian
         function for time slice it.
 
         Parameters
@@ -1585,24 +1571,24 @@ class Simulation(object):
             Time slice to average over and fit.
 
         Before fitting average over time, x, and y.
-        """     
+        """
         corr_fn = self.par_corr[it*self.time_slice:(it+1)*self.time_slice,:,:,:]
-        corr_std = np.empty([self.ntheta]) 
-        for i in range(self.ntheta):                                                        
+        corr_std = np.empty([self.ntheta])
+        for i in range(self.ntheta):
                 corr_std[i] = np.std(corr_fn[:,:,:,i])
         corr_fn = np.mean(np.mean(np.mean(corr_fn, axis=0), axis=0), axis=0)
 
         try:
             gmod_osc = lm.Model(fit.osc_gauss)
             params = lm.Parameters()
-            params.add('l', value=self.par_guess[0], min=self.l_par[1], 
+            params.add('l', value=self.par_guess[0], min=self.l_par[1],
                        max=100)
-            params.add('k', value=self.par_guess[1], 
+            params.add('k', value=self.par_guess[1],
                        max=(2*np.pi/self.dl_par[-1]*len(self.dl_par)/2))
             params.add('p', value=0, vary=False)
             par_fit = gmod_osc.fit(corr_fn, params, x=self.dl_par)
-            
-            self.par_fit_params[it, :] = np.abs([par_fit.best_values['l'], 
+
+            self.par_fit_params[it, :] = np.abs([par_fit.best_values['l'],
                                                  par_fit.best_values['k']])
             self.par_fit_params_err[it, :] = np.sqrt(np.diag(par_fit.covar))
             self.par_plot(it, corr_fn, corr_std)
@@ -1612,7 +1598,7 @@ class Simulation(object):
             self.par_fit_params[it, :] = np.nan
             self.par_fit_params_err[it, :] = np.nan
 
-        self.par_guess = self.par_fit_params[it, :] 
+        self.par_guess = self.par_fit_params[it, :]
 
     def par_plot(self, it, corr, corr_std):
         """
@@ -1626,18 +1612,18 @@ class Simulation(object):
         corr : array_like
             Parallel correlation averaged in t, x, and y.
         corr_std : array_like
-            Standard deviation in the correlation function as a function of 
+            Standard deviation in the correlation function as a function of
             dl_par.
         """
         plot_style.white()
 
         plt.clf()
         fig, ax = plt.subplots(1, 1)
-        plt.scatter(self.dl_par, corr, color=pal[0], 
+        plt.scatter(self.dl_par, corr, color=pal[0],
                     label=r'$C(\Delta t = 0, \Delta x = 0, \Delta y = 0, \Delta z)$')
-        plt.fill_between(self.dl_par, corr-corr_std, corr+corr_std, 
+        plt.fill_between(self.dl_par, corr-corr_std, corr+corr_std,
                          alpha=0.3)
-        plt.plot(self.dl_par, fit.osc_gauss(self.dl_par, self.par_fit_params[it,0], 
+        plt.plot(self.dl_par, fit.osc_gauss(self.dl_par, self.par_fit_params[it,0],
                  self.par_fit_params[it,1], 0), color=pal[2] ,
                  label=r'$p_\parallel + (1-p_\parallel)\exp[- (\Delta z / l_{\parallel})^2] '
                         '\cos(k_{\parallel} \Delta z) $')
@@ -1648,32 +1634,32 @@ class Simulation(object):
         plt.ylabel(r'$C(\Delta z)$')
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
-        plt.savefig(self.out_dir + '/parallel/corr_fns/par_fit_it_' + 
+        plt.savefig(self.out_dir + '/parallel/corr_fns/par_fit_it_' +
                     str(it) + '.pdf')
         plt.close(fig)
 
     def par_analysis_summary(self):
         """
-        Summarize parallel correlation analysis by plotting parallel correlation 
+        Summarize parallel correlation analysis by plotting parallel correlation
         fitting parameters along with associated errors and writing to a .csv
         file.
         """
         plot_style.white()
 
-        np.savetxt(self.out_dir + '/parallel/par_fit_params.csv', 
+        np.savetxt(self.out_dir + '/parallel/par_fit_params.csv',
                    (self.par_fit_params), delimiter=',', fmt='%1.4f')
 
-        np.savetxt(self.out_dir + '/parallel/par_fit_summary.csv', 
+        np.savetxt(self.out_dir + '/parallel/par_fit_summary.csv',
                    np.nanmean([self.par_fit_params[:,0],
                    self.par_fit_params_err[:,0],
                    self.par_fit_params[:,1],
-                   self.par_fit_params_err[:,1]], axis=1)[np.newaxis,:], 
+                   self.par_fit_params_err[:,1]], axis=1)[np.newaxis,:],
                    delimiter=',', fmt='%1.4f',
                    header='l_par, err(l_par), k_par, err(k_par)')
 
         plt.clf()
         fig, ax = plt.subplots(1, 1)
-        plt.errorbar(range(self.nt_slices), np.abs(self.par_fit_params[:,0]), 
+        plt.errorbar(range(self.nt_slices), np.abs(self.par_fit_params[:,0]),
                      yerr=self.par_fit_params_err[:,0])
         plt.xlabel('Time Window')
         plt.ylabel(r'Parallel Correlation Length $l_{\parallel} (m)$')
@@ -1685,7 +1671,7 @@ class Simulation(object):
 
         plt.clf()
         fig, ax = plt.subplots(1, 1)
-        plt.errorbar(range(self.nt_slices), np.abs(self.par_fit_params[:,1]), 
+        plt.errorbar(range(self.nt_slices), np.abs(self.par_fit_params[:,1]),
                      yerr=self.par_fit_params_err[:,1])
         plt.xlabel('Time Window')
         plt.ylabel(r'Parallel Correlation Wavenumber $k_{\parallel} (m^{-1})$')
@@ -1707,7 +1693,7 @@ class Simulation(object):
           0.5cm resolution consistent with the BES.
         """
         logging.info("Starting write_field...")
-        
+
         if 'write_field' not in os.listdir(self.out_dir):
             os.system("mkdir " + self.out_dir + '/write_field')
 
@@ -1715,11 +1701,11 @@ class Simulation(object):
             #interpolate radial coordinate to be approx 0.5cm
             interp_fac = int(np.ceil(self.x[1]/0.005))
             x_nc = np.linspace(min(self.x), max(self.x), interp_fac*self.nx)
-            field_real_space_nc = np.empty([self.nt, len(x_nc), self.ny], 
+            field_real_space_nc = np.empty([self.nt, len(x_nc), self.ny],
                                            dtype=float)
             for it in range(self.nt):
                 for iy in range(self.ny):
-                        f = interp.interp1d(self.x, 
+                        f = interp.interp1d(self.x,
                                             self.field_real_space[it,:,iy])
                         field_real_space_nc[it,:,iy] = f(x_nc)
         else:
@@ -1727,11 +1713,11 @@ class Simulation(object):
             field_real_space_nc = self.field_real_space
 
         if self.lab_frame:
-            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' + 
+            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' +
                                          self.in_field +'_lab_frame.cdf', 'w',
                                          version=2)
         elif not self.lab_frame:
-            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' + 
+            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' +
                                          self.in_field +'.cdf', 'w',
                                          version=2)
         nc_file.createDimension('x', len(x_nc))
@@ -1750,10 +1736,10 @@ class Simulation(object):
         nc_nref[:] = self.nref
         nc_tref[:] = self.tref
         nc_x[:] = x_nc[:] - x_nc[-1]/2
-        nc_y[:] = self.y[:] - self.y[-1]/2 
+        nc_y[:] = self.y[:] - self.y[-1]/2
         nc_t[:] = self.t[:] - self.t[0]
         nc_file.close()
-        
+
         logging.info("Finished write_field...")
 
     def write_field_full(self):
@@ -1768,7 +1754,7 @@ class Simulation(object):
           0.5cm resolution consistent with the BES.
         """
         logging.info("Starting write_field_full...")
-        
+
         if 'write_field_full' not in os.listdir(self.out_dir):
             os.system("mkdir " + self.out_dir + '/write_field_full')
 
@@ -1778,12 +1764,12 @@ class Simulation(object):
             #interpolate radial coordinate to be approx 0.5cm
             interp_fac = int(np.ceil(self.x[1]/0.005))
             x_nc = np.linspace(min(self.x), max(self.x), interp_fac*self.nx)
-            field_real_space_nc = np.empty([self.nt, len(x_nc), self.ny, 
+            field_real_space_nc = np.empty([self.nt, len(x_nc), self.ny,
                                             self.ntheta], dtype=float)
             for it in range(self.nt):
                 for iy in range(self.ny):
                     for iz in range(self.ntheta):
-                        f = interp.interp1d(self.x, 
+                        f = interp.interp1d(self.x,
                                             self.field_real_space[it,:,iy,iz])
                         field_real_space_nc[it,:,iy,iz] = f(x_nc)
         else:
@@ -1791,11 +1777,11 @@ class Simulation(object):
             field_real_space_nc = self.field_real_space
 
         if self.lab_frame:
-            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field_full/' + 
+            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field_full/' +
                                          self.in_field +'_lab_frame.cdf', 'w',
                                          version=2)
         elif not self.lab_frame:
-            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field_full/' + 
+            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field_full/' +
                                          self.in_field +'.cdf', 'w',
                                          version=2)
         nc_file.createDimension('x', len(x_nc))
@@ -1816,70 +1802,9 @@ class Simulation(object):
         nc_nref[:] = self.nref
         nc_tref[:] = self.tref
         nc_x[:] = x_nc[:] - x_nc[-1]/2
-        nc_y[:] = self.y[:] - self.y[-1]/2 
-        nc_z[:] = self.l_par[:] - self.l_par[-1]/2 
+        nc_y[:] = self.y[:] - self.y[-1]/2
+        nc_z[:] = self.l_par[:] - self.l_par[-1]/2
         nc_t[:] = self.t[:] - self.t[0]
         nc_file.close()
-        
+
         logging.info("Finished write_field_full...")
-
-    def make_film(self):
-        """
-        Creates film from real space field time frames.
-
-        Image cropping using Pillow may be necessary to ensure width and height
-        of images are even.
-        """
-        logging.info("Starting make_film...")
-
-        plot_style.white()
-
-        if self.lab_frame:
-            self.film_dir = 'film_lab_frame'
-        elif not self.lab_frame:
-            self.film_dir = 'film'
-
-        self.field_max = np.max(self.field_real_space)
-        self.field_min = np.min(self.field_real_space)
-        if self.film_lim == None:
-            if np.abs(self.field_max) > np.abs(self.field_min):
-                self.contours = np.around(np.linspace(-self.field_max, 
-                                                      self.field_max, 
-                                                      self.film_contours),7)
-                self.cbar_ticks = np.around(np.linspace(-self.field_max, 
-                                                         self.field_max, 5),7)
-            else:
-                self.contours = np.around(np.linspace(self.field_min, 
-                                                      -self.field_min, 
-                                                      self.film_contours),2)
-                self.cbar_ticks = np.around(np.linspace(self.field_min, 
-                                                        -self.field_min, 5),7)
-        else:
-            self.contours = np.around(np.linspace(self.film_lim[0], 
-                                                  self.film_lim[1], 
-                                                  self.film_contours),7)
-            self.cbar_ticks = np.around(np.linspace(self.film_lim[0],
-                                                    self.film_lim[1], 5),7)
-
-        plot_options = {'levels':self.contours, 'cmap':'seismic'}
-        options = {'file_name':self.in_field+"_spec_"+str(self.spec_idx),
-                   'film_dir':self.out_dir+'/'+self.film_dir,
-                   'frame_dir':self.out_dir+'/'+self.film_dir+'/film_frames',
-                   'aspect':'equal',
-                   'xlabel':r'$x (m)$',
-                   'ylabel':r'$y (m)$',
-                   'cbar_ticks':self.cbar_ticks,
-                   'cbar_label':r'$\delta X / X (-)$',
-                   'bbox_inches':'tight'}
-
-        options['title'] = []
-        for it in range(self.nt):
-            options['title'].append(r'Time = {0:04d} $\mu s$'.format(
-                                    int(np.round((self.t[it]-self.t[0])*1e6))))
-
-        pf.make_film_2d(self.x - self.x[-1]/2, self.y - self.y[-1]/2, 
-                        self.field_real_space, plot_options=plot_options, 
-                        options=options)
-
-        logging.info("Finished make_film.")
-
