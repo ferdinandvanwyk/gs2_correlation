@@ -53,6 +53,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import f90nml as nml
 import lmfit as lm
 import pyfftw
+from progressbar import ProgressBar, Percentage, Bar
 plt.rcParams.update({'figure.autolayout': True})
 mpl.rcParams['axes.unicode_minus']=False
 pal = sns.color_palette('deep')
@@ -770,7 +771,8 @@ class Simulation(object):
             self.perp_fit_ky = np.empty([self.nt_slices], dtype=float)
             self.perp_fit_ky_err = np.empty([self.nt_slices], dtype=float)
 
-        for it in range(self.nt_slices):
+        pbar = ProgressBar(widgets=['Progress: ', Percentage(), Bar()])
+        for it in pbar(range(self.nt_slices)):
             self.perp_corr_fit(it)
 
         if not self.ky_free:
@@ -1144,7 +1146,8 @@ class Simulation(object):
         self.corr_time_err = np.empty([self.nt_slices, self.nx], dtype=float)
 
         self.field_normalize_time()
-        for it in range(self.nt_slices):
+        pbar = ProgressBar(widgets=['Progress: ', Percentage(), Bar()])
+        for it in pbar(range(self.nt_slices)):
             self.calculate_time_corr(it)
             self.time_norm_mask(it)
             self.time_corr_fit(it)
@@ -1497,7 +1500,8 @@ class Simulation(object):
         self.par_fit_params_err = np.empty([self.nt_slices, 2],
                                            dtype=float)
 
-        for it in range(self.nt_slices):
+        pbar = ProgressBar(widgets=['Progress: ', Percentage(), Bar()])
+        for it in pbar(range(self.nt_slices)):
             self.par_corr_fit(it)
 
         self.par_analysis_summary()
