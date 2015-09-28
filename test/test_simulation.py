@@ -83,7 +83,7 @@ class TestClass(object):
     
     def test_read_input_file(self, run):
         run.read_input_file()
-        assert type(run.input_file) == nml.namelist.NmlDict
+        assert type(run.input_file) == nml.namelist.Namelist
     
     def test_time_interpolate(self, run):
         field_shape = run.field.shape
