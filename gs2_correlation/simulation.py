@@ -1500,8 +1500,7 @@ class Simulation(object):
         self.par_fit_params_err = np.empty([self.nt_slices, 2],
                                            dtype=float)
 
-        pbar = ProgressBar(widgets=['Progress: ', Percentage(), Bar()])
-        for it in pbar(range(self.nt_slices)):
+        for it in range(self.nt_slices):
             self.par_corr_fit(it)
 
         self.par_analysis_summary()
@@ -1540,7 +1539,8 @@ class Simulation(object):
         self.par_corr = np.empty([self.nt, self.nx, self.ny, self.ntheta],
                                  dtype=float)
         l_par_reg = np.linspace(0, self.l_par[-1], self.ntheta)
-        for it in range(self.nt):
+        pbar = ProgressBar(widgets=['Progress: ', Percentage(), Bar()])
+        for it in pbar(range(self.nt)):
             logging.info('Parallel correlation timestep: %d of %d'%(it,self.nt))
             for ix in range(self.nx):
                 for iy in range(self.ny):
