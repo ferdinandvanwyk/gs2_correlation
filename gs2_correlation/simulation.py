@@ -1548,9 +1548,11 @@ class Simulation(object):
                                         self.field_real_space[it,ix,iy,:])
                     self.field_real_space[it,ix,iy,:] = f(l_par_reg)
 
-                    self.field_real_space[it,ix,iy,:] -= \
+                    self.field_real_space[it,ix,iy,:] = \
+                            self.field_real_space[it,ix,iy,:] - \
                             np.mean(self.field_real_space[it,ix,iy,:])
-                    self.field_real_space[it,ix,iy,:] /= \
+                    self.field_real_space[it,ix,iy,:] = \
+                            self.field_real_space[it,ix,iy,:] / \
                             np.std(self.field_real_space[it,ix,iy,:])
 
                     self.par_corr[it,ix,iy,:] = \
