@@ -155,9 +155,8 @@ class Simulation(object):
         self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx, endpoint=False)* \
                      self.rho_ref
         self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny, endpoint=False)* \
-                     self.rho_ref * np.abs(np.tan(self.pitch_angle))* \
-                     (self.rmaj/self.amin) * (self.drho_dpsi) * \
-                     np.cos(self.pitch_angle)
+                     self.rho_ref * np.abs(np.sin(self.pitch_angle))* \
+                     (self.rmaj/self.amin) * (self.drho_dpsi)
 
         self.r_geo = self.input_file['theta_grid_parameters']['R_geo']*self.amin
 
