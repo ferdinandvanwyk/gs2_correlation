@@ -47,6 +47,7 @@ import scipy.integrate as integrate
 import scipy.optimize as opt
 import scipy.signal as sig
 import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -128,7 +129,7 @@ class Simulation(object):
         self.read_netcdf()
 
         if self.out_dir not in os.listdir():
-            os.system("mkdir " + self.out_dir)
+            os.system("mkdir -p " + self.out_dir)
         self.nt = len(self.t)
         self.nkx = len(self.kx)
         self.nky = len(self.ky)
@@ -224,14 +225,6 @@ class Simulation(object):
         self.domain = config_parse.get('general', 'domain',
                                         fallback='full')
 
-        if self.domain == 'full':
-            self.out_dir = 'full_analysis'
-        elif self.domain == 'middle':
-            self.out_dir = 'middle_analysis'
-
-        self.out_dir = config_parse.get('general', 'out_dir',
-                                         fallback=self.out_dir)
-
         self.file_ext = config_parse.get('general', 'file_ext',
                                          fallback='.cdf')
 
@@ -250,6 +243,14 @@ class Simulation(object):
             if not found:
                 raise NameError('No file found ending in ' + self.file_ext)
 
+        # Set out_dir to be the same as the location of netCDF file by default
+        if self.domain == 'full':
+            self.out_dir = self. run_folder + 'full_analysis'
+        elif self.domain == 'middle':
+            self.out_dir = self.run_folder + 'middle_analysis'
+
+        self.out_dir = config_parse.get('general', 'out_dir', 
+                                        fallback=self.out_dir)
         self.g_file = config_parse.get('general', 'g_file', fallback='None')
         if self.g_file == 'None':
             dir_files = os.listdir(self.run_folder)
@@ -1134,9 +1135,9 @@ class Simulation(object):
             self.time_dir = 'time'
 
         if self.time_dir not in os.listdir(self.out_dir):
-            os.system("mkdir " + self.out_dir + '/' + self.time_dir)
+            os.system("mkdir -p " + self.out_dir + '/' + self.time_dir)
         if 'corr_fns' not in os.listdir(self.out_dir+'/'+self.time_dir):
-            os.system("mkdir " + self.out_dir + '/'+self.time_dir+'/corr_fns')
+            os.system("mkdir -p " + self.out_dir + '/'+self.time_dir+'/corr_fns')
         os.system('rm ' + self.out_dir + '/'+self.time_dir+'/corr_fns/*')
 
         self.time_corr = np.empty([self.nt_slices, self.time_slice, self.nx,
@@ -1486,9 +1487,9 @@ class Simulation(object):
         logging.info("Starting par_analysis...")
 
         if 'parallel' not in os.listdir(self.out_dir):
-            os.system("mkdir " + self.out_dir + '/parallel')
+            os.system("mkdir -p " + self.out_dir + '/parallel')
         if 'corr_fns' not in os.listdir(self.out_dir + '/parallel'):
-            os.system("mkdir " + self.out_dir + '/parallel/corr_fns')
+            os.system("mkdir -p " + self.out_dir + '/parallel/corr_fns')
         os.system('rm ' + self.out_dir + '/parallel/corr_fns/*')
 
         self.calculate_l_par()
@@ -1700,7 +1701,7 @@ class Simulation(object):
         logging.info("Starting write_field...")
 
         if 'write_field' not in os.listdir(self.out_dir):
-            os.system("mkdir " + self.out_dir + '/write_field')
+            os.system("mkdir -p " + self.out_dir + '/write_field')
 
         if self.write_field_interp_x:
             #interpolate radial coordinate to be approx 0.5cm
@@ -1759,7 +1760,7 @@ class Simulation(object):
         logging.info("Starting write_field_full...")
 
         if 'write_field_full' not in os.listdir(self.out_dir):
-            os.system("mkdir " + self.out_dir + '/write_field_full')
+            os.system("mkdir -p " + self.out_dir + '/write_field_full')
 
         self.calculate_l_par()
 
