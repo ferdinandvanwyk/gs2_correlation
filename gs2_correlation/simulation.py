@@ -62,6 +62,7 @@ pal = sns.color_palette('deep')
 import gs2_correlation.fitting_functions as fit
 import gs2_correlation.plot_style as plot_style
 
+
 class Simulation(object):
     """
     Class containing all simulation information.

@@ -3,6 +3,7 @@ lmfit
 matplotlib
 netCDF4
 numpy
+pep8
 progressbar2
 py
 pytest
