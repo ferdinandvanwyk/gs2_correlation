@@ -41,7 +41,7 @@ import warnings
 
 # Third Party
 import numpy as np
-from scipy.io import netcdf
+from netCDF4 import Dataset
 import scipy.interpolate as interp
 import scipy.integrate as integrate
 import scipy.optimize as opt
@@ -333,7 +333,7 @@ class Simulation(object):
         self.time_range = str(config_parse.get('general',
                                                'time_range', fallback='[0,-1]'))
         self.time_range = self.time_range[1:-1].split(',')
-        self.time_range = [float(s) for s in self.time_range]
+        self.time_range = [int(s) for s in self.time_range]
         if self.time_range[1] == -1:
             self.time_range[1] = None
 
@@ -458,14 +458,13 @@ class Simulation(object):
         """
         logging.info('Start reading from NetCDf file...')
 
-        self.ncfile = netcdf.netcdf_file(self.cdf_file, 'r')
+        self.ncfile = Dataset(self.cdf_file, 'r')
 
         # NetCDF order is [t, species, ky, kx, theta, r]
-        # ncfile.variable returns netcdf object - convert to array
         if self.theta_idx == None:
             self.field = np.array(self.ncfile.variables[self.in_field]
-                                            [self.time_range[0]:self.time_range[1],
-                                             self.spec_idx,:,:,self.theta_idx,:])
+                                        [self.time_range[0]:self.time_range[1],
+                                         self.spec_idx,:,:,self.theta_idx,:])
         else:
             self.field = np.array(self.ncfile.variables[self.in_field]
                                             [self.time_range[0]:self.time_range[1],
@@ -484,7 +483,7 @@ class Simulation(object):
         self.kx = np.array(self.ncfile.variables['kx'][:])
         self.ky = np.array(self.ncfile.variables['ky'][:])
         self.theta = np.array(self.ncfile.variables['theta'][:])
-        self.drho_dpsi = float(self.ncfile.variables['drhodpsi'].data)
+        self.drho_dpsi = float(self.ncfile.variables['drhodpsi'][:])
         self.gradpar = np.array(self.ncfile.variables['gradpar'][:])/self.amin
         try:
             self.bpol = np.array(self.ncfile.variables['bpol'][:])*self.bref
@@ -1718,13 +1717,11 @@ class Simulation(object):
             field_real_space_nc = self.field_real_space
 
         if self.lab_frame:
-            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' +
-                                         self.in_field +'_lab_frame.cdf', 'w',
-                                         version=2)
+            nc_file = Dataset(self.out_dir + '/write_field/' +
+                              self.in_field +'_lab_frame.cdf', 'w')
         elif not self.lab_frame:
-            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field/' +
-                                         self.in_field +'.cdf', 'w',
-                                         version=2)
+            nc_file = Dataset(self.out_dir + '/write_field/' +
+                              self.in_field +'.cdf', 'w')
         nc_file.createDimension('x', len(x_nc))
         nc_file.createDimension('y', self.ny)
         nc_file.createDimension('t', self.nt)
@@ -1782,13 +1779,11 @@ class Simulation(object):
             field_real_space_nc = self.field_real_space
 
         if self.lab_frame:
-            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field_full/' +
-                                         self.in_field +'_lab_frame.cdf', 'w',
-                                         version=2)
+            nc_file = Dataset(self.out_dir + '/write_field_full/' +
+                              self.in_field +'_lab_frame.cdf', 'w')
         elif not self.lab_frame:
-            nc_file = netcdf.netcdf_file(self.out_dir + '/write_field_full/' +
-                                         self.in_field +'.cdf', 'w',
-                                         version=2)
+            nc_file = Dataset(self.out_dir + '/write_field_full/' +
+                              self.in_field +'.cdf', 'w')
         nc_file.createDimension('x', len(x_nc))
         nc_file.createDimension('y', self.ny)
         nc_file.createDimension('z', self.ntheta)

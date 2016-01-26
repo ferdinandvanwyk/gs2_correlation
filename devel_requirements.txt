@@ -1,6 +1,7 @@
 f90nml
 lmfit
 matplotlib
+netCDF4
 numpy
 progressbar2
 py

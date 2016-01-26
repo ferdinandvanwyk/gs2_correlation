@@ -79,7 +79,7 @@ Instance Variables of Simulation Class
        domain, this sets the approximate [radial, poloidal] size of this 
        box in m. This variable is only used when domain = 'middle'
    time_range : array_like, [0,-1]
-       Time range for which analysis is done. Default is entire range. -1
+       Time index range for which analysis is done. Default is entire range. -1
        for the final time step is interpreted as up to the final time step,
        inclusively.
    npeaks_fit : int
@@ -316,7 +316,7 @@ Configuration Variables
        domain, this sets the approximate [radial, poloidal] size of this 
        box in m. This variable is only used when domain = 'middle'
    time_range : array_like, [0,-1]
-       Time range for which analysis is done. Default is entire range. -1
+       Time index range for which analysis is done. Default is entire range. -1
        for the final time step is interpreted as up to the final time step,
        inclusively.
    npeaks_fit : int, 5
