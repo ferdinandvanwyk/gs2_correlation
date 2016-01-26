@@ -1025,7 +1025,7 @@ class Simulation(object):
         plot_style.white()
         fig, ax = plt.subplots(1, 1)
         plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_x),
-                     yerr=self.perp_fit_x_err)
+                     yerr=self.perp_fit_x_err, capthick=1, capsize=5)
         plt.xlabel('Time Window')
         plt.ylabel(r'$l_x$ (m)')
         plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.perp_fit_x[0])))
@@ -1039,7 +1039,7 @@ class Simulation(object):
         plot_style.white()
         fig, ax = plt.subplots(1, 1)
         plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_y),
-                     yerr=self.perp_fit_y_err)
+                     yerr=self.perp_fit_y_err, capthick=1, capsize=5)
         plt.xlabel('Time Window')
         plt.ylabel(r'$l_y$ (m)')
         plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.perp_fit_y)))
@@ -1063,7 +1063,7 @@ class Simulation(object):
             plot_style.white()
             fig, ax = plt.subplots(1, 1)
             plt.errorbar(range(self.nt_slices), np.abs(self.perp_fit_ky),
-                         yerr=self.perp_fit_ky_err)
+                         yerr=self.perp_fit_ky_err, capthick=1, capsize=5)
             plt.xlabel('Time Window')
             plt.ylabel(r'$k_y (m^{-1})$')
             plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.perp_fit_ky)))
@@ -1464,7 +1464,8 @@ class Simulation(object):
         plt.clf()
         fig, ax = plt.subplots(1, 1)
         t_error = np.nanstd(self.corr_time*1e6, axis=0)
-        plt.errorbar(self.x, np.nanmean(self.corr_time*1e6, axis=0), yerr=t_error)
+        plt.errorbar(self.x, np.nanmean(self.corr_time*1e6, axis=0), 
+                     yerr=t_error, capthick=1, capsize=5)
         plt.ylim(ymin=0)
         plt.xlabel("Radius (m)")
         plt.ylabel(r'Correlation Time $\tau_c$ ($\mu$ s)')
@@ -1666,7 +1667,8 @@ class Simulation(object):
         plt.clf()
         fig, ax = plt.subplots(1, 1)
         plt.errorbar(range(self.nt_slices), np.abs(self.par_fit_params[:,0]),
-                     yerr=self.par_fit_params_err[:,0])
+                     yerr=self.par_fit_params_err[:,0], capthick=1, 
+                     capsize=5)
         plt.xlabel('Time Window')
         plt.ylabel(r'Parallel Correlation Length $l_{\parallel} (m)$')
         plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.par_fit_params[:,0])))
@@ -1678,7 +1680,7 @@ class Simulation(object):
         plt.clf()
         fig, ax = plt.subplots(1, 1)
         plt.errorbar(range(self.nt_slices), np.abs(self.par_fit_params[:,1]),
-                     yerr=self.par_fit_params_err[:,1])
+                     yerr=self.par_fit_params_err[:,1], capthick=1, capsize=5)
         plt.xlabel('Time Window')
         plt.ylabel(r'Parallel Correlation Wavenumber $k_{\parallel} (m^{-1})$')
         plt.ylim(ymin=0, ymax=2*np.mean(np.abs(self.par_fit_params[:,1])))

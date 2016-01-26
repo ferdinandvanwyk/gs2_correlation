@@ -46,11 +46,11 @@ def white():
     The plots are set up to have
     * White backgrounds
     * Grey minor and major gridlines
-    * x and y ticks on bottom and left axes 
+    * x and y ticks on bottom and left axes
     * Thin black outer border
     * Minor grid lines halfway between major ticks
     """
-    sns.set_style('whitegrid', {'axes.edgecolor':'0.1', 
+    sns.set_style('whitegrid', {'axes.edgecolor':'0.1',
                                 'legend.frameon': True,
                                 'xtick.color': '.15',
                                 'xtick.major.size': 5,
@@ -62,9 +62,9 @@ def white():
                                 'ytick.direction': 'out',
                                 'axes.axisbelow': True,
                                 'axes.linewidth': 0.4,
-                                'font.family' : 'sans-serif',                       
-                                'font.sans-serif' : ['Helvetica', 'Arial',          
-                                                     'Verdana', 'sans-serif'] 
+                                'font.family' : 'sans-serif',
+                                'font.sans-serif' : ['Helvetica', 'Arial',
+                                                     'Verdana', 'sans-serif']
                                 })
 
 def minor_grid(ax):
@@ -85,10 +85,10 @@ def dark():
     The plots are set up to have
     * 'Dark' backgrounds (not usually visible)
     * White major gridlines in front of the plot
-    * x and y ticks on bottom and left axes 
+    * x and y ticks on bottom and left axes
     * Thin black outer border
     """
-    sns.set_style('darkgrid', {'axes.edgecolor':'0.1', 
+    sns.set_style('darkgrid', {'axes.edgecolor':'0.1',
                                'legend.frameon': True,
                                'xtick.color': '.15',
                                'xtick.major.size': 5,
@@ -100,9 +100,9 @@ def dark():
                                'ytick.direction': 'out',
                                'axes.axisbelow': False,
                                'axes.linewidth': 0.4,
-                               'font.family' : 'sans-serif',                       
-                               'font.sans-serif' : ['Helvetica', 'Arial',          
-                                                     'Verdana', 'sans-serif'] 
+                               'font.family' : 'sans-serif',
+                               'font.sans-serif' : ['Helvetica', 'Arial',
+                                                     'Verdana', 'sans-serif']
                                })
 
 def ticks_bottom_left(ax):
