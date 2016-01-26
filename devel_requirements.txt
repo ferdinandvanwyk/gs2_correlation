@@ -1,0 +1,11 @@
+f90nml
+lmfit
+matplotlib
+numpy
+progressbar2
+py
+pytest
+pyfftw
+scipy
+sphinx
+seaborn
