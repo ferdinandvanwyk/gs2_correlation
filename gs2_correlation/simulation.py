@@ -285,31 +285,31 @@ class Simulation(object):
                 self.in_file = self.find_file_with_ext('.in')
             except NameError:
                 # Take from extract_input_file in the GS2 scripts folder:
-                #1: Get the input_file variable from the netcdf file                            
-                #2: Only print lines between '${VAR} = "' and '" ;' 
+                #1: Get the input_file variable from the netcdf file
+                #2: Only print lines between '${VAR} = "' and '" ;'
                 #   (i.e. ignore header and footer)
-                #3: Convert \\n to new lines                                                    
-                #4: Delete empty lines                                                          
-                #5: Ignore first line                                                           
-                #6: Ignore last line                                                            
-                #7: Fix " style quotes                                                          
+                #3: Convert \\n to new lines
+                #4: Delete empty lines
+                #5: Ignore first line
+                #6: Ignore last line
+                #7: Fix " style quotes
                 #8: Fix ' style quotes
                 bash_extract_input = (""" ncdump -v input_file ${FILE} | """ +
-                                  """ sed -n '/input_file = /,/" ;/p' | """ + 
+                                  """ sed -n '/input_file = /,/" ;/p' | """ +
                                   """ sed 's|\\\\\\\\n|\\n|g' | """ +
                                   """ sed '/^ *$/d' | """ +
                                   """ tail -n+2 | """ +
                                   """ head -n-2 | """ +
                                   """ sed 's|\\\\\\"|\\"|g' | """ +
                                   """ sed "s|\\\\\\'|\\'|g" """)
-                os.system('FILE=' + self.cdf_file + '; ' +  
+                os.system('FILE=' + self.cdf_file + '; ' +
                           bash_extract_input + ' > ' +
                           self.run_folder + 'input_file.in')
 
                 self.in_file = self.run_folder + 'input_file.in'
             else:
                NameError('No .in file and could not extract form NetCDF file. '
-                         'Please specify in_file in config file.') 
+                         'Please specify in_file in config file.')
 
         self.in_field = str(config_parse['general']['field'])
 
@@ -656,7 +656,7 @@ class Simulation(object):
             for iy in range(self.nky):
                 for ith in range(self.ntheta):
                     self.field[:,ix,iy,ith] = self.field[:,ix,iy,ith] * \
-                                              np.exp(1j * self.n0 * iy * 
+                                              np.exp(1j * self.n0 * iy *
                                                      self.omega * self.t)
 
     def field_to_real_space(self):
