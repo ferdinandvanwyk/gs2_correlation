@@ -27,6 +27,9 @@ class TestClass(object):
     def test_init(self, run):
         assert type(run.config_file) == str
 
+    def test_find_file(self, run):
+        assert run.find_file_with_ext('.g') == 'test/test_run/v/id_1/v_id_1.g'
+
     def test_read(self, run):
         run.read_config()
         assert type(run.domain) == str
@@ -55,13 +58,14 @@ class TestClass(object):
         assert type(run.par_guess) == list
 
         assert type(run.amin) == float
-        assert type(run.vth) == float
-        assert type(run.rho_ref) == float
         assert type(run.bref) == float
-        assert type(run.nref) == float
-        assert type(run.tref) == float
-        assert type(run.omega) == float
         assert type(run.dpsi_da) == float
+        assert type(run.nref) == float
+        assert type(run.omega) == float
+        assert type(run.rho_ref) == float
+        assert type(run.rho_tor) == float
+        assert type(run.tref) == float
+        assert type(run.vth) == float
 
         assert type(run.seaborn_context) == str
         assert type(run.write_field_interp_x) == bool
@@ -76,7 +80,7 @@ class TestClass(object):
         field_shape = run.field.shape
         arr_shapes = (run.nt, run.nkx, run.nky, run.ntheta)
         assert field_shape == arr_shapes
-
+ 
     def test_read_geometry_file(self, run):
         run.read_geometry_file()
         assert run.geometry.shape[1] > 6
@@ -84,6 +88,15 @@ class TestClass(object):
     def test_read_input_file(self, run):
         run.read_input_file()
         assert type(run.input_file) == nml.namelist.Namelist
+    
+    def test_read_extracted_input_file(self, run):
+        os.system('mv test/test_run/v/id_1/v_id_1.in test/test_run/v/id_1/v_id_1.tmp')
+        os.system('mv test/test_run/v/id_1/.v_id_1.in test/test_run/v/id_1/.v_id_1.tmp')
+        run.read_config()
+        run.read_input_file()
+        assert type(run.input_file) == nml.namelist.Namelist
+        os.system('mv test/test_run/v/id_1/v_id_1.tmp test/test_run/v/id_1/v_id_1.in')
+        os.system('mv test/test_run/v/id_1/.v_id_1.tmp test/test_run/v/id_1/.v_id_1.in')
     
     def test_time_interpolate(self, run):
         field_shape = run.field.shape
@@ -106,7 +119,7 @@ class TestClass(object):
     def test_to_lab_frame(self, run):
         run.field = np.ones([51,5,6,9])
         run.to_lab_frame()
-        assert np.abs(run.field[5,0,3,0] - np.real(np.exp(1j*3*10*run.omega*run.t[5]))) < 1e-5
+        assert np.abs(run.field[5,0,3,0] - np.real(np.exp(1j*3*5*run.omega*run.t[5]))) < 1e-5
 
     def test_field_to_complex(self, run):
         assert np.iscomplexobj(run.field) == True 
@@ -120,7 +133,7 @@ class TestClass(object):
         assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
         
     def test_domain_reduce(self, run):
-        run.box_size = [0.1, 0.1]
+        run.box_size = [0.0005, 0.25]
         original_max_x = run.x[-1]
         original_max_y = run.y[-1]
         run.field_real_space = run.field_real_space[:,:,:,np.newaxis]

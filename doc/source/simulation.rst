@@ -100,6 +100,9 @@ Instance Variables of Simulation Class
        Larmor radius of the reference species in *m*.
    rho_star : float
        The expansion parameter defined as rho_ref/amin.
+   rho_tor : float
+       Radial location of the flux tube in terms of the square root of the
+       normalized toroidal magnetic flux.
    pitch_angle : float
        Pitch angle of the magnetic field lines in *rad*.
    rmaj : float, 0
@@ -118,6 +121,8 @@ Instance Variables of Simulation Class
        Gradient of flux surface label with respect to psi.
    gradpar : array_like
        Value of the parallel gradient as a function of theta.
+   r_prime : array_like
+       Value of Rprime as a function of theta. 
    seaborn_context : str
        Context for plot output: paper, notebook, talk, poster. See:
        http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
@@ -166,6 +171,8 @@ Instance Variables of Simulation Class
        Number of time slices. nt_slices = nt/time_slice 
    x : array_like
        Values of the real space x (radial) grid.
+   x_box_size : float
+       Real space size of the box in the x-direction.
    dx : array_like
        Values of the dx (radial separation) grid.
    fit_dx : array_like
@@ -342,6 +349,9 @@ Configuration Variables
        Reference magnetic field at the centre of the LCFS.
    rho_ref : float
        Larmor radius of the reference species in *m*.
+   rho_tor : float
+       Radial location of the flux tube in terms of the square root of the
+       normalized toroidal magnetic flux.
    nref : float, 1
        Density of the reference species in m^-3.
    tref : float, 1

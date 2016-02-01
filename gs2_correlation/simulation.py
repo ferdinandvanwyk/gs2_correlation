@@ -146,21 +146,24 @@ class Simulation(object):
         self.dR_drho = self.geometry[:,4]*self.amin
         self.dZ_drho = self.geometry[:,5]*self.amin
         self.dalpha_drho = self.geometry[:,6]*self.amin
-        theta_len = len(self.R)
+        self.geo_ntheta = len(self.R)
 
-        self.rmaj = self.R[int(theta_len/2)]*self.amin
-        self.pitch_angle = np.arctan(self.Z[int(theta_len/2)+1]/ \
-                           (self.R[int(theta_len/2)] * \
-                           self.tor_phi[int(theta_len/2)+1]))
+        self.rmaj = self.R[int(self.geo_ntheta/2)]*self.amin
+        self.pitch_angle = np.arctan(self.Z[int(self.geo_ntheta/2)+1]/ \
+                           (self.R[int(self.geo_ntheta/2)] * \
+                           self.tor_phi[int(self.geo_ntheta/2)+1]))
 
         self.t = self.t*self.amin/self.vth
-        self.x = np.linspace(0, 2*np.pi/self.kx[1], self.nx, endpoint=False)* \
+        # Determine the box size in terms of fluex surface label rho
+        self.n0 = int(np.around(self.ky[1]*(self.amin/self.rho_ref)))
+        delta_rho = (self.rho_tor/self.qinp) * (self.jtwist/(self.n0*self.shat))
+        self.x_box_size = (self.r_prime[int(self.geo_ntheta/2)] * delta_rho *
+                           self.amin)
+        self.x = np.linspace(0, self.x_box_size, self.nx, endpoint=False)* \
                      self.rho_ref
         self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny, endpoint=False)* \
                      self.rho_ref * np.abs(np.sin(self.pitch_angle))* \
-                     (self.rmaj/self.amin) * (self.drho_dpsi)
-
-        self.r_geo = self.input_file['theta_grid_parameters']['R_geo']*self.amin
+                     (self.rmaj/self.amin)
 
         self.btor = self.bref*self.r_geo/self.R[int(self.ntheta/2)]
         self.bmag = np.sqrt(self.btor**2 + self.bpol**2)
@@ -191,6 +194,29 @@ class Simulation(object):
         if self.analysis != 'par' and self.analysis != 'write_field_full':
             self.field_real_space = self.field_real_space[:,:,:,0]
 
+    def find_file_with_ext(self, ext):
+        """
+        Find a file in the run_folder with the extension ext
+
+        Parameters
+        ----------
+        ext : str
+            Extension of the file to be searched for. Of the form '.ext'.
+        """
+
+        dir_files = os.listdir(self.run_folder)
+        found = False
+        for s in dir_files:
+            if s.find(ext) != -1:
+                found_file = self.run_folder + s
+                found = True
+                break
+
+        if found:
+            return(found_file)
+        else:
+            raise NameError('No file found ending in ' + ext)
+
     def read_config(self):
         """
         Reads analysis and normalization parameters from self.config_file.
@@ -209,14 +235,18 @@ class Simulation(object):
         ##########################
 
         self.amin = float(config_parse['normalization']['a_minor'])
-        self.vth = float(config_parse['normalization']['vth_ref'])
-        self.rho_ref = float(config_parse['normalization']['rho_ref'])
         self.bref = float(config_parse['normalization']['bref'])
-        self.nref = float(config_parse.get('normalization', 'nref', fallback=1))
-        self.tref = float(config_parse.get('normalization', 'tref', fallback=1))
-        self.omega = float(config_parse.get('normalization', 'omega', fallback=0))
         self.dpsi_da = float(config_parse.get('normalization', 'dpsi_da',
                                               fallback=0))
+        self.nref = float(config_parse.get('normalization', 'nref',
+                                           fallback=1))
+        self.omega = float(config_parse.get('normalization', 'omega',
+                                            fallback=0))
+        self.rho_ref = float(config_parse['normalization']['rho_ref'])
+        self.rho_tor = float(config_parse['normalization']['rho_tor'])
+        self.tref = float(config_parse.get('normalization', 'tref',
+                                           fallback=1))
+        self.vth = float(config_parse['normalization']['vth_ref'])
 
         ####################
         # General Namelist #
@@ -232,16 +262,7 @@ class Simulation(object):
         self.run_folder = str(config_parse['general']['run_folder'])
         self.cdf_file = config_parse.get('general', 'cdf_file', fallback='None')
         if self.cdf_file == "None":
-            dir_files = os.listdir(self.run_folder)
-            found = False
-            for s in dir_files:
-                if s.find(self.file_ext) != -1:
-                    self.cdf_file = self.run_folder + s
-                    found = True
-                    break
-
-            if not found:
-                raise NameError('No file found ending in ' + self.file_ext)
+            self.cdf_file = self.find_file_with_ext(self.file_ext)
 
         # Set out_dir to be the same as the location of netCDF file by default
         if self.domain == 'full':
@@ -249,33 +270,46 @@ class Simulation(object):
         elif self.domain == 'middle':
             self.out_dir = self.run_folder + 'middle_analysis'
 
-        self.out_dir = config_parse.get('general', 'out_dir', 
+        self.out_dir = config_parse.get('general', 'out_dir',
                                         fallback=self.out_dir)
         self.g_file = config_parse.get('general', 'g_file', fallback='None')
         if self.g_file == 'None':
-            dir_files = os.listdir(self.run_folder)
-            found = False
-            for s in dir_files:
-                if s.find('.g') != -1:
-                    self.g_file = self.run_folder + s
-                    found = True
-                    break
+            self.g_file = self.find_file_with_ext('.g')
 
-            if not found:
-                raise NameError('No file found ending in .g')
-
+        # Try to find input file in same dir as output file, otherwise try to
+        # extract from the NetCDF file (only present when using the new
+        # diagnostic routines.)
         self.in_file = config_parse.get('general', 'in_file', fallback='None')
         if self.in_file == 'None':
-            dir_files = os.listdir(self.run_folder)
-            found = False
-            for s in dir_files:
-                if s.find('.in') != -1:
-                    self.in_file = self.run_folder + s
-                    found = True
-                    break
+            try:
+                self.in_file = self.find_file_with_ext('.in')
+            except NameError:
+                # Take from extract_input_file in the GS2 scripts folder:
+                #1: Get the input_file variable from the netcdf file                            
+                #2: Only print lines between '${VAR} = "' and '" ;' 
+                #   (i.e. ignore header and footer)
+                #3: Convert \\n to new lines                                                    
+                #4: Delete empty lines                                                          
+                #5: Ignore first line                                                           
+                #6: Ignore last line                                                            
+                #7: Fix " style quotes                                                          
+                #8: Fix ' style quotes
+                bash_extract_input = (""" ncdump -v input_file ${FILE} | """ +
+                                  """ sed -n '/input_file = /,/" ;/p' | """ + 
+                                  """ sed 's|\\\\\\\\n|\\n|g' | """ +
+                                  """ sed '/^ *$/d' | """ +
+                                  """ tail -n+2 | """ +
+                                  """ head -n-2 | """ +
+                                  """ sed 's|\\\\\\"|\\"|g' | """ +
+                                  """ sed "s|\\\\\\'|\\'|g" """)
+                os.system('FILE=' + self.cdf_file + '; ' +  
+                          bash_extract_input + ' > ' +
+                          self.run_folder + 'input_file.in')
 
-            if not found:
-                raise NameError('No file found ending in .in')
+                self.in_file = self.run_folder + 'input_file.in'
+            else:
+               NameError('No .in file and could not extract form NetCDF file. '
+                         'Please specify in_file in config file.') 
 
         self.in_field = str(config_parse['general']['field'])
 
@@ -482,11 +516,12 @@ class Simulation(object):
         if len(self.field.shape) < 5:
             self.field = self.field[:,:,:,np.newaxis,:]
 
-        self.kx = np.array(self.ncfile.variables['kx'][:])
-        self.ky = np.array(self.ncfile.variables['ky'][:])
-        self.theta = np.array(self.ncfile.variables['theta'][:])
         self.drho_dpsi = float(self.ncfile.variables['drhodpsi'][:])
+        self.kx = np.array(self.ncfile.variables['kx'][:])/self.drho_dpsi
+        self.ky = np.array(self.ncfile.variables['ky'][:])/self.drho_dpsi
+        self.theta = np.array(self.ncfile.variables['theta'][:])
         self.gradpar = np.array(self.ncfile.variables['gradpar'][:])/self.amin
+        self.r_prime = np.array(self.ncfile.variables['Rprime'][:])
         try:
             self.bpol = np.array(self.ncfile.variables['bpol'][:])*self.bref
         except KeyError:
@@ -513,6 +548,12 @@ class Simulation(object):
         logging.info('Reading input file...')
 
         self.input_file = nml.read(self.in_file)
+
+        self.r_geo = self.input_file['theta_grid_parameters']['R_geo']*self.amin
+        self.rhoc = float(self.input_file['theta_grid_parameters']['rhoc'])
+        self.qinp = float(self.input_file['theta_grid_parameters']['qinp'])
+        self.shat = float(self.input_file['theta_grid_parameters']['shat'])
+        self.jtwist = float(self.input_file['kt_grids_box_parameters']['jtwist'])
 
         logging.info('Finished reading input file.')
 
@@ -611,12 +652,12 @@ class Simulation(object):
                http://gyrokinetics.sourceforge.net/wiki/index.php/Documents,
                http://svn.code.sf.net/p/gyrokinetics/code/wikifiles/CMR/ExB_GS2.pdf
         """
-        n0 = int(self.ky[1]*(self.amin/self.rho_ref)*self.dpsi_da)
         for ix in range(self.nkx):
             for iy in range(self.nky):
                 for ith in range(self.ntheta):
-                    self.field[:,ix,iy,ith] = self.field[:,ix,iy,ith]*np.exp(1j * \
-                                                n0 * iy * self.omega * self.t)
+                    self.field[:,ix,iy,ith] = self.field[:,ix,iy,ith] * \
+                                              np.exp(1j * self.n0 * iy * 
+                                                     self.omega * self.t)
 
     def field_to_real_space(self):
         """
@@ -1464,7 +1505,7 @@ class Simulation(object):
         plt.clf()
         fig, ax = plt.subplots(1, 1)
         t_error = np.nanstd(self.corr_time*1e6, axis=0)
-        plt.errorbar(self.x, np.nanmean(self.corr_time*1e6, axis=0), 
+        plt.errorbar(self.x, np.nanmean(self.corr_time*1e6, axis=0),
                      yerr=t_error, capthick=1, capsize=5)
         plt.ylim(ymin=0)
         plt.xlabel("Radius (m)")
@@ -1667,7 +1708,7 @@ class Simulation(object):
         plt.clf()
         fig, ax = plt.subplots(1, 1)
         plt.errorbar(range(self.nt_slices), np.abs(self.par_fit_params[:,0]),
-                     yerr=self.par_fit_params_err[:,0], capthick=1, 
+                     yerr=self.par_fit_params_err[:,0], capthick=1,
                      capsize=5)
         plt.xlabel('Time Window')
         plt.ylabel(r'Parallel Correlation Length $l_{\parallel} (m)$')
