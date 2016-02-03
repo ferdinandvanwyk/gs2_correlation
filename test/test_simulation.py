@@ -12,7 +12,7 @@ import f90nml as nml
 from gs2_correlation.simulation import Simulation
 
 class TestClass(object):
-    
+
     def setup_class(self):
         os.system('tar -zxf test/test_run.tar.gz -C test/.')
 
@@ -80,15 +80,15 @@ class TestClass(object):
         field_shape = run.field.shape
         arr_shapes = (run.nt, run.nkx, run.nky, run.ntheta)
         assert field_shape == arr_shapes
- 
+
     def test_read_geometry_file(self, run):
         run.read_geometry_file()
         assert run.geometry.shape[1] > 6
-    
+
     def test_read_input_file(self, run):
         run.read_input_file()
         assert type(run.input_file) == nml.namelist.Namelist
-    
+
     def test_read_extracted_input_file(self, run):
         os.system('mv test/test_run/v/id_1/v_id_1.in test/test_run/v/id_1/v_id_1.tmp')
         os.system('mv test/test_run/v/id_1/.v_id_1.in test/test_run/v/id_1/.v_id_1.tmp')
@@ -97,12 +97,12 @@ class TestClass(object):
         assert type(run.input_file) == nml.namelist.Namelist
         os.system('mv test/test_run/v/id_1/v_id_1.tmp test/test_run/v/id_1/v_id_1.in')
         os.system('mv test/test_run/v/id_1/.v_id_1.tmp test/test_run/v/id_1/.v_id_1.in')
-    
+
     def test_time_interpolate(self, run):
         field_shape = run.field.shape
         arr_shapes = (run.nt, run.nkx, run.nky, run.ntheta)
         assert field_shape == arr_shapes
-        
+
     def test_time_interpolate_4(self, run):
         run.time_interp_fac = 4
         arr_shapes = (run.time_interp_fac*run.nt, run.nkx, run.nky, run.ntheta)
@@ -122,7 +122,7 @@ class TestClass(object):
         assert np.abs(run.field[5,0,3,0] - np.real(np.exp(1j*3*5*run.omega*run.t[5]))) < 1e-5
 
     def test_field_to_complex(self, run):
-        assert np.iscomplexobj(run.field) == True 
+        assert np.iscomplexobj(run.field) == True
 
     def test_fourier_correction(self, run):
         run.field = np.ones([51, 5, 5, 9])
@@ -131,7 +131,7 @@ class TestClass(object):
 
     def test_field_to_real_space(self, run):
         assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
-        
+
     def test_domain_reduce(self, run):
         run.box_size = [0.0005, 0.25]
         original_max_x = run.x[-1]
@@ -162,17 +162,17 @@ class TestClass(object):
         assert len(run.perp_fit_x_err) == run.nt_slices
         assert len(run.perp_fit_y) == run.nt_slices
         assert len(run.perp_fit_y_err) == run.nt_slices
-        assert ('perp_fit_params.csv' in 
+        assert ('perp_fit_params.csv' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed'))
-        assert ('corr_x_fit_it_0.pdf' in 
+        assert ('corr_x_fit_it_0.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed/corr_fns_x'))
-        assert ('corr_y_fit_it_0.pdf' in 
+        assert ('corr_y_fit_it_0.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed/corr_fns_y'))
-        assert ('perp_fit_x_vs_time_slice.pdf' in 
+        assert ('perp_fit_x_vs_time_slice.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed'))
-        assert ('perp_fit_y_vs_time_slice.pdf' in 
+        assert ('perp_fit_y_vs_time_slice.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed'))
-        assert ('perp_fit_summary.csv' in 
+        assert ('perp_fit_summary.csv' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed'))
 
     def test_perp_analysis_ky_free(self, run):
@@ -185,19 +185,19 @@ class TestClass(object):
         assert len(run.perp_fit_y_err) == run.nt_slices
         assert len(run.perp_fit_ky) == run.nt_slices
         assert len(run.perp_fit_ky_err) == run.nt_slices
-        assert ('perp_fit_params.csv' in 
+        assert ('perp_fit_params.csv' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
-        assert ('corr_x_fit_it_0.pdf' in 
+        assert ('corr_x_fit_it_0.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_free/corr_fns_x'))
-        assert ('corr_y_fit_it_0.pdf' in 
+        assert ('corr_y_fit_it_0.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_free/corr_fns_y'))
-        assert ('perp_fit_x_vs_time_slice.pdf' in 
+        assert ('perp_fit_x_vs_time_slice.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
-        assert ('perp_fit_y_vs_time_slice.pdf' in 
+        assert ('perp_fit_y_vs_time_slice.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
-        assert ('perp_fit_ky_vs_time_slice.pdf' in 
+        assert ('perp_fit_ky_vs_time_slice.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
-        assert ('perp_fit_summary.csv' in 
+        assert ('perp_fit_summary.csv' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
 
     def test_field_normalize_perp(self, run):
@@ -227,7 +227,7 @@ class TestClass(object):
         assert np.abs(run.fluc_level - np.mean(np.sqrt(np.mean(run.field_real_space**2, axis=0)))) < 1e-5
         assert np.abs(run.fluc_level_std - np.std(np.sqrt(np.mean(run.field_real_space**2, axis=0)))) < 1e-5
         assert ('fluctuation_summary.csv' in os.listdir('test/test_run/v/id_1/analysis/perp'))
-    
+
     def test_time_analysis(self, run):
         run.lab_frame = False
         run.time_analysis()
@@ -264,11 +264,11 @@ class TestClass(object):
         assert run.par_corr.shape == (51,5,5,9)
         assert ('par_fit_params.csv' in os.listdir('test/test_run/v/id_1/analysis/parallel'))
         assert ('par_fit_summary.csv' in os.listdir('test/test_run/v/id_1/analysis/parallel'))
-        assert ('par_fit_length_vs_time_slice.pdf' in 
+        assert ('par_fit_length_vs_time_slice.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/parallel'))
-        assert ('par_fit_wavenumber_vs_time_slice.pdf' in 
+        assert ('par_fit_wavenumber_vs_time_slice.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/parallel'))
-        assert ('par_fit_it_0.pdf' in 
+        assert ('par_fit_it_0.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/parallel/corr_fns'))
 
     def test_calculate_l_par(self, run):
@@ -280,7 +280,7 @@ class TestClass(object):
         run.ntheta = 9
         run.calculate_l_par()
         run.calculate_par_corr()
-        assert np.abs(np.abs(run.l_par[1] - run.l_par[0]) - 
+        assert np.abs(np.abs(run.l_par[1] - run.l_par[0]) -
                 np.abs(run.l_par[-1]/(run.ntheta-1))) < 1e-5
         assert run.par_corr.shape == (51,5,5,9)
 

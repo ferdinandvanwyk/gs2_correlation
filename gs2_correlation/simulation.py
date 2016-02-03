@@ -122,8 +122,6 @@ class Simulation(object):
         # Set plot options
         sns.set_context(self.seaborn_context)
 
-        self.rho_star = self.rho_ref/self.amin
-
         self.read_input_file()
         self.read_geometry_file()
         self.read_netcdf()
@@ -148,7 +146,8 @@ class Simulation(object):
         self.dalpha_drho = self.geometry[:,6]*self.amin
         self.geo_ntheta = len(self.R)
 
-        self.rmaj = self.R[int(self.geo_ntheta/2)]*self.amin
+        self.rho_star = self.rho_ref/self.amin
+        self.rmaj = self.R[int(self.geo_ntheta/2)]
         self.pitch_angle = np.arctan(self.Z[int(self.geo_ntheta/2)+1]/ \
                            (self.R[int(self.geo_ntheta/2)] * \
                            self.tor_phi[int(self.geo_ntheta/2)+1]))
@@ -161,9 +160,10 @@ class Simulation(object):
                            self.amin)
         self.x = np.linspace(0, self.x_box_size, self.nx, endpoint=False)* \
                      self.rho_ref
-        self.y = np.linspace(0, 2*np.pi/self.ky[1], self.ny, endpoint=False)* \
-                     self.rho_ref * np.abs(np.sin(self.pitch_angle))* \
-                     (self.rmaj/self.amin)
+        self.y_tor_box_size = self.rmaj * 2 * np.pi / self.n0
+        self.y_pol_box_size = self.y_tor_box_size * np.tan(self.pitch_angle)
+        self.y_perp_box_size = self.y_tor_box_size * np.sin(self.pitch_angle)
+        self.y = np.linspace(0, self.y_perp_box_size, self.ny, endpoint=False)
 
         self.btor = self.bref*self.r_geo/self.R[int(self.ntheta/2)]
         self.bmag = np.sqrt(self.btor**2 + self.bpol**2)
