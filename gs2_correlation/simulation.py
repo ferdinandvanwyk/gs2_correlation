@@ -158,8 +158,7 @@ class Simulation(object):
         delta_rho = (self.rho_tor/self.qinp) * (self.jtwist/(self.n0*self.shat))
         self.x_box_size = (self.r_prime[int(self.geo_ntheta/2)] * delta_rho *
                            self.amin)
-        self.x = np.linspace(0, self.x_box_size, self.nx, endpoint=False)* \
-                     self.rho_ref
+        self.x = np.linspace(0, self.x_box_size, self.nx, endpoint=False)
         self.y_tor_box_size = self.rmaj * 2 * np.pi / self.n0
         self.y_pol_box_size = self.y_tor_box_size * np.tan(self.pitch_angle)
         self.y_perp_box_size = self.y_tor_box_size * np.sin(self.pitch_angle)
