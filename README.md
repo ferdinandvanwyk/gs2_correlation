@@ -1,7 +1,7 @@
 gs2_correlation
 ==================
 
-[![Build Status](https://travis-ci.org/ferdinandvwyk/gs2_correlation.svg?branch=master)](https://travis-ci.org/ferdinandvwyk/gs2_correlation)
+[![Build Status](https://travis-ci.org/ferdinandvanwyk/gs2_correlation.svg?branch=master)](https://travis-ci.org/ferdinandvanwyk/gs2_correlation)
 [![Documentation Status](https://readthedocs.org/projects/gs2-correlation/badge/?version=latest)](https://readthedocs.org/projects/gs2-correlation/?badge=latest)
 [![Coverage Status](https://coveralls.io/repos/ferdinandvwyk/gs2_correlation/badge.svg)](https://coveralls.io/r/ferdinandvwyk/gs2_correlation)
 

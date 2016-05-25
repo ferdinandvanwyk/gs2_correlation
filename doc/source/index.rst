@@ -6,8 +6,8 @@
 Welcome to gs2_correlation's documentation!
 ===========================================
 
-.. image:: https://travis-ci.org/ferdinandvwyk/gs2_correlation.svg?branch=master
-   :target: https://travis-ci.org/ferdinandvwyk/gs2_correlation
+.. image:: https://travis-ci.org/ferdinandvanwyk/gs2_correlation.svg?branch=master
+   :target: https://travis-ci.org/ferdinandvanwyk/gs2_correlation
 .. image:: https://readthedocs.org/projects/gs2-correlation/badge/?version=latest
    :target: https://readthedocs.org/projects/gs2-correlation/?badge=latest
    :alt: Documentation Status
