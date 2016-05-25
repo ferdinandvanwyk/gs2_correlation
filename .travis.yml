@@ -3,23 +3,23 @@ language: python
 python:
   - "3.4"
 notifications:
-    email: 
+    email:
         on_success: change
         on_failure: change
 # Install apt-get packages on new container-based infrastructure
 addons:
     apt:
         packages:
-        - gfortran 
+        - gfortran
         - liblapack-dev
-        - libhdf5-serial-dev 
-        - netcdf-bin 
-        - libnetcdf-dev 
-        - libfreetype6-dev 
+        - libhdf5-serial-dev
+        - netcdf-bin
+        - libnetcdf-dev
+        - libfreetype6-dev
         - libpng-dev
-        - ffmpeg 
+        - ffmpeg
         - libav-tools
-        - libfftw3-3 
+        - libfftw3-3
         - libfftw3-dev
 before_install:
     - pip install -U pip
@@ -32,14 +32,12 @@ before_install:
     - conda config --set always_yes yes --set changeps1 no
     - conda update -q conda
 # command to install dependencies
-install: 
-    - conda install --yes python=$TRAVIS_PYTHON_VERSION pip numpy scipy matplotlib Pillow seaborn
-    - pip install pytest  # not yet available for py3 in anaconda 
-    - pip install pytest-cov coverage coveralls
-    - pip install f90nml lmfit pyfftw progressbar2
+install:
+    - conda install --yes python=$TRAVIS_PYTHON_VERSION nomkl pip numpy scipy matplotlib Pillow seaborn netcdf4
+    - pip install pytest pytest-cov coverage coveralls f90nml lmfit pyfftw progressbar2
     - python setup.py install
 # command to run tests
-script: 
+script:
     - py.test --cov gs2_correlation test
 after_success:
     - coveralls --verbose
