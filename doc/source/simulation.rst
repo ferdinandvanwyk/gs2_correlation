@@ -16,13 +16,11 @@ Instance Variables of Simulation Class
        Path to run folder.
    cdf_file : str, None
        Path (relative or absolute) and name of input NetCDF file. If
-       None, the directory is searched for a file ending in '.cdf' and the 
+       None, the directory is searched for a file ending in '.cdf' and the
        name is appended to the run_folder path.
    g_file : str, None
        Path to the '.g' file. If None, run_folder will be searched and the
        first returned file will be used.
-   in_file : str, None
-       Path to '.in' file.
    geometry : array_like
        Array containing entire '.g' file.
    input_file : dict
@@ -31,25 +29,25 @@ Instance Variables of Simulation Class
    in_field : str
        Name of the field to be read in from NetCDF file.
    analysis : str
-       Type of analysis to be done. Options are 'all', 'perp', 'par', 'time', 
+       Type of analysis to be done. Options are 'all', 'perp', 'par', 'time',
        'write_field', 'write_field_full'.
    out_dir : str, 'analysis'
        Output directory for analysis.
    time_interpolate_bool : bool, True
-       Interpolate in time onto a regular grid. Specify as interpolate in 
+       Interpolate in time onto a regular grid. Specify as interpolate in
        configuration file.
    time_interp_fac : int, 1
        Sets the time interpolation multiple.
    zero_bes_scales_bool : bool, False
-       Zero out scales which are larger than the BES. Specify as 
+       Zero out scales which are larger than the BES. Specify as
        zero_bes_scales in configuration file.
    zero_zf_scales_bool : bool, False
-       Zero out the zonal flow (ky = 0) modes. Specify as zero_zf_scales in 
+       Zero out the zonal flow (ky = 0) modes. Specify as zero_zf_scales in
        configuration file.
    lab_frame : bool, False
        Transform from rotating to lab frame.
    domain : str, 'full'
-       Specifies whether to analyze the full real space domain, or only the 
+       Specifies whether to analyze the full real space domain, or only the
        middle part of size *box_size*.
    time_slice : int, 49
        Size of time window for averaging
@@ -62,21 +60,21 @@ Instance Variables of Simulation Class
    ky_free : bool, False
       Determines whether ky is free during the poloidal fitting procedure.
    time_guess : array_like, [1e-5,100]
-       Initial guess for the correlation time and wavenumber in seconds read 
+       Initial guess for the correlation time and wavenumber in seconds read
        in from the configuration file.
    time_guess_dec : float
        Guess for the time correlation estimated by the decaying exponential.
    time_guess_grow : float
        Guess for the time correlation estimated by the growing exponential.
    time_guess_osc : float
-       Guess for the time correlation and wavenumber estimated by the 
+       Guess for the time correlation and wavenumber estimated by the
        oscillating exponential.
    time_max : float, 1
-       Maximum correlation time in seconds. Values above `time_max` will be 
+       Maximum correlation time in seconds. Values above `time_max` will be
        excluded.
    box_size : array_like, [0.2,0.2]
        When running correlation analysis in the middle of the full GS2
-       domain, this sets the approximate [radial, poloidal] size of this 
+       domain, this sets the approximate [radial, poloidal] size of this
        box in m. This variable is only used when domain = 'middle'
    time_range : array_like, [0,-1]
        Time index range for which analysis is done. Default is entire range. -1
@@ -106,7 +104,7 @@ Instance Variables of Simulation Class
    pitch_angle : float
        Pitch angle of the magnetic field lines in *rad*.
    rmaj : float, 0
-       Major radius of the outboard midplane. Used when writing out 
+       Major radius of the outboard midplane. Used when writing out
        the field to the NetCDF file. This is **not** the *rmaj* value from
        GS2.
    nref : float, 1
@@ -122,7 +120,7 @@ Instance Variables of Simulation Class
    gradpar : array_like
        Value of the parallel gradient as a function of theta.
    r_prime : array_like
-       Value of Rprime as a function of theta. 
+       Value of Rprime as a function of theta.
    seaborn_context : str
        Context for plot output: paper, notebook, talk, poster. See:
        http://stanford.edu/~mwaskom/software/seaborn/tutorial/aesthetics.html
@@ -140,20 +138,20 @@ Instance Variables of Simulation Class
    perp_corr_y : array_like
        Poloidal correlation function calculated from field_real_space_norm_y.
    perp_fit_len_x : array_like
-       Radial correlation length obtained from perp fitting procedure. Of size 
+       Radial correlation length obtained from perp fitting procedure. Of size
        (nt_slices).
    perp_fit_len_err_x : array_like
-       Error in the radial correlation length obtained from perp fitting 
+       Error in the radial correlation length obtained from perp fitting
        procedure, calculated from the covariance matrix. Of size (nt_slices).
    perp_fit_len_y : array_like
-       Poloidal correlation length obtained from perp fitting procedure. Of size 
+       Poloidal correlation length obtained from perp fitting procedure. Of size
        (nt_slices).
    perp_fit_len_err_y : array_like
-       Error in the poloidal correlation length obtained from perp fitting 
+       Error in the poloidal correlation length obtained from perp fitting
        procedure, calculated from the covariance matrix. Of size (nt_slices).
    time_corr : array_like
        Correlation function used to calculate the correlation function. It is
-       of size (nt_slices, time_slice, nx, ny), owing to the 2D 
+       of size (nt_slices, time_slice, nx, ny), owing to the 2D
        correlation calculated in the t and y directions.
    corr_time : array_like
        Parameters obtained from time fitting procedure. Of size (nt_slices, nx).
@@ -168,7 +166,7 @@ Instance Variables of Simulation Class
        Values of the time separations. Min and max values will depend on
        time_slice.
    nt_slices : int
-       Number of time slices. nt_slices = nt/time_slice 
+       Number of time slices. nt_slices = nt/time_slice
    x : array_like
        Values of the real space x (radial) grid.
    x_box_size : float
@@ -201,8 +199,8 @@ Instance Variables of Simulation Class
        Number of time points.
    ncfile : object
        SciPy NetCDF object referencing all arrays in the NetCDF file. Arrays
-       are not loaded into memory due to the large amount of memory needed, 
-       but simply read from the NetCDF file. Since the field is manipulated, 
+       are not loaded into memory due to the large amount of memory needed,
+       but simply read from the NetCDF file. Since the field is manipulated,
        it is copied into a NumPy array, however.
    field_max : float
        Maximum value of the real space field.
@@ -226,7 +224,7 @@ Instance Variables of Simulation Class
        Poloidal location of centre of the flux tube as read in from geometry
        file.
    phi_tor : array_like
-       Toroidal angle of location of centre of the flux tube as read in from 
+       Toroidal angle of location of centre of the flux tube as read in from
        geometry file. It is equal to -alpha4 in geometry file.
    dR_drho : array_like
        Derivative of R with respect to the radial coordinate rho.
@@ -235,7 +233,7 @@ Instance Variables of Simulation Class
    dalpha_drho : array_like
        Derivative of alpha with respect to the radial coordinate rho.
    bpol : array_like
-       Poloidal magnetic field as a function of theta as printed out in the 
+       Poloidal magnetic field as a function of theta as printed out in the
        geometry file.
    btor : float
        Toroidal magnetic field at the radial location of the flux tube.
@@ -247,14 +245,14 @@ Instance Variables of Simulation Class
    par_corr : array_like
       Parallel correlation function C(t,x,y,dtheta)
    l_par : array_like
-       Regular real space parallel grid. 
+       Regular real space parallel grid.
    dl_par : array_like
        Values of parallel separation in real space.
    par_guess : array_like, [1,0.1]
-      Initial guess for the parallel fitting in SI units in the form 
+      Initial guess for the parallel fitting in SI units in the form
       [l_par, k_par].
    par_fit_params : array_like
-      Array which stores parallel correlation fitting parameters. It is a 
+      Array which stores parallel correlation fitting parameters. It is a
       function of time slice and contains both l and k which define an
       oscillating Gaussian.
    par_fit_params_err : array_like
@@ -262,7 +260,7 @@ Instance Variables of Simulation Class
       These are calculated by taking the square root of the diagonal terms in
       the covariance matrix and give the error in each fitting parameter.
 
-Configuration Variables 
+Configuration Variables
 -----------------------
 
 .. py:method:: read_config()
@@ -277,17 +275,15 @@ Configuration Variables
        Path to run folder.
    cdf_file : str, None
        Path (relative or absolute) and name of input NetCDF file. If
-       None, the directory is searched for a file ending in '.cdf' and the 
+       None, the directory is searched for a file ending in '.cdf' and the
        name is appended to the run_folder path.
    g_file : str, None
        Path to the '.g' file. If None, run_folder will be searched and the
        first returned file will be used.
-   in_file : str, None
-       Path to '.in' file.
    field : str
        Name of the field to be read in from NetCDF file.
    analysis : str
-       Type of analysis to be done. Options are 'all', 'perp', 'par', 'time', 
+       Type of analysis to be done. Options are 'all', 'perp', 'par', 'time',
        'write_field', 'write_field_full'.
    out_dir : str, 'analysis'
        Output directory for analysis.
@@ -302,7 +298,7 @@ Configuration Variables
    lab_frame : bool, False
        Transform from rotating to lab frame.
    domain : str, 'full'
-       Specifies whether to analyze the full real space domain, or only the 
+       Specifies whether to analyze the full real space domain, or only the
        middle part of size *box_size*.
    time_slice : int, 49
        Size of time window for averaging
@@ -313,14 +309,14 @@ Configuration Variables
    ky_free : bool, False
       Determines whether ky is free during the poloidal fitting procedure.
    time_guess : array_like, [1e-5,100]
-       Initial guess for the correlation time and wavenumber in seconds read 
+       Initial guess for the correlation time and wavenumber in seconds read
        in from the configuration file.
    time_max : float, 1
-       Maximum correlation time in seconds. Values above `time_max` will be 
+       Maximum correlation time in seconds. Values above `time_max` will be
        excluded.
    box_size : array_like, [0.2,0.2]
        When running correlation analysis in the middle of the full GS2
-       domain, this sets the approximate [radial, poloidal] size of this 
+       domain, this sets the approximate [radial, poloidal] size of this
        box in m. This variable is only used when domain = 'middle'
    time_range : array_like, [0,-1]
        Time index range for which analysis is done. Default is entire range. -1
@@ -339,7 +335,7 @@ Configuration Variables
        Location of the geometry file. By default searches the run folder
        for a '.g' file and loads the first one found.
    par_guess : array_like, [1,0.1]
-      Initial guess for the parallel fitting in SI units in the form 
+      Initial guess for the parallel fitting in SI units in the form
       [l_par, k_par].
    amin : float
        Minor radius of device in *m*.

@@ -275,40 +275,34 @@ class Simulation(object):
         if self.g_file == 'None':
             self.g_file = self.find_file_with_ext('.g')
 
-        # Try to find input file in same dir as output file, otherwise try to
-        # extract from the NetCDF file (only present when using the new
-        # diagnostic routines.)
-        self.in_file = config_parse.get('general', 'in_file', fallback='None')
-        if self.in_file == 'None':
-            try:
-                self.in_file = self.find_file_with_ext('.in')
-            except NameError:
-                # Take from extract_input_file in the GS2 scripts folder:
-                #1: Get the input_file variable from the netcdf file
-                #2: Only print lines between '${VAR} = "' and '" ;'
-                #   (i.e. ignore header and footer)
-                #3: Convert \\n to new lines
-                #4: Delete empty lines
-                #5: Ignore first line
-                #6: Ignore last line
-                #7: Fix " style quotes
-                #8: Fix ' style quotes
-                bash_extract_input = (""" ncdump -v input_file ${FILE} | """ +
-                                  """ sed -n '/input_file = /,/" ;/p' | """ +
-                                  """ sed 's|\\\\\\\\n|\\n|g' | """ +
-                                  """ sed '/^ *$/d' | """ +
-                                  """ tail -n+2 | """ +
-                                  """ head -n-2 | """ +
-                                  """ sed 's|\\\\\\"|\\"|g' | """ +
-                                  """ sed "s|\\\\\\'|\\'|g" """)
-                os.system('FILE=' + self.cdf_file + '; ' +
-                          bash_extract_input + ' > ' +
-                          self.run_folder + 'input_file.in')
+        # Extract input file from NetCDf file.
+        # Taken from extract_input_file in the GS2 scripts folder:
+        #1: Get the input_file variable from the netcdf file
+        #2: Only print lines between '${VAR} = "' and '" ;'
+        #   (i.e. ignore header and footer)
+        #3: Convert \\n to new lines
+        #4: Delete empty lines
+        #5: Ignore first line
+        #6: Ignore last line
+        #7: Fix " style quotes
+        #8: Fix ' style quotes
+        bash_extract_input = (""" ncdump -v input_file ${FILE} | """ +
+                          """ sed -n '/input_file = /,/" ;/p' | """ +
+                          """ sed 's|\\\\\\\\n|\\n|g' | """ +
+                          """ sed '/^ *$/d' | """ +
+                          """ tail -n+2 | """ +
+                          """ head -n-2 | """ +
+                          """ sed 's|\\\\\\"|\\"|g' | """ +
+                          """ sed "s|\\\\\\'|\\'|g" """)
+        os.system('FILE=' + self.cdf_file + '; ' +
+                  bash_extract_input + ' > ' +
+                  self.run_folder + 'input_file.in')
 
-                self.in_file = self.run_folder + 'input_file.in'
-            else:
-               NameError('No .in file and could not extract form NetCDF file. '
-                         'Please specify in_file in config file.')
+        if 'input_file.in' in os.listdir(self.run_folder):
+            self.in_file = self.run_folder + 'input_file.in'
+        else:
+            NameError('Could not extract input file from NetCDF file. '
+                      'Make sure GS2 is using new diagnostic output.')
 
         self.in_field = str(config_parse['general']['field'])
 
@@ -493,40 +487,35 @@ class Simulation(object):
         """
         logging.info('Start reading from NetCDf file...')
 
-        self.ncfile = Dataset(self.cdf_file, 'r')
+        with Dataset(self.cdf_file, 'r') as ncfile:
 
-        # NetCDF order is [t, species, ky, kx, theta, r]
-        if self.theta_idx == None:
-            self.field = np.array(self.ncfile.variables[self.in_field]
+            # NetCDF order is [t, species, ky, kx, theta, r]
+            if self.theta_idx == None:
+                self.field = np.array(ncfile.variables[self.in_field]
                                         [self.time_range[0]:self.time_range[1],
                                          self.spec_idx,:,:,self.theta_idx,:])
-        else:
-            self.field = np.array(self.ncfile.variables[self.in_field]
-                                            [self.time_range[0]:self.time_range[1],
-                                             self.spec_idx,:,:,
-                                             self.theta_idx[0]:self.theta_idx[1],
-                                             :])
-        self.t = np.array(self.ncfile.variables['t'][self.time_range[0]:
-                                                     self.time_range[1]])
+            else:
+                self.field = np.array(ncfile.variables[self.in_field]
+                                        [self.time_range[0]:self.time_range[1],
+                                         self.spec_idx,:,:,
+                                         self.theta_idx[0]:self.theta_idx[1],
+                                         :])
+            self.t = np.array(ncfile.variables['t'][self.time_range[0]:
+                                                         self.time_range[1]])
 
 
-        self.field = np.squeeze(self.field)
-        self.field = np.swapaxes(self.field, 1, 2)
-        if len(self.field.shape) < 5:
-            self.field = self.field[:,:,:,np.newaxis,:]
+            self.field = np.squeeze(self.field)
+            self.field = np.swapaxes(self.field, 1, 2)
+            if len(self.field.shape) < 5:
+                self.field = self.field[:,:,:,np.newaxis,:]
 
-        self.drho_dpsi = float(self.ncfile.variables['drhodpsi'][:])
-        self.kx = np.array(self.ncfile.variables['kx'][:])/self.drho_dpsi
-        self.ky = np.array(self.ncfile.variables['ky'][:])/self.drho_dpsi
-        self.theta = np.array(self.ncfile.variables['theta'][:])
-        self.gradpar = np.array(self.ncfile.variables['gradpar'][:])/self.amin
-        self.r_prime = np.array(self.ncfile.variables['Rprime'][:])
-        try:
-            self.bpol = np.array(self.ncfile.variables['bpol'][:])*self.bref
-        except KeyError:
-            self.bpol = self.geometry[:,7]*self.bref
-
-        self.ncfile.close()
+            self.drho_dpsi = float(ncfile.variables['drhodpsi'][:])
+            self.kx = np.array(ncfile.variables['kx'][:])/self.drho_dpsi
+            self.ky = np.array(ncfile.variables['ky'][:])/self.drho_dpsi
+            self.theta = np.array(ncfile.variables['theta'][:])
+            self.gradpar = np.array(ncfile.variables['gradpar'][:])/self.amin
+            self.r_prime = np.array(ncfile.variables['Rprime'][:])
+            self.bpol = np.array(ncfile.variables['bpol'][:])*self.bref
 
         logging.info('Finished reading from NetCDf file.')
 
