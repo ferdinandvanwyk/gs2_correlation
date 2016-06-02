@@ -1,6 +1,7 @@
 # Standard
 import os
 import pytest
+import json
 
 # Third Party
 import numpy as np
@@ -162,8 +163,7 @@ class TestClass(object):
         assert len(run.perp_fit_x_err) == run.nt_slices
         assert len(run.perp_fit_y) == run.nt_slices
         assert len(run.perp_fit_y_err) == run.nt_slices
-        assert ('perp_fit_params.csv' in
-                os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed'))
+
         assert ('corr_x_fit_it_0.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed/corr_fns_x'))
         assert ('corr_y_fit_it_0.pdf' in
@@ -172,8 +172,24 @@ class TestClass(object):
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed'))
         assert ('perp_fit_y_vs_time_slice.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed'))
-        assert ('perp_fit_summary.csv' in
-                os.listdir('test/test_run/v/id_1/analysis/perp/ky_fixed'))
+
+        results = json.load(open('test/test_run/v/id_1/analysis/results.json', 'r'))
+
+        assert 'lx_t' in results['perp']
+        assert 'lx' in results['perp']
+        assert 'lx_std_t' in results['perp']
+        assert 'lx_std' in results['perp']
+        assert 'ly_t' in results['perp']
+        assert 'ly' in results['perp']
+        assert 'ly_std_t' in results['perp']
+        assert 'ly_std' in results['perp']
+
+    def test_write_results(self, run):
+        test_dict = {'test':0}
+        run.write_results('test1', test_dict)
+
+        t = json.load(open('test/test_run/v/id_1/analysis/results.json', 'r'))
+        assert t['test1']['test'] == 0
 
     def test_perp_analysis_ky_free(self, run):
         run.ky_free = True
@@ -185,8 +201,7 @@ class TestClass(object):
         assert len(run.perp_fit_y_err) == run.nt_slices
         assert len(run.perp_fit_ky) == run.nt_slices
         assert len(run.perp_fit_ky_err) == run.nt_slices
-        assert ('perp_fit_params.csv' in
-                os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
+
         assert ('corr_x_fit_it_0.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_free/corr_fns_x'))
         assert ('corr_y_fit_it_0.pdf' in
@@ -197,8 +212,13 @@ class TestClass(object):
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
         assert ('perp_fit_ky_vs_time_slice.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
-        assert ('perp_fit_summary.csv' in
-                os.listdir('test/test_run/v/id_1/analysis/perp/ky_free'))
+
+        results = json.load(open('test/test_run/v/id_1/analysis/results.json', 'r'))
+
+        assert 'ky_t' in results['perp_ky_free']
+        assert 'ky' in results['perp_ky_free']
+        assert 'ky_std_t' in results['perp_ky_free']
+        assert 'ky_std' in results['perp_ky_free']
 
     def test_field_normalize_perp(self, run):
         run.field_normalize_perp()
@@ -217,16 +237,6 @@ class TestClass(object):
         run.calculate_perp_corr()
         assert run.perp_corr_x.shape == (run.nt, run.nx, run.ny)
         assert run.perp_corr_y.shape == (run.nt, run.nx, run.ny)
-
-    def test_fluctuation_level(self, run):
-        run.field_real_space = np.random.randint(0,10,size=[5,5,5])
-        run.perp_dir = 'perp'
-        if 'perp' not in os.listdir(run.out_dir):
-            os.mkdir(run.out_dir + '/perp')
-        run.fluctuation_levels()
-        assert np.abs(run.fluc_level - np.mean(np.sqrt(np.mean(run.field_real_space**2, axis=0)))) < 1e-5
-        assert np.abs(run.fluc_level_std - np.std(np.sqrt(np.mean(run.field_real_space**2, axis=0)))) < 1e-5
-        assert ('fluctuation_summary.csv' in os.listdir('test/test_run/v/id_1/analysis/perp'))
 
     def test_time_analysis(self, run):
         run.lab_frame = False

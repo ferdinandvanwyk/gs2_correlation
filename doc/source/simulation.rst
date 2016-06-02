@@ -213,10 +213,6 @@ Instance Variables of Simulation Class
        Radial coordinate *x*, centered at the major radius *rmaj*.
    z : array_like
        Poloidal coordinate *z* centered at 0.
-   fluc_level : float
-       Mean fluctuation level for all space and time.
-   fluc_level_std : float
-       Standard deviation of the mean fluctuation level.
    R : array_like
        Radial location of centre of the flux tube as read in from geometry
        file.

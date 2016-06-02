@@ -38,6 +38,7 @@ import configparser
 import logging
 import operator #enumerate list
 import warnings
+import json
 
 # Third Party
 import numpy as np
@@ -809,23 +810,7 @@ class Simulation(object):
         for it in pbar(range(self.nt_slices)):
             self.perp_corr_fit(it)
 
-        if not self.ky_free:
-            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_params.csv',
-                       np.array([self.perp_fit_x, self.perp_fit_x_err,
-                        self.perp_fit_y, self.perp_fit_y_err]).T,
-                       delimiter=',', fmt='%1.4f',
-                       header='lx, std(lx), ly, std(ly)')
-        else:
-            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_params.csv',
-                       np.array([self.perp_fit_x, self.perp_fit_x_err,
-                        self.perp_fit_y, self.perp_fit_y_err,
-                        self.perp_fit_ky, self.perp_fit_ky]).T,
-                       delimiter=',', fmt='%1.4f',
-                       header='lx, std(lx), ly, std(ly), ky, std(ky)')
-
         self.perp_analysis_summary()
-
-        self.fluctuation_levels()
 
         logging.info('Finished perpendicular correlation analysis.')
 
@@ -1084,15 +1069,18 @@ class Simulation(object):
                     '/perp_fit_y_vs_time_slice.pdf')
         plt.close(fig)
 
-        if not self.ky_free:
-            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_summary.csv',
-                       np.nanmean([self.perp_fit_x,
-                                   self.perp_fit_x_err,
-                                   self.perp_fit_y,
-                                   self.perp_fit_y_err], axis=1)[np.newaxis,:],
-                       delimiter=',', fmt='%1.4f',
-                       header='lx, std(lx), ly, std(ly)')
-        else:
+        perp_results = {}
+        current_analysis = 'perp'
+        perp_results['lx_t'] = self.perp_fit_x.tolist()
+        perp_results['lx'] = np.nanmean(self.perp_fit_x)
+        perp_results['lx_std_t'] = self.perp_fit_x_err.tolist()
+        perp_results['lx_std'] = np.nanmean(self.perp_fit_x_err)
+        perp_results['ly_t'] = self.perp_fit_y.tolist()
+        perp_results['ly'] = np.nanmean(self.perp_fit_y)
+        perp_results['ly_std_t'] = self.perp_fit_y_err.tolist()
+        perp_results['ly_std'] = np.nanmean(self.perp_fit_y_err)
+
+        if self.ky_free:
             plt.clf()
             plot_style.white()
             fig, ax = plt.subplots(1, 1)
@@ -1108,48 +1096,37 @@ class Simulation(object):
                         '/perp_fit_ky_vs_time_slice.pdf')
             plt.close(fig)
 
-            np.savetxt(self.out_dir + '/' + self.perp_dir + '/perp_fit_summary.csv',
-                       np.mean([self.perp_fit_x,
-                                self.perp_fit_x_err,
-                                self.perp_fit_y,
-                                self.perp_fit_y_err,
-                                self.perp_fit_ky,
-                                self.perp_fit_ky_err], axis=1)[np.newaxis,:],
-                       delimiter=',', fmt='%1.4f',
-                       header='lx, std(lx), ly, std(ly)')
+            perp_results['ky_t'] = self.perp_fit_ky.tolist()
+            perp_results['ky'] = np.nanmean(self.perp_fit_ky)
+            perp_results['ky_std_t'] = self.perp_fit_ky_err.tolist()
+            perp_results['ky_std'] = np.nanmean(self.perp_fit_ky_err)
+            current_analysis = 'perp_ky_free'
+
+        self.write_results(current_analysis, perp_results)
 
         logging.info("Finished writing perp_analysis summary...")
 
-    def fluctuation_levels(self):
+    def write_results(self, analysis, result_dict):
         """
-        Caculates mean fluctuation level and standard deviation and writes
-        results.
+        Write results to the main results file.
 
-        Notes
-        -----
+        Parameters
+        ----------
 
-        More precisely the following is calculated
-
-        * At each grid point the RMS value is calculated in time.
-        * The mean and std of the fluctuation levels are then the mean and
-          std of these RMS values.
-
-        This is done since the standard deviation of a quantity with a mean of
-        zero will be the RMS value so a straighforward mean and std across the
-        whole box cannot be done.
+        result_dict : dict
+            Dictionary containing results from a given analysis. Will overwrite
+            any existing results for that analysis.
         """
-        logging.info("Calculating fluctuation level...")
+        try:
+            with open(self.out_dir + '/' + 'results.json', 'r') as fp:
+                results = json.load(fp)
+        except FileNotFoundError:
+            results = {}
 
-        rms = np.sqrt(np.mean(self.field_real_space**2, axis=0))
+        with open(self.out_dir + '/' + 'results.json', 'w') as fp:
+            results[analysis] = result_dict
 
-        self.fluc_level = np.mean(rms)
-        self.fluc_level_std = np.std(rms)
-
-        np.savetxt(self.out_dir + '/'+ self.perp_dir +'/fluctuation_summary.csv',
-                   np.array([self.fluc_level, self.fluc_level_std])[np.newaxis,:],
-                   header='dn/n, std(dn/n)', delimiter=',', fmt='%1.4f')
-
-        logging.info("Finished calculating fluctuation level.")
+            json.dump(results, fp, indent=2)
 
     def time_analysis(self):
         """
