@@ -265,9 +265,9 @@ class Simulation(object):
 
         # Set out_dir to be the same as the location of netCDF file by default
         if self.domain == 'full':
-            self.out_dir = self. run_folder + 'full_analysis'
+            self.out_dir = self. run_folder + 'correlation_analysis/full'
         elif self.domain == 'middle':
-            self.out_dir = self.run_folder + 'middle_analysis'
+            self.out_dir = self.run_folder + 'correlation_analysis/middle'
 
         self.out_dir = config_parse.get('general', 'out_dir',
                                         fallback=self.out_dir)
@@ -275,29 +275,7 @@ class Simulation(object):
         if self.g_file == 'None':
             self.g_file = self.find_file_with_ext('.g')
 
-        # Extract input file from NetCDf file.
-        # Taken from extract_input_file in the GS2 scripts folder:
-        #1: Get the input_file variable from the netcdf file
-        #2: Only print lines between '${VAR} = "' and '" ;'
-        #   (i.e. ignore header and footer)
-        #3: Convert \\n to new lines
-        #4: Delete empty lines
-        #5: Ignore first line
-        #6: Ignore last line
-        #7: Fix " style quotes
-        #8: Fix ' style quotes
-        bash_extract_input = (""" ncdump -v input_file ${FILE} | """ +
-                          """ sed -n '/input_file = /,/" ;/p' | """ +
-                          """ sed 's|\\\\\\\\n|\\n|g' | """ +
-                          """ sed '/^ *$/d' | """ +
-                          """ tail -n+2 | """ +
-                          """ head -n-2 | """ +
-                          """ sed 's|\\\\\\"|\\"|g' | """ +
-                          """ sed "s|\\\\\\'|\\'|g" """)
-        os.system('FILE=' + self.cdf_file + '; ' +
-                  bash_extract_input + ' > ' +
-                  self.run_folder + 'input_file.in')
-
+        self.extract_input_file()
         if 'input_file.in' in os.listdir(self.run_folder):
             self.in_file = self.run_folder + 'input_file.in'
         else:
@@ -429,6 +407,33 @@ class Simulation(object):
         logging.info('The following values were read from ' + self.config_file)
         logging.info(vars(self))
         logging.info('Finished read_config.')
+
+    def extract_input_file(self):
+        """
+        Extract input file from cdf_file.
+        """
+        # Extract input file from NetCDf file.
+        # Taken from extract_input_file in the GS2 scripts folder:
+        #1: Get the input_file variable from the netcdf file
+        #2: Only print lines between '${VAR} = "' and '" ;'
+        #   (i.e. ignore header and footer)
+        #3: Convert \\n to new lines
+        #4: Delete empty lines
+        #5: Ignore first line
+        #6: Ignore last line
+        #7: Fix " style quotes
+        #8: Fix ' style quotes
+        bash_extract_input = (""" ncdump -v input_file ${FILE} | """ +
+                          """ sed -n '/input_file = /,/" ;/p' | """ +
+                          """ sed 's|\\\\\\\\n|\\n|g' | """ +
+                          """ sed '/^ *$/d' | """ +
+                          """ tail -n+2 | """ +
+                          """ head -n-2 | """ +
+                          """ sed 's|\\\\\\"|\\"|g' | """ +
+                          """ sed "s|\\\\\\'|\\'|g" """)
+        os.system('FILE=' + self.cdf_file + '; ' +
+                  bash_extract_input + ' > ' +
+                  self.run_folder + 'input_file.in')
 
     def config_checks(self):
         """
