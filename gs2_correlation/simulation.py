@@ -521,7 +521,10 @@ class Simulation(object):
             self.theta = np.array(ncfile.variables['theta'][:])
             self.gradpar = np.array(ncfile.variables['gradpar'][:])/self.amin
             self.r_prime = np.array(ncfile.variables['Rprime'][:])
-            self.bpol = np.array(ncfile.variables['bpol'][:])*self.bref
+            try:
+                self.bpol = np.array(ncfile.variables['bpol'][:])*self.bref
+            except KeyError:
+                self.bpol = self.geometry[:,7]*self.bref
 
         logging.info('Finished reading from NetCDf file.')
 
