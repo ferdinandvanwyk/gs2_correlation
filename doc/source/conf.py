@@ -17,17 +17,12 @@ import sys
 import os
 from unittest.mock import MagicMock
 
-# Specify mock modules so they don't get built on RTD
-class Mock(MagicMock):
-    @classmethod
-    def __getattr__(cls, name):
-            return Mock()
-
-MOCK_MODULES = ['numpy', 'scipy', 'scipy.io', 'scipy.signal', 'matplotlib', 
+MOCK_MODULES = ['numpy', 'scipy', 'scipy.io', 'scipy.signal', 'matplotlib',
                 'matplotlib.pyplot', 'scipy.interpolate', 'scipy.optimize',
                 'seaborn', 'mpl_toolkits.axes_grid1', 'matplotlib.cbook',
-                'scipy.integrate', 'lmfit', 'f90nml', 'pyfftw', 'progressbar']
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES) 
+                'scipy.integrate', 'lmfit', 'f90nml', 'pyfftw', 'progressbar',
+                'netCDF4']
+sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -45,7 +40,7 @@ sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
-    'sphinx.ext.pngmath',
+    'sphinx.ext.imgmath',
     'sphinx.ext.viewcode',
     'numpydoc'
     #'sphinxcontrib.napoleon'
