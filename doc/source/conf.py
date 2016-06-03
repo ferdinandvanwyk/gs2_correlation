@@ -40,7 +40,7 @@ sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
-    'sphinx.ext.imgmath',
+    'sphinx.ext.pngmath',
     'sphinx.ext.viewcode',
     'numpydoc'
     #'sphinxcontrib.napoleon'
