@@ -22,8 +22,8 @@
 ###############################################################################
 
 """
-.. module:: Simulation
-   :platform: Unix, OSX
+.. class:: Simulation
+   :platform: Unix
    :synopsis: Class describing the GS2 simulation.
 
 .. moduleauthor:: Ferdinand van Wyk <ferdinandvwyk@gmail.com>
