@@ -196,28 +196,3 @@ following [Holland, PoP 2009]. The level of time interpolation is set using the
 `time_interp_fac` configuration variable and a warning is printed out if
 changing to the lab frame without some time interpolation. The lab frame time
 correlation analysis is written to a separate folder called 'time_lab_frame'.
-
-
-Zonal Flow Velocity
--------------------
-
-The ZF velocity is calculatd by:
-
-* Reading in the electrostatic potential at ky = 0.
-* Calculating v_zf = Re(IFT[phi(ky=0)*kx])*nx. The *nx* term is necessary since
-  the spectral->real conversion does not require any normalization but the
-  Numpy routines contain an explicit 1/n normalization to ensure IFT(A) = a.
-* This gives v_zf(t,x) which can be plotted in 2D and averaged in time to give
-  the mean ZF velocity as a function of radius.
-
-
-
-
-
-
-
-
-
-
-
-
