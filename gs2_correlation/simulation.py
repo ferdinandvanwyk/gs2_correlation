@@ -33,10 +33,10 @@
 # Standard
 import os
 import sys
-import gc #garbage collector
+import gc
 import configparser
 import logging
-import operator #enumerate list
+import operator
 import warnings
 import json
 
@@ -57,7 +57,7 @@ import lmfit as lm
 import pyfftw
 from progressbar import ProgressBar, Percentage, Bar
 plt.rcParams.update({'figure.autolayout': True})
-mpl.rcParams['axes.unicode_minus']=False
+mpl.rcParams['axes.unicode_minus'] = False
 pal = sns.color_palette('deep')
 
 # Local
@@ -1126,7 +1126,7 @@ class Simulation(object):
         with open(self.out_dir + '/' + 'results.json', 'w') as fp:
             results[analysis] = result_dict
 
-            json.dump(results, fp, indent=2)
+            json.dump(results, fp)
 
     def time_analysis(self):
         """
@@ -1656,7 +1656,7 @@ class Simulation(object):
     def par_analysis_summary(self):
         """
         Summarize parallel correlation analysis by plotting parallel correlation
-        fitting parameters along with associated errors and writing to a .csv
+        fitting parameters along with associated errors and writing to results
         file.
         """
         plot_style.white()
