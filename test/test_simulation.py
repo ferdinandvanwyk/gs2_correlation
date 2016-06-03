@@ -276,9 +276,15 @@ class TestClass(object):
         run.field_real_space = np.random.randint(0,10,size=[51,5,5,9])
         run.ntheta = 9
         run.par_analysis()
+
+        results = json.load(open('test/test_run/v/id_1/analysis/results.json', 'r'))
+        assert 'par_fit_params' in results['par']
+        assert 'l_par' in results['par']
+        assert 'l_par_err' in results['par']
+        assert 'k_par' in results['par']
+        assert 'k_par_err' in results['par']
+
         assert run.par_corr.shape == (51,5,5,9)
-        assert ('par_fit_params.csv' in os.listdir('test/test_run/v/id_1/analysis/parallel'))
-        assert ('par_fit_summary.csv' in os.listdir('test/test_run/v/id_1/analysis/parallel'))
         assert ('par_fit_length_vs_time_slice.pdf' in
                 os.listdir('test/test_run/v/id_1/analysis/parallel'))
         assert ('par_fit_wavenumber_vs_time_slice.pdf' in

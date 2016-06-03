@@ -1661,16 +1661,15 @@ class Simulation(object):
         """
         plot_style.white()
 
-        np.savetxt(self.out_dir + '/parallel/par_fit_params.csv',
-                   (self.par_fit_params), delimiter=',', fmt='%1.4f')
+        par_results = {}
+        current_analysis = 'par'
+        par_results['par_fit_params'] = self.par_fit_params.tolist()
+        par_results['l_par'] = np.nanmean(self.par_fit_params[:,0])
+        par_results['l_par_err'] = np.nanmean(self.par_fit_params_err[:,0])
+        par_results['k_par'] = np.nanmean(self.par_fit_params[:,1])
+        par_results['k_par_err'] = np.nanmean(self.par_fit_params_err[:,1])
 
-        np.savetxt(self.out_dir + '/parallel/par_fit_summary.csv',
-                   np.nanmean([self.par_fit_params[:,0],
-                   self.par_fit_params_err[:,0],
-                   self.par_fit_params[:,1],
-                   self.par_fit_params_err[:,1]], axis=1)[np.newaxis,:],
-                   delimiter=',', fmt='%1.4f',
-                   header='l_par, err(l_par), k_par, err(k_par)')
+        self.write_results(current_analysis, par_results)
 
         plt.clf()
         fig, ax = plt.subplots(1, 1)
