@@ -1464,12 +1464,14 @@ class Simulation(object):
 
         self.corr_time = np.abs(self.corr_time)
 
-        np.savetxt(self.out_dir + '/'+self.time_dir+'/corr_time.csv',
-                   (self.corr_time), delimiter=',', fmt='%.4e',
-                   header='rows = radius, columns = time slice')
-        np.savetxt(self.out_dir + '/'+self.time_dir+'/corr_time_err.csv',
-                   (self.corr_time_err), delimiter=',', fmt='%.4e',
-                   header='rows = radius, columns = time slice')
+        time_results = {}
+        current_analysis = 'time'
+        time_results['corr_time'] = self.corr_time.tolist()
+        time_results['corr_time_err'] = self.corr_time_err.tolist()
+        time_results['tau_c'] = np.nanmean(self.corr_time)*1e6
+        time_results['tau_c_std'] = np.nanstd(self.corr_time)*1e6
+
+        self.write_results(current_analysis, time_results)
 
         # Plot corr_time as a function of radius, average over time window
         plt.clf()
@@ -1483,11 +1485,6 @@ class Simulation(object):
         plot_style.minor_grid(ax)
         plot_style.ticks_bottom_left(ax)
         plt.savefig(self.out_dir + '/'+self.time_dir+'/corr_time.pdf')
-
-        np.savetxt(self.out_dir + '/'+self.time_dir+'/time_fit_summary.csv',
-                   (np.array([np.nanmean(self.corr_time),
-                   np.nanstd(self.corr_time)])*1e6)[np.newaxis,:],
-                   header='tau_c, std(tau_c)', fmt='%1.4f', delimiter=',')
 
         logging.info("Finished writing time_analysis summary...")
 
