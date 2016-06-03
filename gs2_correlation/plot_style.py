@@ -62,9 +62,8 @@ def white():
                                 'ytick.direction': 'out',
                                 'axes.axisbelow': True,
                                 'axes.linewidth': 0.4,
-                                'font.family' : 'sans-serif',
-                                'font.sans-serif' : ['Helvetica', 'Arial',
-                                                     'Verdana', 'sans-serif']
+                                'font.family' : ['Helvetica', 'Arial',
+                                                 'Verdana', 'sans-serif']
                                 })
 
 def minor_grid(ax):
@@ -100,9 +99,8 @@ def dark():
                                'ytick.direction': 'out',
                                'axes.axisbelow': False,
                                'axes.linewidth': 0.4,
-                               'font.family' : 'sans-serif',
-                               'font.sans-serif' : ['Helvetica', 'Arial',
-                                                     'Verdana', 'sans-serif']
+                               'font.family' : ['Helvetica', 'Arial',
+                                                'Verdana', 'sans-serif']
                                })
 
 def ticks_bottom_left(ax):
