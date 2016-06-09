@@ -255,16 +255,13 @@ class Simulation(object):
         self.domain = config_parse.get('general', 'domain',
                                         fallback='full')
 
-        self.file_ext = config_parse.get('general', 'file_ext',
-                                         fallback='.cdf')
+        self.file_ext = '.out.nc'
 
-        # Automatically find .out.nc file if only directory specified
         self.run_folder = str(config_parse['general']['run_folder'])
         self.cdf_file = config_parse.get('general', 'cdf_file', fallback='None')
         if self.cdf_file == "None":
             self.cdf_file = self.find_file_with_ext(self.file_ext)
 
-        # Set out_dir to be the same as the location of netCDF file by default
         if self.domain == 'full':
             self.out_dir = self. run_folder + 'correlation_analysis/full'
         elif self.domain == 'middle':

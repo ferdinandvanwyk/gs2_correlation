@@ -10,8 +10,8 @@ Instance Variables of Simulation Class
 
    Attributes
    ----------
-   file_ext : str
-       File extension for NetCDF output file. Default = '.cdf'
+   file_ext : str, '.out.nc'
+       File extension for NetCDF output file.
    run_folder : str, '../..'
        Path to run folder.
    cdf_file : str, None
@@ -265,8 +265,6 @@ Configuration Variables
 
    Parameters
    ----------
-   file_ext : str, '.cdf'
-       File extension for NetCDF output file.
    run_folder : str, '../..'
        Path to run folder.
    cdf_file : str, None

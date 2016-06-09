@@ -35,7 +35,6 @@ class TestClass(object):
         run.read_config()
         assert type(run.domain) == str
         assert type(run.in_file) == str
-        assert type(run.file_ext) == str
         assert type(run.in_field) == str
         assert type(run.analysis) == str
         assert type(run.out_dir) == str
