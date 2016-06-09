@@ -791,8 +791,8 @@ class Simulation(object):
             os.system("mkdir -p " + self.out_dir+'/'+self.perp_dir+'/corr_fns_x')
         if 'corr_fns_y' not in os.listdir(self.out_dir + '/' + self.perp_dir):
             os.system("mkdir -p " + self.out_dir+'/'+self.perp_dir+'/corr_fns_y')
-        os.system('rm ' + self.out_dir + '/' + self.perp_dir + '/corr_fns_x/*')
-        os.system('rm ' + self.out_dir + '/' + self.perp_dir + '/corr_fns_y/*')
+        os.system('rm -f ' + self.out_dir + '/' + self.perp_dir + '/corr_fns_x/*')
+        os.system('rm -f ' + self.out_dir + '/' + self.perp_dir + '/corr_fns_y/*')
 
         self.field_normalize_perp()
         self.calculate_perp_corr()
@@ -1149,7 +1149,7 @@ class Simulation(object):
             os.system("mkdir -p " + self.out_dir + '/' + self.time_dir)
         if 'corr_fns' not in os.listdir(self.out_dir+'/'+self.time_dir):
             os.system("mkdir -p " + self.out_dir + '/'+self.time_dir+'/corr_fns')
-        os.system('rm ' + self.out_dir + '/'+self.time_dir+'/corr_fns/*')
+        os.system('rm -f ' + self.out_dir + '/'+self.time_dir+'/corr_fns/*')
 
         self.time_corr = np.empty([self.nt_slices, self.time_slice, self.nx,
                                    self.ny], dtype=float)
@@ -1499,7 +1499,7 @@ class Simulation(object):
             os.system("mkdir -p " + self.out_dir + '/parallel')
         if 'corr_fns' not in os.listdir(self.out_dir + '/parallel'):
             os.system("mkdir -p " + self.out_dir + '/parallel/corr_fns')
-        os.system('rm ' + self.out_dir + '/parallel/corr_fns/*')
+        os.system('rm -f ' + self.out_dir + '/parallel/corr_fns/*')
 
         self.calculate_l_par()
         self.calculate_par_corr()
