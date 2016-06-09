@@ -154,7 +154,7 @@ class Simulation(object):
                            self.tor_phi[int(self.geo_ntheta/2)+1]))
 
         self.t = self.t*self.amin/self.vth
-        # Determine the box size in terms of fluex surface label rho
+        # Determine the box size in terms of flux surface label rho
         self.n0 = int(np.around(self.ky[1]*(self.amin/self.rho_ref)))
         delta_rho = (self.rho_tor/self.qinp) * (self.jtwist/(self.n0*self.shat))
         self.x_box_size = (self.r_prime[int(self.geo_ntheta/2)] * delta_rho *
@@ -496,7 +496,7 @@ class Simulation(object):
             if self.theta_idx == None:
                 self.field = np.array(ncfile.variables[self.in_field]
                                         [self.time_range[0]:self.time_range[1],
-                                         self.spec_idx,:,:,self.theta_idx,:])
+                                         self.spec_idx,:,:,:])
             else:
                 self.field = np.array(ncfile.variables[self.in_field]
                                         [self.time_range[0]:self.time_range[1],

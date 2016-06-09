@@ -81,6 +81,14 @@ class TestClass(object):
         arr_shapes = (run.nt, run.nkx, run.nky, run.ntheta)
         assert field_shape == arr_shapes
 
+    def test_read_netcdf_theta_idx_none(self, run):
+        run.theta_idx = None
+        run.in_field = 'ntot_igomega_by_mode'
+        run.read_netcdf()
+        field_shape = run.field.shape
+        arr_shapes = (run.nt, run.nkx, run.nky, 1, 2)
+        assert field_shape == arr_shapes
+
     def test_read_geometry_file(self, run):
         run.read_geometry_file()
         assert run.geometry.shape[1] > 6
