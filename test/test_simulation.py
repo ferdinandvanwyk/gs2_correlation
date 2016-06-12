@@ -264,6 +264,13 @@ class TestClass(object):
     def test_time_analysis_lab_frame(self, run):
         run.lab_frame = True
         run.time_analysis()
+
+        results = json.load(open('test/test_run/v/id_1/analysis/results.json', 'r'))
+        assert 'corr_time' in results['time_lab_frame']
+        assert 'corr_time_err' in results['time_lab_frame']
+        assert 'tau_c' in results['time_lab_frame']
+        assert 'tau_c_std' in results['time_lab_frame']
+
         assert ('corr_time.pdf' in os.listdir('test/test_run/v/id_1/analysis/time_lab_frame'))
         assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
         assert run.time_corr.shape == (run.nt_slices, run.time_slice,

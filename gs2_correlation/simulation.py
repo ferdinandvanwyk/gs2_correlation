@@ -1465,7 +1465,10 @@ class Simulation(object):
         self.corr_time = np.abs(self.corr_time)
 
         time_results = {}
-        current_analysis = 'time'
+        if self.lab_frame:
+            current_analysis = 'time_lab_frame'
+        else:
+            current_analysis = 'time'
         time_results['corr_time'] = self.corr_time.tolist()
         time_results['corr_time_err'] = self.corr_time_err.tolist()
         time_results['tau_c'] = np.nanmean(self.corr_time)*1e6
