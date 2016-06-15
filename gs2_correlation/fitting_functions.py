@@ -6,7 +6,7 @@
 ###############################################################################
 # This file is part of gs2_correlation_analysis.
 #
-# gs2_correlation_analysis is free software: you can redistribute it and/or 
+# gs2_correlation_analysis is free software: you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
@@ -17,11 +17,11 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with gs2_correlation_analysis.  
+# along with gs2_correlation_analysis.
 # If not, see <http://www.gnu.org/licenses/>.
 ###############################################################################
 
-# This file contains various fitting functions called during the main 
+# This file contains various fitting functions called during the main
 # correlation analysis
 
 import os
@@ -58,7 +58,7 @@ def tilted_gauss_ky_fixed(xdata_tuple, lx, ly, kx):
 def decaying_exp(t, tau_c):
     exp_fn = np.exp(- np.abs(t) / tau_c)
     # fitting function only works on 1D data, reshape later to plot
-    return exp_fn.ravel() 
+    return exp_fn.ravel()
 
 #Growing exponential for time correlation with negative flow
 def growing_exp(t, tau_c):
@@ -70,19 +70,19 @@ def growing_exp(t, tau_c):
 def osc_gauss(x, l, k, p):
     fit_fn = p + (1 - p) * np.exp(- (x / l)**2) * np.cos(k * x)
     # fitting function only works on 1D data, reshape later to plot
-    return fit_fn.ravel() 
+    return fit_fn.ravel()
 
 #General function for an oscillating Gaussian function with a fixed ky = 2pi/l
 def osc_gauss_ky_fixed(x, l):
     fit_fn = np.exp(- (x / l)**2) * np.cos(2 * np.pi * x / l)
     # fitting function only works on 1D data, reshape later to plot
-    return fit_fn.ravel() 
+    return fit_fn.ravel()
 
 #General function for an oscillating Gaussian function
 def gauss(x, l, p):
     fit_fn = p + (1 - p) * np.exp(- (x / l)**2)
     # fitting function only works on 1D data, reshape later to plot
-    return fit_fn.ravel() 
+    return fit_fn.ravel()
 
 ###################
 # Misc Procedures #

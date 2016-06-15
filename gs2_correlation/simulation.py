@@ -1291,7 +1291,7 @@ class Simulation(object):
                         fit_t = gmod_decay.fit(peaks[ix,:], params_t,
                                                t=self.dt[max_index[ix,:]])
 
-                        if fit_t.best_values['tau_c'] > self.time_max:
+                        if np.abs(fit_t.best_values['tau_c']) > self.time_max:
                             self.corr_time[it,ix] = np.nan
                             self.corr_time_err[it,ix] = np.nan
                         else:
@@ -1320,7 +1320,7 @@ class Simulation(object):
                         fit_t = gmod_grow.fit(peaks[ix,:], params_t,
                                               t=self.dt[max_index[ix,:]])
 
-                        if fit_t.best_values['tau_c'] > self.time_max:
+                        if np.abs(fit_t.best_values['tau_c']) > self.time_max:
                             self.corr_time[it,ix] = np.nan
                             self.corr_time_err[it,ix] = np.nan
                         else:
@@ -1357,7 +1357,7 @@ class Simulation(object):
 
                     # Note l = tau_c sinc fitting function specification is for
                     # general l, k, p.
-                    if fit_t.best_values['l'] > self.time_max:
+                    if np.abs(fit_t.best_values['l']) > self.time_max:
                         self.corr_time[it,ix] = np.nan
                         self.corr_time_err[it,ix] = np.nan
                         logging.info("(" + str(it) + "," + str(ix) + ") was "
