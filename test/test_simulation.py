@@ -31,6 +31,10 @@ class TestClass(object):
     def test_find_file(self, run):
         assert run.find_file_with_ext('.g') == 'test/test_run/v/id_1/v_id_1.g'
 
+    def test_find_file_several_matches(self, run):
+        os.system('touch test/test_run/v/id_1/test.out.nc.old')
+        assert run.find_file_with_ext('.out.nc') == 'test/test_run/v/id_1/v_id_1.out.nc'
+
     def test_read(self, run):
         run.read_config()
         assert type(run.domain) == str

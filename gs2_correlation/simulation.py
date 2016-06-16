@@ -207,7 +207,7 @@ class Simulation(object):
         dir_files = os.listdir(self.run_folder)
         found = False
         for s in dir_files:
-            if s.find(ext) != -1:
+            if s.endswith(ext):
                 found_file = self.run_folder + s
                 found = True
                 break
