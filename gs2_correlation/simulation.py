@@ -1073,12 +1073,12 @@ class Simulation(object):
         current_analysis = 'perp'
         perp_results['lx_t'] = np.abs(self.perp_fit_x).tolist()
         perp_results['lx'] = abs(np.nanmean(self.perp_fit_x))
-        perp_results['lx_std_t'] = np.abs(self.perp_fit_x_err).tolist()
-        perp_results['lx_std'] = abs(np.nanmean(self.perp_fit_x_err))
+        perp_results['lx_t_err'] = np.abs(self.perp_fit_x_err).tolist()
+        perp_results['lx_err'] = abs(np.nanmean(self.perp_fit_x_err))
         perp_results['ly_t'] = np.abs(self.perp_fit_y).tolist()
         perp_results['ly'] = abs(np.nanmean(self.perp_fit_y))
-        perp_results['ly_std_t'] = np.abs(self.perp_fit_y_err).tolist()
-        perp_results['ly_std'] = abs(np.nanmean(self.perp_fit_y_err))
+        perp_results['ly_t_err'] = np.abs(self.perp_fit_y_err).tolist()
+        perp_results['ly_err'] = abs(np.nanmean(self.perp_fit_y_err))
 
         if self.ky_free:
             plt.clf()
@@ -1098,8 +1098,8 @@ class Simulation(object):
 
             perp_results['ky_t'] = self.perp_fit_ky.tolist()
             perp_results['ky'] = np.nanmean(self.perp_fit_ky)
-            perp_results['ky_std_t'] = self.perp_fit_ky_err.tolist()
-            perp_results['ky_std'] = np.nanmean(self.perp_fit_ky_err)
+            perp_results['ky_t_err'] = self.perp_fit_ky_err.tolist()
+            perp_results['ky_err'] = np.nanmean(self.perp_fit_ky_err)
             current_analysis = 'perp_ky_free'
 
         self.write_results(current_analysis, perp_results)
@@ -1472,7 +1472,7 @@ class Simulation(object):
         time_results['corr_time'] = self.corr_time.tolist()
         time_results['corr_time_err'] = self.corr_time_err.tolist()
         time_results['tau_c'] = np.nanmean(self.corr_time)*1e6
-        time_results['tau_c_std'] = np.nanstd(self.corr_time)*1e6
+        time_results['tau_c_err'] = np.nanstd(self.corr_time)*1e6
 
         self.write_results(current_analysis, time_results)
 

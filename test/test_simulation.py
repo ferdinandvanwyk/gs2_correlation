@@ -188,12 +188,12 @@ class TestClass(object):
 
         assert 'lx_t' in results['perp']
         assert 'lx' in results['perp']
-        assert 'lx_std_t' in results['perp']
-        assert 'lx_std' in results['perp']
+        assert 'lx_t_err' in results['perp']
+        assert 'lx_err' in results['perp']
         assert 'ly_t' in results['perp']
         assert 'ly' in results['perp']
-        assert 'ly_std_t' in results['perp']
-        assert 'ly_std' in results['perp']
+        assert 'ly_t_err' in results['perp']
+        assert 'ly_err' in results['perp']
 
     def test_write_results(self, run):
         test_dict = {'test':0}
@@ -228,8 +228,8 @@ class TestClass(object):
 
         assert 'ky_t' in results['perp_ky_free']
         assert 'ky' in results['perp_ky_free']
-        assert 'ky_std_t' in results['perp_ky_free']
-        assert 'ky_std' in results['perp_ky_free']
+        assert 'ky_t_err' in results['perp_ky_free']
+        assert 'ky_err' in results['perp_ky_free']
 
     def test_field_normalize_perp(self, run):
         run.field_normalize_perp()
@@ -257,7 +257,7 @@ class TestClass(object):
         assert 'corr_time' in results['time']
         assert 'corr_time_err' in results['time']
         assert 'tau_c' in results['time']
-        assert 'tau_c_std' in results['time']
+        assert 'tau_c_err' in results['time']
 
         assert ('corr_time.pdf' in os.listdir('test/test_run/v/id_1/analysis/time'))
         assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
@@ -273,7 +273,7 @@ class TestClass(object):
         assert 'corr_time' in results['time_lab_frame']
         assert 'corr_time_err' in results['time_lab_frame']
         assert 'tau_c' in results['time_lab_frame']
-        assert 'tau_c_std' in results['time_lab_frame']
+        assert 'tau_c_err' in results['time_lab_frame']
 
         assert ('corr_time.pdf' in os.listdir('test/test_run/v/id_1/analysis/time_lab_frame'))
         assert run.field_real_space.shape == (run.nt, run.nx, run.ny)
