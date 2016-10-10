@@ -1297,7 +1297,7 @@ class Simulation(object):
                         else:
                             self.corr_time[it,ix] = fit_t.best_values['tau_c']
                             if fit_t.errorbars:
-                                self.corr_time_err[it,ix] = fit_t.covar[0,0]
+                                self.corr_time_err[it,ix] = np.sqrt(fit_t.covar[0,0])
                             else:
                                 self.corr_time_err[it,ix] = np.nan
                             self.time_guess_dec = self.corr_time[it,ix]
@@ -1326,7 +1326,7 @@ class Simulation(object):
                         else:
                             self.corr_time[it,ix] = fit_t.best_values['tau_c']
                             if fit_t.errorbars:
-                                self.corr_time_err[it,ix] = fit_t.covar[0,0]
+                                self.corr_time_err[it,ix] = np.sqrt(fit_t.covar[0,0])
                             else:
                                 self.corr_time_err[it,ix] = np.nan
                             self.time_guess_grow = self.corr_time[it,ix]
@@ -1368,7 +1368,7 @@ class Simulation(object):
                     else:
                         self.corr_time[it,ix] = fit_t.best_values['l']
                         if fit_t.errorbars:
-                            self.corr_time_err[it,ix] = fit_t.covar[0,0]
+                            self.corr_time_err[it,ix] = np.sqrt(fit_t.covar[0,0])
                         else:
                             self.corr_time_err[it,ix] = np.nan
                         self.time_guess_osc = np.array([fit_t.best_values['l'],
