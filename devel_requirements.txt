@@ -1,5 +1,5 @@
 f90nml
-lmfit
+lmfit==0.9.3
 matplotlib
 netCDF4
 numpy
